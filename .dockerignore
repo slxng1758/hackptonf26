@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.git
+.venv
+venv
+runs
+web/node_modules
+web/dist
+**/__pycache__
+**/*.pyc
+tests
+docs
+deploy
+.DS_Store

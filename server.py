@@ -198,6 +198,28 @@ def sim_set_social(sim_id: str, body: dict):
     return {"ok": True}
 
 
+@app.get("/api/insights")
+def insights():
+    """Across every simulation (MongoDB aggregation pipelines when Atlas is connected): buy rate by model family,
+    accuracy by evolve round, customer types."""
+    from b2a import mongo
+    return mongo.insights()
+
+
+@app.get("/api/storage")
+def storage():
+    """Is MongoDB Atlas connected, is vector search on, and how much is stored."""
+    from b2a import mongo
+    return mongo.status()
+
+
+@app.get("/api/memory/search")
+def memory_search(q: str):
+    """Vector search over long-term customer memory: which past customers learned something relevant to this one."""
+    from b2a import memory
+    return memory.similar(q, k=5, min_score=0.0)
+
+
 @app.get("/api/memory")
 def long_term_memory():
     """What each type of customer has learned across every business tested."""
@@ -253,3 +275,11 @@ def extras_fixture():
     import json
     from pathlib import Path
     return json.loads((Path(__file__).parent / "fixtures" / "sim_extras_example.json").read_text())
+
+
+# ---------- production: serve the built web app from the same server (Docker / Vultr). Must stay last. ----------
+from pathlib import Path as _Path
+
+_WEB = _Path(__file__).resolve().parent / "web" / "dist"
+if _WEB.is_dir():
+    app.mount("/", StaticFiles(directory=str(_WEB), html=True), name="web")

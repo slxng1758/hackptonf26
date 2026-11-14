@@ -18,7 +18,7 @@ from pathlib import Path
 from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 
-from . import memory, session
+from . import memory, mongo, session
 from .models import brain
 
 RUNS = Path(__file__).resolve().parent.parent / "runs"
@@ -100,7 +100,9 @@ class SimJob:
 
     def save(self):
         with self._lock:
-            (self.dir / "sim.json").write_text(json.dumps(self.view(), indent=2))
+            v = self.view()
+            (self.dir / "sim.json").write_text(json.dumps(v, indent=2))
+        mongo.mirror(v)  # MongoDB Atlas copy, in the background (no-op without MONGODB_URI)
 
     # ---- phase 1: cast, then pause for the owner
     def cast(self, feedback: str = ""):
@@ -116,7 +118,7 @@ class SimJob:
                 self.log("read", f"{i['name']}: {i['category']}")
             self.personas = session.cast(i["name"], i["category"], i.get("context", ""), i.get("world", ""), i["customers"], i.get("offer", ""))
             for p in self.personas:  # long-term memory: start from what this type of customer learned on other sites
-                p["memory"] = memory.for_archetype(p["archetype"])
+                p["memory"] = memory.for_persona(p)  # own type's lessons + similar customers' (vector search)
                 p["inherited"] = bool(p["memory"])
             try:  # layer 1: plain AI shopping agents on the same site, one per model family
                 from .models import persona_models
@@ -377,6 +379,7 @@ def _patch(sim_id: str, fn) -> bool:
     d = json.loads(f.read_text())
     fn(d)
     f.write_text(json.dumps(d, indent=2))
+    mongo.mirror(d)
     return True
 
 

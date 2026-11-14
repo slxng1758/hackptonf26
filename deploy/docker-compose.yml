@@ -1,0 +1,28 @@
+# On the server:  cd ~/app && docker compose -f deploy/docker-compose.yml up -d --build
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      PUBLIC_BASE_URL: http://localhost:4620   # product pages are browsed by Chromium inside this container
+    volumes:
+      - ../runs:/app/runs                       # simulations, screenshots, memory survive restarts
+    shm_size: 1gb                               # Chromium needs more shared memory than Docker's 64 MB default
+    expose: ["4620"]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [app]
+    ports: ["80:80", "443:443"]
+    environment:
+      SITE: ${SITE:-:80}                        # set SITE=yourdomain.xyz in deploy/.env for automatic HTTPS
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

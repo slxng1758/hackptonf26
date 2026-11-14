@@ -62,3 +62,17 @@ All persona references use the same ids as `personas[]` (`p1`, `p2`, …).
 | POST | `/api/products` | `{ name, description, price?, changes?, features?, image_url? }` | `{ id, url }`: a browsable page for a product with no website. Use `url` as the sim's `url`. |
 
 **Lens in the UI:** for each `LensShot`, show the screenshot (`/api/shots/{id}/shots/{shot}`) with its `boxes` drawn on top (box_2d is `[ymin, xmin, ymax, xmax]` on a 0–1000 scale: `top = ymin/10 %`, `left = xmin/10 %`, `height = (ymax−ymin)/10 %`, `width = (xmax−xmin)/10 %`), plus the customer's `thought`. `hotspots` is the owner's list: the same problem found by several customers, with who hit it and which models played them. Types: `web/src/sim-extras.ts`.
+
+## MongoDB Atlas (`b2a/mongo.py`, `b2a/memory.py`)
+
+Set `MONGODB_URI` (and optionally `MONGODB_DB`, default `hackpton`) in `.env`. Without it, everything below works from local JSON files.
+
+| Method | Route | Returns |
+|---|---|---|
+| GET | `/api/storage` | `{ mongodb, vector_search, connected, database, counts: {simulations, sessions, evals, customer_memory}, last_error }` |
+| GET | `/api/insights` | Across every simulation (aggregation pipelines on Atlas): `by_model` (buy rate and rating per model family and layer), `accuracy_by_round` (rating error and theme recall per evolve round), `by_archetype` (incl. how many started with inherited memory) |
+| GET | `/api/memory/search?q=` | Atlas Vector Search over long-term customer memory: `[{ type, score, lessons }]` |
+
+**Collections:** `customer_memory` (deepagents `/memories/` via `langgraph-store-mongodb`, with a vector index `memory_vectors` on Gemini embeddings), `simulations` (one doc per run, flat `agents` array), `sessions` (each customer's browsing steps), `evals` (one doc per accuracy score). Simulations are mirrored in the background on every save.
+
+**New customers' memory:** `personas[].memory` now starts with their own type's lessons plus "From similar customers:" lessons found by vector search (cosine ≥ 0.65).

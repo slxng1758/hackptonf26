@@ -164,7 +164,7 @@ Every tool takes a required **`reason: str`** argument. The tool logs it as a `d
    - Store as `data/peri_<business>/` in the same format as the backtest, so the director can `score` against it.
 7. **Sponsors and shipping:**
    - **Gemini (done, `b2a/gemini.py`):** UX lens (Gemini boxes the exact spot on each screenshot where customers got stuck, grouped into hotspots across customers and models) + grounded world (Gemini + Google Search researches the chosen world, with sources).
-   - **MongoDB Atlas:** sims, sessions, posts, eval scores.
+   - **MongoDB Atlas (done, `b2a/mongo.py`):** deepagents long-term memory on Atlas (langgraph-store-mongodb) + Atlas Vector Search with Gemini embeddings (customers recall lessons from similar customers) + every simulation mirrored, with aggregation insights.
    - **Tiger Data (if time):** time series of `memory_version`, eval score per loop, sentiment per social round.
    - **Vultr** deploy, **GoDaddy** domain, README, pitch deck, **DEV** post after the event. **Solana** only if everything else is done.
 

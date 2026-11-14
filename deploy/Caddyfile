@@ -1,0 +1,10 @@
+# SITE is ":80" (plain HTTP on the server's IP) until a domain points here; then SITE=yourdomain.xyz gets HTTPS
+# from Let's Encrypt automatically.
+{$SITE} {
+	encode gzip
+	reverse_proxy app:4620 {
+		transport http {
+			read_timeout 300s
+		}
+	}
+}

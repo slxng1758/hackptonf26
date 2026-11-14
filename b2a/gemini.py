@@ -40,14 +40,22 @@ def model_name() -> str:
     return os.getenv("GEMINI_LENS_MODEL") or os.getenv("GEMINI_MODEL") or "gemini-3.5-flash"
 
 
+_CLIENT = None
+
+
 def _client():
+    """One shared Gemini client (the SDK closes a client once nothing references it, mid-request included)."""
+    global _CLIENT
+    if _CLIENT is not None:
+        return _CLIENT
     from dotenv import load_dotenv
     load_dotenv()
     key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
     if not key:
         raise RuntimeError("Gemini needs GOOGLE_API_KEY in .env")
     from google import genai
-    return genai.Client(api_key=key)
+    _CLIENT = genai.Client(api_key=key)
+    return _CLIENT
 
 
 # ---------------------------------------------------------------- 1. UX lens
