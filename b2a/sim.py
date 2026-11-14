@@ -69,6 +69,8 @@ class SimJob:
         self.round = inp.get("round", 0)
         self.parent = inp.get("parent")
         self.persona_changes: list[dict] = []
+        self.evals: list[dict] = list(inp.get("evals_so_far") or [])
+        self.social: dict | None = None
         self.dir = SIMS / self.id
         for d in ("personas", "sessions", "shots"):
             (self.dir / d).mkdir(parents=True, exist_ok=True)
@@ -87,7 +89,7 @@ class SimJob:
         return {"id": self.id, "input": self.inp, "status": self.status, "error": self.error, "personas": self.personas,
                 "live": self.live, "decisions": self.decisions, "summary": self.summary, "report": self.report,
                 "steps": self.steps, "memory": evolved, "round": self.round, "parent": self.parent,
-                "persona_changes": self.persona_changes}
+                "persona_changes": self.persona_changes, "evals": self.evals, "social": self.social}
 
     def save(self):
         with self._lock:
@@ -293,6 +295,32 @@ def teach(sim_id: str, truth: str) -> list[dict] | None:
     return changes
 
 
+def _patch(sim_id: str, fn) -> bool:
+    """Change a simulation whether it's still in memory or only on disk."""
+    job = SIMS_LIVE.get(sim_id)
+    if job:
+        fn(job.__dict__)
+        job.save()
+        return True
+    f = SIMS / Path(sim_id).name / "sim.json"
+    if not f.exists():
+        return False
+    d = json.loads(f.read_text())
+    fn(d)
+    f.write_text(json.dumps(d, indent=2))
+    return True
+
+
+def add_eval(sim_id: str, score: dict) -> bool:
+    """Attach one accuracy score (b2a/contract.py EvalScore as a dict) to a simulation. Shows in "Were we right?"."""
+    return _patch(sim_id, lambda d: d.setdefault("evals", []).append(score))
+
+
+def set_social(sim_id: str, social: dict) -> bool:
+    """Attach the social layer (b2a/contract.py Social as a dict)."""
+    return _patch(sim_id, lambda d: d.__setitem__("social", social))
+
+
 def recast(sim_id: str, feedback: str) -> bool:
     """Owner says the personas are off ("my customers are older"): cast again with that correction."""
     job = SIMS_LIVE.get(sim_id)
@@ -310,7 +338,7 @@ def rerun(sim_id: str, change: str = "") -> SimJob | None:
     src = get(sim_id)
     if not src or src.get("status") != "done":
         return None
-    inp = {**src["input"], "round": src.get("round", 0) + 1, "parent": sim_id}
+    inp = {**src["input"], "round": src.get("round", 0) + 1, "parent": sim_id, "evals_so_far": src.get("evals") or []}
     if change:
         inp["context"] = change
     job = SimJob(inp)
