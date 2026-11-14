@@ -2,7 +2,7 @@
 // white-on-dark utility becomes ink-on-light without touching the components.
 export type ThemeName = "storefront" | "paper" | "dark";
 const THEMES: Record<ThemeName, { bg: string; card: string; ink: string; win: string; loss: string; mid: string; brain: string; avatarBg: string }> = {
-  storefront: { bg: "#ffffff", card: "#ffffff", ink: "#111111", win: "#00b386", loss: "#ff2e5b", mid: "#ff9f1c", brain: "#8a4dff", avatarBg: "#fff3c4" },
+  storefront: { bg: "#f7f8fa", card: "#ffffff", ink: "#101828", win: "#00a37a", loss: "#e5384f", mid: "#f08c00", brain: "#6d4aff", avatarBg: "#eef1f5" },
   paper: { bg: "#f6f1e7", card: "#fffdf8", ink: "#1c1a17", win: "#0f9e86", loss: "#d9223f", mid: "#d98200", brain: "#7a3fd1", avatarBg: "#ece3d3" },
   dark: { bg: "#08080d", card: "#11131c", ink: "#f2efe8", win: "#3ff0d4", loss: "#ff3355", mid: "#ffb547", brain: "#d16bff", avatarBg: "#141623" },
 };
@@ -23,7 +23,7 @@ export function setTheme(t: ThemeName) {
 }
 export const THEME_LIST: { id: ThemeName; label: string; swatch: string[] }[] = [
   { id: "dark", label: "Dark", swatch: ["#08080d", "#3ff0d4", "#d16bff"] },
-  { id: "storefront", label: "Light", swatch: ["#b8f5e4", "#e7d4ff", "#ffe58a"] },
+  { id: "storefront", label: "Light", swatch: ["#f7f8fa", "#00a37a", "#6d4aff"] },
 ];
 
 export const C = {

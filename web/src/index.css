@@ -47,26 +47,15 @@ textarea, input, select { color-scheme: dark; }
 
 /* Storefront: white, color blocks, chunky borders, sticker badges */
 :root[data-theme="storefront"] body {
-  background:
-    radial-gradient(circle at 8% 12%, #b8f5e4 0, transparent 26%),
-    radial-gradient(circle at 92% 18%, #e7d4ff 0, transparent 28%),
-    radial-gradient(circle at 78% 92%, #ffe58a 0, transparent 26%),
-    radial-gradient(circle at 12% 88%, #ffd3e2 0, transparent 22%),
-    #ffffff;
-  background-attachment: fixed;
+  background: radial-gradient(1200px 500px at 50% -120px, #e9f8f3 0, transparent 70%), #f7f8fa;
 }
-:root[data-theme="storefront"] h1, :root[data-theme="storefront"] h2 { font-family: var(--font-sans); font-weight: 800; letter-spacing: -0.03em; text-transform: uppercase; }
-:root[data-theme="storefront"] .panel,
-:root[data-theme="storefront"] .rounded-2xl.border:not([style*="border-color"]),
-:root[data-theme="storefront"] .rounded-xl.border:not([style*="border-color"]),
-:root[data-theme="storefront"] .rounded-3xl.border:not([style*="border-color"]) {
-  border: 2px solid #111 !important; background-color: #fff; box-shadow: 4px 4px 0 #111;
+:root[data-theme="storefront"] h1, :root[data-theme="storefront"] h2, :root[data-theme="storefront"] .font-serif { font-family: var(--font-sans); font-weight: 700; letter-spacing: -0.02em; }
+:root[data-theme="storefront"] .panel {
+  background-color: #fff; border: 1px solid #e4e7ec !important;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 8px 24px rgba(16, 24, 40, .06);
 }
-:root[data-theme="storefront"] .rounded-full.border:not([style*="border-color"]) { border: 2px solid #111 !important; background: #fff; }
-:root[data-theme="storefront"] button[style*="background"] { border: 2px solid #111; box-shadow: 3px 3px 0 #111; }
-:root[data-theme="storefront"] button[style*="background"]:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #111; }
-:root[data-theme="storefront"] .shimmer { background-image: linear-gradient(90deg, #00b386, #8a4dff, #ff2e5b, #ff9f1c, #00b386); }
-:root[data-theme="storefront"] header .font-serif { font-family: var(--font-sans); font-weight: 900; letter-spacing: -0.03em; }
+:root[data-theme="storefront"] .rounded-full.border:not([style*="border-color"]) { border-color: #d6dae1 !important; background: #fff; }
+:root[data-theme="storefront"] .shimmer { background-image: linear-gradient(90deg, #00a37a, #6d4aff, #00a37a); }
 
 /* the analyst's report, rendered from markdown */
 .report { font-size: 15px; line-height: 1.65; }

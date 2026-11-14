@@ -27,7 +27,7 @@ export function WordOfMouth({ social, personas }: { social: Social; personas: Pe
   return (
     <section className="mx-auto mt-14 max-w-5xl">
       <Eyebrow n="04" label="word of mouth" color={C.mid} />
-      <h2 className="text-center font-serif text-[30px]">Then they talked about it</h2>
+      <h2 className="text-center font-serif text-[30px]">What spread by word of mouth</h2>
       <p className="mx-auto mt-2 max-w-2xl text-center text-[15px] text-white/60">{social.summary.replace(/\*\*/g, "")}</p>
       <div className="mt-6 grid gap-5 md:grid-cols-[1fr_400px]">
         <div className={`${PANEL} max-h-[420px] space-y-3 overflow-y-auto p-4`}>
@@ -65,7 +65,7 @@ export function WordOfMouth({ social, personas }: { social: Social; personas: Pe
             const p = who(personas, n.id, n.label), s = 34 + (n.centrality / maxC) * 30, at = pos[n.id];
             return (
               <div key={n.id} className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: `${(at.x / 400) * 100}%`, top: `${(at.y / 370) * 100}%` }}>
-                {n.id === top && <span className="mb-0.5 text-[14px]">👑</span>}
+                {n.id === top && <span className="mb-1 rounded-full px-1.5 font-mono text-[9px] font-semibold text-black" style={{ background: C.mid }}>most influential</span>}
                 <div className="rounded-full" style={{ boxShadow: `0 0 0 3px ${sentColor(n.sentiment)}, 0 0 ${n.id === top ? 30 : 0}px ${sentColor(n.sentiment)}` }}>
                   <Avatar seed={p.avatar.seed} archetype={p.archetype || n.archetype} age={p.age} size={s} />
                 </div>
@@ -89,7 +89,7 @@ export function Accuracy({ evals }: { evals: EvalScore[] }) {
   return (
     <section className="mx-auto mt-14 max-w-5xl">
       <Eyebrow n="07" label="accuracy check" color={C.win} />
-      <h2 className="text-center font-serif text-[30px]">Were we right?</h2>
+      <h2 className="text-center font-serif text-[30px]">Accuracy against real reviews</h2>
       <p className="mt-2 text-center text-[15px] text-white/60">We checked the prediction against real public reviews the customers never saw.</p>
       <div className="mt-6 grid gap-5 md:grid-cols-3">
         <div className={`${PANEL} p-5 text-center`}>
@@ -127,7 +127,7 @@ export function Learned({ changes, personas }: { changes: PersonaChange[]; perso
   return (
     <section className="mx-auto mt-14 max-w-3xl">
       <Eyebrow n="08" label="evolution" color={C.brain} />
-      <h2 className="text-center font-serif text-[30px]">What they learned for next time</h2>
+      <h2 className="text-center font-serif text-[30px]">Panel memory</h2>
       <div className="mt-6 space-y-3">
         {changes.map((c, i) => { const p = who(personas, c.persona_id); return (
           <div key={i} className={`${PANEL} flex gap-4 p-4`}>

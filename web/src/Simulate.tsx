@@ -57,7 +57,7 @@ function Replay({ sim, p, onClose }: { sim: Sim; p: Persona; onClose: () => void
             <li key={s.n} className="grid gap-4 md:grid-cols-[360px_1fr]">
               {s.shot ? <img src={shot(sim.id, s.shot)} alt="" className="w-full rounded-lg border border-white/10" /> : <div className="rounded-lg bg-white/5" />}
               <div>
-                <div className="font-mono text-[11px] text-white/40">step {s.n} · {s.url.replace(/^https?:\/\//, "")}{s.blocked && <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-white/60">blocked by a bot check · not a customer issue</span>}{s.cart && <span className="ml-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.win }}>🛒 chose to buy</span>}</div>
+                <div className="font-mono text-[11px] text-white/40">step {s.n} · {s.url.replace(/^https?:\/\//, "")}{s.blocked && <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-white/60">blocked by a bot check · not a customer issue</span>}{s.cart && <span className="ml-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.win }}>buy action</span>}</div>
                 <div className="mt-2 flex items-start gap-3"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={40} feeling={s.feeling} /><p className="rounded-xl rounded-tl-none bg-white/[0.06] px-3 py-2 text-[14px] leading-snug">“{s.thought}”</p></div>
                 <div className="mt-2 font-mono text-[12px]" style={{ color: SHIRT[p.archetype] }}>→ {s.action === "click" ? `clicked “${s.target}”` : s.action === "decide" ? "ready to decide" : s.action}  <span className="text-white/40">· felt {s.feeling}</span></div>
               </div>
@@ -144,7 +144,7 @@ export function SimView({ id }: { id: string }) {
         <div className="font-mono text-[12px] text-white/40">{sim.round ? <span className="mr-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.brain }}>round {sim.round + 1} · they remember round {sim.round}</span> : null}{host(sim.input.url)}{sim.input.context ? ` · ${sim.input.context}` : ""}{sim.input.world ? ` · ${sim.input.world}` : ""}</div>
         <h1 className="mt-2 font-serif text-[40px] leading-tight">
           {sim.status === "casting" && <>Reading {name}<span className="animate-pulse">…</span></>}
-          {sim.status === "awaiting_approval" && <>Meet your customers</>}
+          {sim.status === "awaiting_approval" && <>Review your test panel</>}
           {sim.status === "browsing" && <>{decided + botsDone} of {sim.personas.length} have decided<span className="animate-pulse">…</span></>}
           {sim.status === "talking" && <><span style={{ color: buyers ? C.win : C.loss }}>{buyers} of {decided}</span> would buy · <span className="text-white/50">now they're posting about it<span className="animate-pulse">…</span></span></>}
           {sim.status === "analyzing" && <><span style={{ color: buyers ? C.win : C.loss }}>{buyers} of {decided}</span> would buy · <span className="text-white/50">writing up why<span className="animate-pulse">…</span></span></>}
@@ -182,7 +182,7 @@ export function SimView({ id }: { id: string }) {
                 <div className="mt-3 text-[15px] font-semibold">{p.name}, {p.age}</div>
                 <div className="font-mono text-[11px]" style={{ color: SHIRT[p.archetype] }}>{p.archetype}</div>
                 {p.model && <div className="mt-1 inline-block rounded-full border border-white/15 px-2 py-0.5 font-mono text-[10px] text-white/60">played by {p.model}</div>}
-                {p.inherited && <div title={p.memory} className="mt-1 cursor-help rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.brain }}>🧠 remembers other sites</div>}
+                {p.inherited && <div title={p.memory} className="mt-1 cursor-help rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.brain }}>prior memory</div>}
                 <p className="mt-1 text-[12px] leading-snug text-white/50">{p.goal}</p>
               </div>
             ))}
@@ -202,7 +202,7 @@ export function SimView({ id }: { id: string }) {
               </div>
             </div>
           )}
-          <button disabled={!cast.length} onClick={approve} className="mt-10 rounded-2xl px-10 py-4 text-[17px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 40px ${C.win}66` }}>Let them in →</button>
+          <button disabled={!cast.length} onClick={approve} className="mt-10 rounded-2xl px-10 py-4 text-[17px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 40px ${C.win}66` }}>Start the test →</button>
           <p className="mt-3 text-[12px] text-white/35">hover anyone to remove them</p>
           <form onSubmit={(e) => { e.preventDefault(); if (fix.trim().length > 1) recast(); }} className="mx-auto mt-6 flex max-w-xl gap-2">
             <input value={fix} onChange={(e) => setFix(e.target.value)} placeholder="Anything off? e.g. my customers are older than that"
@@ -216,14 +216,14 @@ export function SimView({ id }: { id: string }) {
         <>
           {sim.status === "done" && <Bento sim={sim} buyers={buyers} decided={decided} botsBought={botsBought} botsDone={botsDone} goto={setTab} />}
           <Tabs tab={tab} setTab={setTab} items={[
-            { id: "map", label: "Shopping map", show: true },
-            { id: "fixes", label: "Do these first", show: !!sim.actions?.length },
-            { id: "agents", label: "AI agents", show: sim.status === "done" && !!sim.summary?.agents?.length },
+            { id: "map", label: "Sessions", show: true },
+            { id: "fixes", label: "Recommendations", show: !!sim.actions?.length },
+            { id: "agents", label: "Agent checkout", show: sim.status === "done" && !!sim.summary?.agents?.length },
             { id: "talk", label: "Word of mouth", show: !!x.social },
-            { id: "voices", label: "In their words", show: sim.status === "done" && unconvinced.length > 0 },
-            { id: "learned", label: "What they learned", show: !!x.persona_changes?.length },
+            { id: "voices", label: "Objections", show: sim.status === "done" && unconvinced.length > 0 },
+            { id: "learned", label: "Panel memory", show: !!x.persona_changes?.length },
             { id: "accuracy", label: "Accuracy", show: !!x.evals?.length },
-            { id: "next", label: "Next round", show: sim.status === "done" },
+            { id: "next", label: "Re-test", show: sim.status === "done" },
             { id: "report", label: "Report", show: !!sim.report },
           ]} />
           {tab === "map" && <>
@@ -240,8 +240,8 @@ export function SimView({ id }: { id: string }) {
 
           {tab === "voices" && sim.status === "done" && unconvinced.length > 0 && (
             <section className="mx-auto mt-10 max-w-6xl">
-              <Eyebrow n="05" label="in their words" color={C.mid} />
-              <h2 className="text-center font-serif text-[30px]">What would win the rest over</h2>
+              <Eyebrow n="05" label="objections" color={C.mid} />
+              <h2 className="text-center font-serif text-[30px]">What would have converted them</h2>
               <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {unconvinced.map((p, i) => { const d = sim.decisions[p.id]; return (
                   <div key={p.id} className={`${PANEL} rise relative p-5`} style={{ animationDelay: `${i * 0.06}s` }}>
@@ -259,8 +259,8 @@ export function SimView({ id }: { id: string }) {
 
           {tab === "next" && sim.status === "done" && (
             <section className="relative mx-auto mt-10 max-w-6xl overflow-hidden rounded-[28px] p-8 text-left" style={{ background: `linear-gradient(135deg, ${C.brain}26, ${C.win}1f)`, border: `1px solid ${C.brain}55` }}>
-              <Eyebrow n="06" label="make them smarter" color={C.brain} />
-              <h2 className="text-center font-serif text-[30px]">Next round</h2>
+              <Eyebrow n="06" label="iterate" color={C.brain} />
+              <h2 className="text-center font-serif text-[30px]">Re-test</h2>
               <div className="mt-6 grid gap-5 md:grid-cols-2">
               <div className={`${PANEL} p-5 text-left`}>
                 <div className="font-serif text-[22px]">Teach them what real customers do</div>
@@ -300,8 +300,8 @@ const AUD: Record<string, string> = { people: "for people", "AI agents": "for AI
 function DoThese({ actions }: { actions: NonNullable<Sim["actions"]> }) {
   return (
     <section className="mx-auto mt-12 max-w-4xl">
-      <Eyebrow n="02" label="the fixes" color={C.win} />
-      <h2 className="text-center font-serif text-[30px]">Do these first</h2>
+      <Eyebrow n="02" label="prioritized by impact" color={C.win} />
+      <h2 className="text-center font-serif text-[30px]">Recommendations</h2>
       <div className="mt-6 space-y-3">
         {actions.map((a, i) => (
           <div key={i} className={`${PANEL} rise flex gap-4 p-5`} style={{ animationDelay: `${i * 0.08}s` }}>
@@ -327,8 +327,8 @@ function AgentsPanel({ sim }: { sim: Sim }) {
   const rows = sim.summary!.agents!;
   return (
     <section className="mx-auto mt-12 max-w-4xl">
-      <Eyebrow n="03" label="agent-ready?" color="#9aa4b8" />
-      <h2 className="text-center font-serif text-[30px]">Can AI agents buy here?</h2>
+      <Eyebrow n="03" label="agent readiness" color="#9aa4b8" />
+      <h2 className="text-center font-serif text-[30px]">Can AI agents check out?</h2>
       <p className="mt-2 text-center text-[14px] text-white/55">Shoppers now send ChatGPT, Gemini and Claude to buy for them. Agents need facts: exact product, price, terms, a path to checkout.</p>
       <div className="mt-6 grid gap-3 md:grid-cols-3">
         {rows.map((r) => { const p = sim.personas.find((x) => x.id === r.persona)!; return (
@@ -369,40 +369,101 @@ function Ring({ value, of, color, size = 132 }: { value: number; of: number; col
   );
 }
 
+function Kpi({ label, value, sub, color, onClick, delay = 0 }: { label: string; value: string; sub: string; color?: string; onClick?: () => void; delay?: number }) {
+  return (
+    <button onClick={onClick} className={`${PANEL} rise p-5 text-left transition hover:-translate-y-0.5`} style={{ animationDelay: `${delay}s` }}>
+      <div className="text-[12px] font-medium text-white/55">{label}</div>
+      <div className="mt-1 text-[34px] font-bold leading-none tracking-tight" style={{ color }}>{value}</div>
+      <div className="mt-2 text-[12.5px] leading-snug text-white/55">{sub}</div>
+    </button>
+  );
+}
+
+function funnel(sim: Sim) {
+  const people = sim.personas.filter((p) => p.kind !== "agent");
+  const steps = (id: string) => sim.live[id] ?? [];
+  const landed = people.filter((p) => steps(p.id).length > 0);
+  const explored = landed.filter((p) => new Set(steps(p.id).map((x) => x.url.split("#")[0])).size > 1);
+  const bought = landed.filter((p) => outcome(sim, p.id) === "bought");
+  const acted = landed.filter((p) => steps(p.id).some((x) => x.cart) || outcome(sim, p.id) === "bought");
+  return [
+    { label: "Landed on the site", n: landed.length },
+    { label: "Explored past the first page", n: explored.length },
+    { label: "Reached a buy decision (cart, buy, download)", n: acted.length },
+    { label: "Converted", n: bought.length },
+  ];
+}
+
+function downloadReport(sim: Sim) {
+  const name = sim.input.name || sim.input.url;
+  const lines = [`# Customer test: ${name}`, `${sim.input.url} · test ${sim.id}${sim.input.context ? ` · change tested: ${sim.input.context}` : ""}`, ""];
+  if (sim.actions?.length) {
+    lines.push("## Recommendations", "");
+    sim.actions.forEach((a, i) => lines.push(`${i + 1}. **${a.fix}** (${a.audience}, ${a.effort} effort). ${a.why} Wins back: ${a.who.join(", ")}.`));
+    lines.push("");
+  }
+  lines.push("## Panel", "", "| Panelist | Type | Model | Decision | Rating | Would have converted them |", "|---|---|---|---|---|---|");
+  for (const p of sim.personas) {
+    const d = sim.decisions[p.id];
+    if (d) lines.push(`| ${p.name} | ${p.kind === "agent" ? "AI agent" : p.archetype} | ${p.model ?? ""} | ${outcome(sim, p.id) === "bought" ? "bought" : d.decision} | ${d.rating}/5 | ${(d.missing || "").replace(/\|/g, "/")} |`);
+  }
+  if (sim.report) lines.push("", "## Analyst report", "", sim.report);
+  lines.push("", "_Simulated customers, a fast first pass before testing with real people._");
+  const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/markdown" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = `customer-test-${(sim.input.name || "site").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${sim.id}.md`; a.click();
+  URL.revokeObjectURL(url);
+}
+
 function Bento({ sim, buyers, decided, botsBought, botsDone, goto }: { sim: Sim; buyers: number; decided: number; botsBought: number; botsDone: number; goto: (t: string) => void }) {
   const top = sim.social?.top_influencers?.[0];
   const star = top ? sim.personas.find((p) => p.id === top) : undefined;
   const spread = sim.social?.summary?.replace(/\*\*/g, "").split(/(?<=\.)\s/)[0];
   const tone = (v: number, n: number) => (n && v / n >= 0.5 ? C.win : v ? C.mid : C.loss);
+  const pct = (v: number, n: number) => (n ? `${Math.round((v / n) * 100)}%` : "–");
+  const f = funnel(sim);
+  const sessions = Object.values(sim.live);
+  const avgSteps = sessions.length ? (sessions.reduce((t, x) => t + x.length, 0) / sessions.length).toFixed(1) : "–";
   return (
-    <div className="mx-auto mt-8 grid max-w-6xl gap-4 lg:grid-cols-[1fr_1fr_1.35fr]">
-      <button onClick={() => goto("map")} className={`${PANEL} rise flex items-center gap-5 p-5 text-left transition hover:-translate-y-1`}>
-        <Ring value={buyers} of={decided} color={tone(buyers, decided)} />
-        <div><div className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/45">people</div>
-          <div className="mt-1 text-[20px] font-semibold leading-tight">would buy</div>
-          <div className="mt-2 flex -space-x-2">{sim.personas.filter((p) => p.kind !== "agent").map((p) => <div key={p.id} className="rounded-full ring-2 ring-[var(--card)]"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={28} feeling={sim.decisions[p.id]?.feeling ?? "neutral"} /></div>)}</div></div>
-      </button>
-      <button onClick={() => goto("agents")} className={`${PANEL} rise flex items-center gap-5 p-5 text-left transition hover:-translate-y-1`} style={{ animationDelay: ".08s" }}>
-        <Ring value={botsBought} of={botsDone} color={tone(botsBought, botsDone)} />
-        <div><div className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/45">AI shopping agents</div>
-          <div className="mt-1 text-[20px] font-semibold leading-tight">could buy for their user</div>
-          <div className="mt-2 flex -space-x-2">{sim.personas.filter((p) => p.kind === "agent").map((p) => <div key={p.id} className="rounded-full ring-2 ring-[var(--card)]"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} size={28} feeling={sim.decisions[p.id]?.feeling ?? "neutral"} /></div>)}</div></div>
-      </button>
-      <button onClick={() => goto("fixes")} className={`${PANEL} rise row-span-2 p-5 text-left transition hover:-translate-y-1`} style={{ animationDelay: ".16s", background: `linear-gradient(160deg, ${C.win}1f, transparent 60%)` }}>
-        <div className="font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: C.win }}>do these first</div>
-        <ol className="mt-3 space-y-3">
-          {(sim.actions ?? []).slice(0, 3).map((a, i) => (
-            <li key={i} className="flex gap-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full font-mono text-[13px] font-bold text-black" style={{ background: i === 0 ? C.win : i === 1 ? C.mid : C.brain }}>{i + 1}</span>
-              <span><span className="text-[15px] font-semibold leading-snug">{a.fix}</span><span className="ml-2 font-mono text-[10px] text-white/45">{a.audience === "AI agents" ? "for agents" : a.audience === "both" ? "for both" : "for people"}</span></span></li>
-          ))}
-          {!sim.actions?.length && <li className="text-[14px] text-white/50">Writing the fix list…</li>}
-        </ol>
-      </button>
+    <div className="mx-auto mt-8 max-w-6xl">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-[13px] font-semibold text-white/60">Summary</div>
+        <button onClick={() => downloadReport(sim)} className="rounded-lg border border-white/15 px-3 py-1.5 text-[13px] font-semibold hover:border-white/40">Download report (.md)</button>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Kpi label="Simulated conversion" value={pct(buyers, decided)} sub={`${buyers} of ${decided} panelists bought`} color={tone(buyers, decided)} onClick={() => goto("map")} />
+        <Kpi label="AI agent checkout" value={pct(botsBought, botsDone)} sub={`${botsBought} of ${botsDone} agents completed their user's errand`} color={tone(botsBought, botsDone)} onClick={() => goto("agents")} delay={0.05} />
+        <Kpi label="Top blocker" value={sim.actions?.[0] ? `${sim.actions[0].who.length} lost` : "–"} sub={sim.actions?.[0]?.fix ?? "Writing recommendations…"} color={C.loss} onClick={() => goto("fixes")} delay={0.1} />
+        <Kpi label="Avg. steps per session" value={avgSteps} sub={`${sessions.length} sessions on the real site`} onClick={() => goto("map")} delay={0.15} />
+      </div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1.25fr_1fr]">
+        <div className={`${PANEL} rise p-5`} style={{ animationDelay: ".2s" }}>
+          <div className="text-[13px] font-semibold">Conversion funnel <span className="font-normal text-white/50">· people panel</span></div>
+          <div className="mt-4 space-y-3">
+            {f.map((s, i) => { const w = f[0].n ? (s.n / f[0].n) * 100 : 0; const drop = i ? f[i - 1].n - s.n : 0; return (
+              <div key={s.label}>
+                <div className="flex justify-between text-[12.5px]"><span className="text-white/70">{s.label}</span><span className="font-mono">{s.n}{i > 0 && drop > 0 && <span style={{ color: C.loss }}> · −{drop}</span>}</span></div>
+                <div className="mt-1 h-3 w-full overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full transition-all duration-700" style={{ width: `${w}%`, background: i === f.length - 1 ? C.win : C.brain, opacity: 1 - i * 0.12 }} /></div>
+              </div>
+            ); })}
+          </div>
+        </div>
+        <button onClick={() => goto("fixes")} className={`${PANEL} rise p-5 text-left transition hover:-translate-y-0.5`} style={{ animationDelay: ".25s" }}>
+          <div className="text-[13px] font-semibold">Top recommendations</div>
+          <ol className="mt-3 space-y-3">
+            {(sim.actions ?? []).slice(0, 3).map((a, i) => (
+              <li key={i} className="flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-md font-mono text-[12px] font-bold text-white" style={{ background: C.brain }}>{i + 1}</span>
+                <span className="text-[14px] leading-snug"><span className="font-semibold">{a.fix}</span><span className="ml-2 rounded px-1.5 py-0.5 font-mono text-[10px] text-white/60 ring-1 ring-white/15">{a.audience === "AI agents" ? "agents" : a.audience === "both" ? "both" : "people"} · {a.effort}</span></span></li>
+            ))}
+            {!sim.actions?.length && <li className="text-[14px] text-white/50">Writing recommendations…</li>}
+          </ol>
+        </button>
+      </div>
       {spread && star && (
-        <button onClick={() => goto("talk")} className={`${PANEL} rise flex items-center gap-4 p-5 text-left transition hover:-translate-y-1 lg:col-span-2`} style={{ animationDelay: ".24s", background: `linear-gradient(120deg, ${C.mid}22, transparent 70%)` }}>
-          <div className="relative shrink-0"><span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[18px]">👑</span><Avatar seed={star.avatar.seed} archetype={star.archetype} model={star.model} age={star.age} size={64} feeling={sim.decisions[star.id]?.feeling ?? "neutral"} /></div>
-          <div><div className="font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: C.mid }}>what's spreading</div>
-            <p className="mt-1 text-[15px] leading-snug">{spread}</p></div>
+        <button onClick={() => goto("talk")} className={`${PANEL} rise mt-4 flex w-full items-center gap-4 p-4 text-left transition hover:-translate-y-0.5`} style={{ animationDelay: ".3s" }}>
+          <Avatar seed={star.avatar.seed} archetype={star.archetype} model={star.model} age={star.age} size={44} feeling={sim.decisions[star.id]?.feeling ?? "neutral"} />
+          <div><div className="text-[12px] font-medium" style={{ color: C.mid }}>Most-shared complaint · started by {star.name}</div>
+            <p className="mt-0.5 text-[14px] leading-snug">{spread}</p></div>
         </button>
       )}
     </div>
@@ -413,8 +474,8 @@ function Tabs({ tab, setTab, items }: { tab: string; setTab: (t: string) => void
   return (
     <nav className="sticky top-2 z-30 mx-auto mt-8 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full border border-white/15 bg-[var(--card)] p-1 shadow-xl panel">
       {items.filter((t) => t.show).map((t) => (
-        <button key={t.id} onClick={() => setTab(t.id)} className={`whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold transition ${tab === t.id ? "text-black" : "text-white/60 hover:text-white"}`}
-          style={tab === t.id ? { background: C.win } : undefined}>{t.label}</button>
+        <button key={t.id} onClick={() => setTab(t.id)} className={`whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold transition ${tab === t.id ? "text-white" : "text-white/60 hover:text-white"}`}
+          style={tab === t.id ? { background: C.brain, color: "#fff" } : undefined}>{t.label}</button>
       ))}
     </nav>
   );
