@@ -60,8 +60,8 @@ class Decision(BaseModel):
     rating: int = Field(ge=1, le=5)
     feeling: Literal["delighted", "interested", "neutral", "confused", "annoyed", "skeptical"]
     quote: str = Field(description="what you'd tell a friend about it, first person, max 35 words")
-    reasons: list[str] = Field(description="2-4 concrete reasons, each tied to something you saw")
-    missing: str = Field(description="what would have changed your mind, one sentence")
+    reasons: list[str] = Field(default_factory=list, description="2-4 concrete reasons, each tied to something you saw")
+    missing: str = Field(default="", description="what would have changed your mind, one sentence")
 
 
 STEP = """You are {name}, {age}, {occupation}. You are a {archetype} customer. {voice}
@@ -179,7 +179,11 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
             except Exception:
                 history.append(f"(tried to {s.action} '{s.target}' but it didn't work)")
         b.close()
-    d: Decision = model.with_structured_output(Decision).invoke(DECIDE.format(**persona, world=world or "today, normal times", product=url, history="\n".join(history)))
+    ask = DECIDE.format(**persona, world=world or "today, normal times", product=url, history="\n".join(history))
+    try:
+        d: Decision = model.with_structured_output(Decision).invoke(ask)
+    except Exception:
+        d = model.with_structured_output(Decision).invoke(ask + "\nFill in every field.")
     return {"persona": persona["id"], "steps": steps, "decision": d.model_dump()}
 
 
