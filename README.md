@@ -15,6 +15,10 @@ AI shopping agents and AI customers open your real site, click around, decide wh
 
 ## Your next customer might not be a person
 
+**You used to design your website for people.** Someone searched, clicked your site, looked at the photos, felt something, and bought.
+
+**Now an AI agent shops first, and a person approves.** People tell ChatGPT, Gemini or Grok *"find me a mood journal app under $5 a month and get it."* The agent reads your site, compares you with the others, and builds the shortlist. If it can't find your price or tell whether it's a subscription, it skips you, and you never learn you lost a customer. The person still makes the final call, so you have to win both: **facts for the agent, trust and feeling for the person.**
+
 By 2030, AI agents could make **10% to 20% of US online shopping** for people, Morgan Stanley forecasts. Already, **nearly 23% of Americans** made at least one AI-assisted purchase in the past month ([Digital Commerce 360, Dec 2025](https://www.digitalcommerce360.com/2025/12/09/morgan-stanley-ai-agentic-shoppers-385-billion-online-sales/)). Traffic from AI sources to US retail sites rose **393%** year over year in Q1 2026, and it **converted 42% better** than other visits ([Adobe via CMOtech, Apr 2026](https://cmotech.news/story/adobe-says-ai-retail-traffic-surges-as-readability-lags)).
 
 ## The problem
