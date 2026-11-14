@@ -6,7 +6,7 @@ import { Timeline } from "./Timeline";
 import { Accuracy, Learned, WordOfMouth } from "./Extras";
 import type { SimExtras } from "./sim-extras";
 
-export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number }; model?: string }
+export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number }; model?: string; memory?: string; inherited?: boolean }
 interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; thought: string; feeling: Feeling; action: string; target: string }
 interface Decision { decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string }
 export interface Sim extends Partial<SimExtras> {
@@ -168,6 +168,7 @@ export function SimView({ id }: { id: string }) {
                 <div className="mt-3 text-[15px] font-semibold">{p.name}, {p.age}</div>
                 <div className="font-mono text-[11px]" style={{ color: SHIRT[p.archetype] }}>{p.archetype}</div>
                 {p.model && <div className="mt-1 inline-block rounded-full border border-white/15 px-2 py-0.5 font-mono text-[10px] text-white/60">played by {p.model}</div>}
+                {p.inherited && <div title={p.memory} className="mt-1 cursor-help rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.brain }}>🧠 remembers other sites</div>}
                 <p className="mt-1 text-[12px] leading-snug text-white/50">{p.goal}</p>
               </div>
             ))}

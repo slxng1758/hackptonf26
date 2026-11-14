@@ -173,6 +173,13 @@ def sim_set_social(sim_id: str, body: dict):
     return {"ok": True}
 
 
+@app.get("/api/memory")
+def long_term_memory():
+    """What each type of customer has learned across every business tested."""
+    from b2a import memory
+    return memory.everything()
+
+
 @app.get("/api/fixtures/extras")
 def extras_fixture():
     """Sarah's example data for evals / persona_changes / social, so the UI can be built before the backend exists."""

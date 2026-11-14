@@ -18,7 +18,7 @@ from pathlib import Path
 from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 
-from . import session
+from . import memory, session
 from .models import brain
 
 RUNS = Path(__file__).resolve().parent.parent / "runs"
@@ -35,7 +35,9 @@ Do this, keeping your todo list updated:
 1. Ask the analyst sub-agent to read every session and find: where people got stuck (which page, which step), what made them buy,
    what made them leave, and whether the business's claimed change was actually visible to them.
 2. Ask the evolver sub-agent to update every persona file with a "## Memory" section: 1-3 concrete things this persona learned
-   about this kind of product, so the next simulation starts smarter.
+   about this kind of product, so the next simulation starts smarter. It must also update the long-term memory in
+   /memories/<archetype>.md (e.g. /memories/price-sensitive.md, spaces as hyphens): general lessons for that kind of customer
+   that will help on ANY business's site, not just this one. That memory outlives this run.
 3. Write /report.md for the business owner, short, with these sections: the weighted buy rate and rating, broken down by
    customer type (archetype and share); where people got stuck (which page); what convinced the buyers; the top 3 fixes
    (each tied to a persona and a page they saw); which complaint is most likely to spread by word of mouth and why; and
@@ -45,7 +47,10 @@ Reply with one sentence."""
 ANALYST_SUB = ("You read customer browsing sessions (JSON) and persona files. Report in at most 180 words: where each persona got stuck "
                "(page + step), the most common reason to leave, what convinced buyers, and whether the business's claimed change was visible.")
 EVOLVER_SUB = ("You update persona files. For every file in /personas, append or replace a '## Memory' section with 1-3 short lessons that "
-               "persona learned from its session (concrete, about this kind of product). Keep the rest of the file. Edit the files directly.")
+               "persona learned from its session (concrete, about this kind of product). Keep the rest of the file. Edit the files directly. "
+               "Then update long-term memory: for each persona's archetype, read /memories/<archetype>.md (archetype with spaces as hyphens; "
+               "it may not exist yet) and rewrite it as at most 6 short bullets of general lessons for that kind of customer on any website "
+               "(how they shop, what convinces or loses them). Merge with what's there, drop duplicates, never name this business.")
 
 
 def persona_md(p: dict) -> str:
@@ -108,6 +113,9 @@ class SimJob:
                     i[k] = i.get(k) or site[k]
                 self.log("read", f"{i['name']}: {i['category']}")
             self.personas = session.cast(i["name"], i["category"], i.get("context", ""), i.get("world", ""), i["customers"], i.get("offer", ""))
+            for p in self.personas:  # long-term memory: start from what this type of customer learned on other sites
+                p["memory"] = memory.for_archetype(p["archetype"])
+                p["inherited"] = bool(p["memory"])
             self.log("cast", " · ".join(f"{p['name']} ({p['archetype']}, {round(p['share'] * 100)}%)" for p in self.personas))
             self.status = "awaiting_approval"
         except Exception as e:
@@ -197,7 +205,7 @@ class SimJob:
                 {"name": "analyst", "description": "Finds where personas got stuck and why they bought or left.", "system_prompt": ANALYST_SUB},
                 {"name": "evolver", "description": "Updates every persona file with what that persona learned.", "system_prompt": EVOLVER_SUB},
             ],
-            backend=FilesystemBackend(root_dir=str(self.dir), virtual_mode=True),
+            backend=memory.backend_for(self.dir),  # sim files + /memories/ (long-term, shared across businesses)
         )
         for update in agent.stream({"messages": [{"role": "user", "content": "Begin."}]}, config={"recursion_limit": 80}, stream_mode="updates"):
             for node in update.values():
@@ -214,7 +222,8 @@ class SimJob:
         LIBRARY.mkdir(parents=True, exist_ok=True)
         for f in (self.dir / "personas").glob("*.md"):
             shutil.copy(f, LIBRARY / f"{self.id}_{f.name}")
-        self.log("memory", f"saved {len(self.personas)} evolved personas to the persona library")
+        memory.persist()
+        self.log("memory", f"long-term memory now covers: {', '.join(memory.everything()) or 'nothing yet'}")
 
 
 SIMS_LIVE: dict[str, SimJob] = {}
