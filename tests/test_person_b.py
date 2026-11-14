@@ -173,3 +173,28 @@ def test_product_page_routes(tmp_path, monkeypatch):
 def test_from_brief():
     p = product_page.from_brief({"name": "Mask", "summary": "A washable mask.", "price": 24, "key_features": ["nose wire"]})
     assert p.price == "$24" and p.features == ["nose wire"]
+
+
+def test_social_enrich_merges_network_analysis(monkeypatch):
+    """social.run's output (Candy's shape) gets communities, cascades, themes, by_model; her summary is kept."""
+    from b2a import social
+    real = network.label_themes
+    monkeypatch.setattr(network, "label_themes", lambda roots, judge="auto": real(roots, "keyword"))  # offline labels
+    extras = json.loads(open("fixtures/sim_extras_example.json").read())
+    personas = [{"id": n["id"], "name": n["label"], "archetype": n["archetype"], "model": m}
+                for n, m in zip(extras["social"]["nodes"], ["Gemini", "Claude", "GPT", "Gemini"])]
+    out = social.enrich({"posts": extras["social"]["posts"], "nodes": [], "edges": [], "top_influencers": [], "summary": "Her summary."}, personas)
+    assert out["summary"] == "Her summary." and out["network_summary"]
+    assert out["cascades"] and out["themes"] and out["communities"] and set(out["by_model"]) == {"Gemini", "Claude", "GPT"}
+    assert out["top_influencers"][0] == "p4" and len(out["nodes"]) == 4
+    from b2a.contract import Social
+    Social(**out)                                  # still valid for POST /api/sims/{id}/social
+
+
+def test_social_enrich_falls_back_on_error(monkeypatch):
+    from b2a import social
+    def boom(*a, **k):
+        raise RuntimeError("x")
+    monkeypatch.setattr(network, "analyze", boom)
+    orig = {"posts": [], "nodes": [], "edges": [], "top_influencers": [], "summary": "s"}
+    assert social.enrich(orig, []) is orig

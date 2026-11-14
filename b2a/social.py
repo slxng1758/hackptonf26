@@ -145,4 +145,20 @@ def run(personas: list[dict], decisions: dict[str, dict], product: str, rounds: 
         summary = summary if isinstance(summary, str) else " ".join(b.get("text", "") for b in summary if isinstance(b, dict))
     except Exception:
         summary = ""
-    return {"posts": posts, "nodes": nodes, "edges": edges, "top_influencers": top, "summary": summary.replace("**", "").strip()}
+    out = {"posts": posts, "nodes": nodes, "edges": edges, "top_influencers": top, "summary": summary.replace("**", "").strip()}
+    return enrich(out, who)
+
+
+def enrich(out: dict, personas: list[dict]) -> dict:
+    """Content x connectivity (Arlequin Track 2): b2a/network.py adds real communities (modularity, not sentiment),
+    cascades (how far each post's thread spread, across how many communities), themes (which topics crossed between
+    communities and which stayed inside one) and a by-model breakdown. Keeps the posts and the summary above; on any
+    error returns them unchanged."""
+    try:
+        from . import network
+        n = network.analyze({"social": {"posts": out["posts"]}, "personas": personas}).model_dump()
+    except Exception:
+        return out
+    n["network_summary"] = n["summary"]
+    n["summary"] = out["summary"] or n["summary"]
+    return n

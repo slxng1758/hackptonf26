@@ -54,6 +54,7 @@ export interface Social {
   themes?: ThemeSpread[]        // content x connectivity
   communities?: Community[]
   by_model?: Record<string, { agents: number; posts: number; reactions_received: number; sentiment: number }>
+  network_summary?: string      // what the network analysis found (content x connectivity)
 }
 
 export interface SimExtras { evals: EvalScore[]; persona_changes: PersonaChange[]; social: Social | null }

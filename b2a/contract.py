@@ -127,6 +127,7 @@ class Social(BaseModel):
     themes: list[ThemeSpread] = Field(default_factory=list, description="content x connectivity: which themes travel across communities")
     communities: list[Community] = Field(default_factory=list)
     by_model: dict[str, dict] = Field(default_factory=dict, description="model family -> {agents, posts, reactions_received, sentiment}")
+    network_summary: str = Field(default="", description="what the network analysis found: biggest cascade, themes that crossed communities, top influencer")
 
 
 class SimExtras(BaseModel):
