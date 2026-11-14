@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#18d3a6"/><stop offset=".55" stop-color="#4f7bff"/><stop offset="1" stop-color="#7a4dff"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".96"/><stop offset="1" stop-color="#ffffff" stop-opacity=".78"/></linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".55"/><stop offset=".5" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="spark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#18d3a6"/><stop offset="1" stop-color="#7a4dff"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="22" stdDeviation="26" flood-color="#1b1460" flood-opacity=".35"/></filter>
+    <clipPath id="sq"><rect width="1024" height="1024" rx="228"/></clipPath>
+  </defs>
+  <g clip-path="url(#sq)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <ellipse cx="300" cy="140" rx="520" ry="300" fill="#ffffff" opacity=".16"/>
+    <g filter="url(#shadow)">
+      <path d="M300 400 h424 a28 28 0 0 1 28 26 l24 330 a40 40 0 0 1 -40 43 H288 a40 40 0 0 1 -40 -43 l24 -330 a28 28 0 0 1 28 -26 z" fill="url(#glass)"/>
+      <path d="M400 420 v-70 a112 112 0 0 1 224 0 v70" fill="none" stroke="#ffffff" stroke-opacity=".92" stroke-width="44" stroke-linecap="round"/>
+    </g>
+    <path d="M300 400 h424 a28 28 0 0 1 28 26 l6 80 H266 l6 -80 a28 28 0 0 1 28 -26 z" fill="url(#sheen)"/>
+    <path d="M512 470 C 526 548 548 570 626 584 C 548 598 526 620 512 698 C 498 620 476 598 398 584 C 476 570 498 548 512 470 Z" fill="url(#spark)"/>
+    <rect width="1024" height="1024" rx="228" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="6"/>
+  </g>
+</svg>

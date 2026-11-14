@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- shopping bag: body + handle -->
+  <path d="M300 400 h424 a28 28 0 0 1 28 26 l24 330 a40 40 0 0 1 -40 43 H288 a40 40 0 0 1 -40 -43 l24 -330 a28 28 0 0 1 28 -26 z" fill="#ffffff"/>
+  <path d="M400 420 v-70 a112 112 0 0 1 224 0 v70" fill="none" stroke="#ffffff" stroke-width="44" stroke-linecap="round"/>
+</svg>

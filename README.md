@@ -1,3 +1,5 @@
+<p align="center"><img src="web/public/icon-512.png" alt="Agent-ready icon: a glass shopping bag with an AI spark" width="120"></p>
+
 <h1 align="center">Agent-ready</h1>
 
 <p align="center"><b>Can AI agents buy from your website? Would your customers?</b><br>
