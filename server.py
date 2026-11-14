@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from b2a import agent, personas
+from b2a import agent, personas, scan as scanner
 from b2a.models import shoppers
 from b2a.presets import PRESETS
 
@@ -21,6 +21,19 @@ class Start(BaseModel):
     competitors: list[str] = Field(min_length=1, max_length=8)
     customers: str = Field(min_length=5, max_length=20000, description="plain description or CSV text")
     customers_csv: bool = False
+    competitor_meta: list[dict] | None = None
+
+
+class ScanIn(BaseModel):
+    query: str = Field(min_length=3, max_length=300)
+
+
+@app.post("/api/scan")
+def scan(body: ScanIn):
+    try:
+        return scanner.scan(body.query)
+    except Exception as e:
+        raise HTTPException(502, f"Couldn't read that business: {type(e).__name__}. Try the website URL, or a demo.")
 
 
 @app.get("/api/presets")

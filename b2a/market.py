@@ -77,7 +77,11 @@ def run(listing: str, competitors: list[str], segments: list[dict], orders: int 
     for r in ok:
         if r["picked"] != "ours":
             lost_to[r["picked"]] = lost_to.get(r["picked"], 0) + 1
+    share = {"ours": 0, **{f"c{i}": 0 for i in range(len(competitors))}}
+    for r in ok:
+        share[r["picked"]] = share.get(r["picked"], 0) + 1
     return {
+        "share": [share["ours"]] + [share[f"c{i}"] for i in range(len(competitors))],
         "listing": ours, "to_confirm": to_confirm(listing),
         "pick_rate": weighted, "raw_rate": sum(r["picked"] == "ours" for r in ok) / max(1, len(ok)),
         "wins": sum(r["picked"] == "ours" for r in ok), "total": len(ok), "errors": len(results) - len(ok),

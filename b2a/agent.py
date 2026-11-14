@@ -18,7 +18,7 @@ from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 from langchain_core.tools import tool
 
-from . import market, personas
+from . import market, matrix, personas
 from .models import brain, shoppers
 
 RUNS = Path(__file__).resolve().parent.parent / "runs"
@@ -64,6 +64,7 @@ class Job:
         self.tests: list[dict] = []
         self.live: list[dict] = []
         self.lessons: list[str] = []
+        self.matrix: dict | None = None
         self.dir = JOBS_DIR / self.id
         (self.dir / "tests").mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
@@ -76,7 +77,7 @@ class Job:
     def view(self) -> dict:
         return {"id": self.id, "input": self.inp, "status": self.status, "error": self.error, "steps": self.steps,
                 "segments": self.segments, "tests": [{k: v for k, v in t.items() if k != "results"} for t in self.tests],
-                "live": self.live[-400:], "lessons": self.lessons, "report": self.report, "shoppers": list(shoppers().keys())}
+                "live": self.live[-400:], "lessons": self.lessons, "matrix": self.matrix, "report": self.report, "shoppers": list(shoppers().keys())}
 
     def save(self):
         with self._lock:
@@ -171,6 +172,15 @@ class Job:
                         self.log("answer", c[:400])
         rp = self.dir / "report.md"
         self.report = rp.read_text() if rp.exists() else ""
+        if self.tests:
+            best = max(self.tests, key=lambda t: t["pick_rate"])
+            names = ["You (today)"] + (["You (rewrite)"] if best is not self.tests[0] else []) + [m.get("name") or c.split(".")[0] for m, c in zip(self.inp.get("competitor_meta") or [{}] * len(self.inp["competitors"]), self.inp["competitors"])]
+            listings = [self.tests[0]["listing"]] + ([best["listing"]] if best is not self.tests[0] else []) + self.inp["competitors"]
+            try:
+                self.matrix = matrix.build(self.inp["category"], self.segments, names, listings)
+                self.log("matrix", f"fact matrix: {len(self.matrix['rows'])} buyer questions × {len(names)} listings")
+            except Exception as e:
+                self.log("error", f"fact matrix failed: {type(e).__name__}")
 
 
 JOBS: dict[str, Job] = {}
