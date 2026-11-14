@@ -1,15 +1,17 @@
-export interface Score {
-  belief: number; practice: number; myth: number;
-  short?: string; rule: string; reason: string; drift: string; false_beliefs: string[];
+export interface Preset { name: string; category: string; listing: string; facts: string[]; competitors: string[]; customers: string }
+export interface Segment { name: string; share: number; cares_about: string; tasks: string[] }
+export interface Loss { segment: string; request: string; shopper: string; chose: string; reason: string; missing: string }
+export interface Test {
+  n: number; listing: string; to_confirm: string[]; pick_rate: number; raw_rate: number; wins: number; total: number; errors: number;
+  by_segment: { segment: string; share: number; rate: number; wins: number; total: number }[];
+  by_shopper: Record<string, { wins: number; total: number }>;
+  lost_to: { competitor: number; times: number }[];
+  losses?: Loss[];
 }
-export interface Step { tool: string; who: string; note: string }
-export interface Gen {
-  gen: number; event: string; summary: string;
-  drafts: Record<string, string>; archive: Record<string, string>;
-  chars_lost: number; trace: Step[]; score?: Score; seconds?: number;
+export interface Job {
+  id: string; input: Preset & { customers: string }; status: "running" | "done" | "error"; error: string | null;
+  steps: { t: string; kind: string; note: string }[]; segments: Segment[]; tests: Test[];
+  live: { n: number; shopper: string; segment: number; won: boolean; picked: string }[];
+  lessons: string[]; report: string; shoppers: string[];
 }
-export interface Run {
-  id: string; preset: string; title: string; truth: string; truth_short?: string; generations_planned: number; limit: number;
-  models: { villagers: string; evaluator: string }; status: "running" | "done" | "error"; error?: string; created: string;
-  generations?: Gen[];
-}
+export interface JobRow { id: string; name: string; status: string; first: number | null; best: number | null }
