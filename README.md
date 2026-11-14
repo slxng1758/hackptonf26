@@ -1,7 +1,7 @@
 <h1 align="center">Agent-ready</h1>
 
-<p align="center"><b>Watch your customers try your website before you launch.</b><br>
-AI customers open your real site, click around, think out loud, decide whether to buy, post about it, and learn from real people.</p>
+<p align="center"><b>Can AI agents buy from your website? Would your customers?</b><br>
+AI shopping agents and AI customers open your real site, click around, decide whether to buy, talk about it, and tell you what to fix.</p>
 
 <p align="center">
   Built at <b>HackPrinceton Fall 2026</b> &nbsp;·&nbsp; Track: <b>Business &amp; Enterprise</b> &nbsp;·&nbsp;
@@ -14,16 +14,28 @@ AI customers open your real site, click around, think out loud, decide whether t
 
 ---
 
+## Your next customer might not be a person
+
+By 2030, AI agents could make **10% to 20% of US online shopping** for people, Morgan Stanley forecasts. Already, **nearly 23% of Americans** made at least one AI-assisted purchase in the past month ([Digital Commerce 360, Dec 2025](https://www.digitalcommerce360.com/2025/12/09/morgan-stanley-ai-agentic-shoppers-385-billion-online-sales/)). Traffic from AI sources to US retail sites rose **393%** year over year in Q1 2026, and it **converted 42% better** than other visits ([Adobe via CMOtech, Apr 2026](https://cmotech.news/story/adobe-says-ai-retail-traffic-surges-as-readability-lags)).
+
 ## The problem
 
-**Shoppers are starting to send AI to the store for them.**
+**1. Most websites aren't built for an agent to buy from.** An agent shopping for someone needs facts it can verify: the exact product, the full price, the terms, a path to checkout. Adobe found the average product page scores only **66%** on machine readability (same source). A site that wins people over with photos and urgency can still lose the agent, and the business never sees it happen.
 
-- Traffic from AI sources to US retail sites rose **393%** year over year in Q1 2026, and those visits **converted 42% better** than other traffic. Product pages scored only **66%** on Adobe's machine-readability check ([Adobe via CMOtech, Apr 2026](https://cmotech.news/story/adobe-says-ai-retail-traffic-surges-as-readability-lags)).
-- Morgan Stanley expects AI agents to make **10% to 20% of US e-commerce spending** by 2030, and found that **nearly 23% of Americans** made at least one AI-assisted purchase in the past month ([Digital Commerce 360, Dec 2025](https://www.digitalcommerce360.com/2025/12/09/morgan-stanley-ai-agentic-shoppers-385-billion-online-sales/)).
+**2. Testing with real people is expensive, so small businesses don't.** Big retailers run user research before they change anything. A café, a studio or a two-person app company changes its prices, adds online ordering or redesigns a page, and finds out weeks later, from the sales it didn't make.
 
-Big retailers run user research before they ship a change. A café, a studio or a two-person app company doesn't: watching real customers use your site costs time and money they don't have. So they change prices, add online ordering or redesign a page, and find out it didn't work weeks later, from the sales they didn't make.
+**3. People and agents want different things.** People respond to trust, feeling, price and ease. Agents respond to clear facts. Optimizing for one can lose the other, and nobody tests both.
 
-**Agent-ready is a fast, cheap first pass before you talk to real customers.** It's a simulation, and it says so: the accuracy check and the "teach them" loop are how it earns, and shows, when to trust it.
+## The solution
+
+**Paste your website (or text it). Two kinds of shoppers try it:**
+
+- **AI shopping agents** (Gemini, Claude and GPT), each sent on the same errand a real user would give them, such as *"Find me an app that builds a playlist from my mood, and tell me what it costs before I download it."* **Can they buy here?** If not, what fact were they missing?
+- **Customers with real preferences:** a price-sensitive student, a quality-first nurse, a skeptic, a first-timer, each with a budget and a goal, each played by a different model.
+
+They use your **real site** in a real browser, click through it, decide, and **talk about it**. Then you get **a short list of fixes**, each tagged *for people*, *for AI agents* or *both*: "the checkout takes too many steps," "it's priced above what they'd pay," "an agent can't tell if it's a subscription." Change something, test again with the same shoppers, and see if it worked.
+
+**It's a fast, cheap first pass before you talk to real customers, and it says so.** The customers learn from what your real customers do, and an accuracy check against real Amazon reviews shows how far to trust them.
 
 ## What it is
 
@@ -33,6 +45,8 @@ Big retailers run user research before they ship a change. A café, a studio or 
 - **Meet your customers.** 4 to 7 personas: a price-sensitive buyer, a quality-first buyer, a brand-loyal regular, a function-first buyer, a first-timer, a skeptic and an enthusiast, each with an age, job, goal, budget and share of your customer base. **Nothing runs until you approve them.** Remove anyone, or type a correction ("my customers are older than that") and they're cast again.
 - **They use the real product.** Each persona opens your actual site in its own browser, looks at every screenshot, and narrates what it thinks and feels. It clicks real links, filters and product cards, picks a size, and clicks "Add to cart" or "Download" if it wants it.
 - **Watch it as a map.** Every page they reach becomes a card with its real screenshot. Avatars walk between pages, their faces change with their mood, and they leave through one of three exits: **Bought**, **Maybe later** or **Left**. Click anyone to replay their whole visit, step by step.
+- **Can AI agents buy here?** One plain shopping agent per model (Gemini, Claude, GPT) gets a user's errand written from your site and tries to complete it. They're logical, not emotional: if they can't verify the price or terms, they don't buy, and they say what was missing. Shown as robots on the map.
+- **Do these first.** One prioritized list of 3 to 5 fixes from everything above, each with the evidence, who it wins back, the page it's on, its effort, and whether it's for people, AI agents or both.
 - **Different AI, different taste.** Customers are played by different model families (Gemini, Claude and GPT), and the result is broken down by model, so one lab's taste doesn't decide for everyone.
 - **Then they talk about it.** Every customer posts about their visit in their own voice. Then they read each other's posts and reply, repost or scroll past, for two rounds. The result is a feed and a who-reacted-to-whom network. PageRank over replies and reposts finds whose opinion spreads furthest, so you know which complaint to fix first. On melomed.io, a post about the free journal app spread furthest because another customer challenged it about encryption, and the shared worry that travelled was that "free" never says what happens after.
 - **What would win them over.** Each customer who didn't buy says what would have changed their mind, and an analyst agent writes a report: buy rate by customer type, where people got stuck, what convinced the buyers, the top 3 fixes and which complaint is most likely to spread.

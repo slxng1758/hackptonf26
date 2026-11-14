@@ -80,6 +80,8 @@ from fastapi.staticfiles import StaticFiles
 
 sim.SIMS.mkdir(parents=True, exist_ok=True)
 app.mount("/api/shots", StaticFiles(directory=str(sim.SIMS)), name="shots")
+(sim.RUNS / "amazon" / "pages").mkdir(parents=True, exist_ok=True)
+app.mount("/api/product", StaticFiles(directory=str(sim.RUNS / "amazon" / "pages")), name="product")  # Amazon eval product pages
 
 
 class SimIn(BaseModel):
