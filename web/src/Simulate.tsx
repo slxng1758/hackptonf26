@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { marked } from "marked";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, PANEL } from "./theme";
-import { SiteMap, outcome } from "./SiteMap";
+import { SiteMap, ThoughtStream, outcome } from "./SiteMap";
 import { Timeline } from "./Timeline";
 import { Accuracy, Learned, WordOfMouth } from "./Extras";
 import type { SimExtras } from "./sim-extras";
@@ -212,6 +213,8 @@ export function SimView({ id }: { id: string }) {
 
       {live && (
         <>
+          <div className="mt-10"><Eyebrow n="01" label="they shopped" color={C.win} /></div>
+          <ThoughtStream sim={sim} />
           <SiteMap sim={sim} onOpen={setOpen} />
           <p className="mt-3 text-center text-[12px] text-white/35">click anyone to replay their visit · hover a page to see it</p>
 
@@ -225,22 +228,30 @@ export function SimView({ id }: { id: string }) {
           </>; })()}
 
           {sim.status === "done" && unconvinced.length > 0 && (
-            <section className="mx-auto mt-10 max-w-3xl">
-              <h2 className="text-center font-serif text-[26px]">What would win the rest over</h2>
-              <div className="mt-5 space-y-3">
-                {unconvinced.map((p) => (
-                  <div key={p.id} className={`${PANEL} flex items-center gap-4 p-4`}>
-                    <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={48} feeling={sim.decisions[p.id].feeling} />
-                    <p className="text-[15px] leading-snug text-white/85"><b>{p.name}:</b> {sim.decisions[p.id].missing}</p>
+            <section className="mx-auto mt-14 max-w-6xl">
+              <Eyebrow n="05" label="in their words" color={C.mid} />
+              <h2 className="text-center font-serif text-[30px]">What would win the rest over</h2>
+              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {unconvinced.map((p, i) => { const d = sim.decisions[p.id]; return (
+                  <div key={p.id} className={`${PANEL} rise relative p-5`} style={{ animationDelay: `${i * 0.06}s` }}>
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-full" style={{ boxShadow: `0 0 0 3px ${SHIRT[p.archetype] ?? C.brain}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={56} feeling={d.feeling} /></div>
+                      <div><div className="text-[16px] font-semibold">{p.name}{p.kind !== "agent" && `, ${p.age}`}</div>
+                        <div className="font-mono text-[11px]" style={{ color: SHIRT[p.archetype] }}>{p.kind === "agent" ? `${p.model} agent` : p.archetype} · <span style={{ color: DEC_COLOR[d.decision] ?? C.mid }}>{d.decision}</span> · {"★".repeat(d.rating)}<span className="opacity-30">{"★".repeat(5 - d.rating)}</span></div></div>
+                    </div>
+                    <p className="mt-4 font-serif text-[18px] leading-snug">“{d.missing}”</p>
                   </div>
-                ))}
+                ); })}
               </div>
             </section>
           )}
 
           {sim.status === "done" && (
-            <div className="mt-12 text-center">
-              <div className={`${PANEL} mx-auto mb-8 max-w-2xl p-5 text-left`}>
+            <section className="relative mx-auto mt-16 max-w-6xl overflow-hidden rounded-[28px] p-8 text-left" style={{ background: `linear-gradient(135deg, ${C.brain}26, ${C.win}1f)`, border: `1px solid ${C.brain}55` }}>
+              <Eyebrow n="06" label="make them smarter" color={C.brain} />
+              <h2 className="text-center font-serif text-[30px]">Next round</h2>
+              <div className="mt-6 grid gap-5 md:grid-cols-2">
+              <div className={`${PANEL} p-5 text-left`}>
                 <div className="font-serif text-[22px]">Teach them what real customers do</div>
                 <p className="mt-1 text-[13px] text-white/50">Real people beat our guesses. Tell them what actually happens and every persona it applies to updates its memory before the next round.</p>
                 <form onSubmit={(e) => { e.preventDefault(); teach(); }} className="mt-3 flex gap-2">
@@ -250,17 +261,21 @@ export function SimView({ id }: { id: string }) {
                 </form>
                 {taught != null && <p className="mt-2 text-[13px]" style={{ color: C.brain }}>{taught === 0 ? "That didn't change anyone's memory." : `${taught} persona${taught > 1 ? "s" : ""} updated their memory. See "What they learned" above.`}</p>}
               </div>
-              <input value={change} onChange={(e) => setChange(e.target.value)} placeholder="Changed your site? Say what, e.g. added prices to the Nocturne page (optional)"
-                className="mx-auto mb-3 block w-full max-w-xl rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-center text-[14px] outline-none focus:border-[#d16bff]" />
-              <button onClick={rerun} className="rounded-2xl px-8 py-4 text-[16px] font-semibold text-black" style={{ background: C.brain, boxShadow: `0 0 40px ${C.brain}66` }}>{change.trim() ? "Test the change with the same customers →" : "Run again with what they learned →"}</button>
-              <p className="mt-2 text-[12px] text-white/40">same customers, carrying their memory into round {(sim.round ?? 0) + 2}, so before and after is a fair comparison</p>
-            </div>
+              <div className={`${PANEL} flex flex-col p-5 text-left`}>
+                <div className="font-serif text-[22px]">Changed your site? Test it</div>
+                <p className="mt-1 text-[13px] text-white/50">The same customers come back with their memory, so before and after is a fair comparison.</p>
+                <input value={change} onChange={(e) => setChange(e.target.value)} placeholder="What did you change? e.g. added prices to the Nocturne page (optional)"
+                  className="mt-3 w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#d16bff]" />
+                <button onClick={rerun} className="mt-4 rounded-2xl px-6 py-3.5 text-[16px] font-semibold text-black" style={{ background: C.brain, boxShadow: `0 0 40px ${C.brain}66` }}>{change.trim() ? "Test the change →" : `Run round ${(sim.round ?? 0) + 2} →`}</button>
+              </div>
+              </div>
+            </section>
           )}
 
           {sim.report && (
             <div className="mt-8 text-center">
-              <button onClick={() => setReport(!report)} className="text-[13px] text-white/45 underline decoration-white/20 hover:text-white">{report ? "hide" : "read"} the full report</button>
-              {report && <pre className={`${PANEL} mx-auto mt-4 max-w-3xl whitespace-pre-wrap p-6 text-left font-serif text-[15px] leading-relaxed text-white/85`}>{sim.report}</pre>}
+              <button onClick={() => setReport(!report)} className="rounded-full border border-white/20 px-5 py-2 text-[14px] font-semibold hover:border-white/50">{report ? "Hide" : "Read"} the analyst's full report</button>
+              {report && <article className={`${PANEL} report mx-auto mt-4 max-w-4xl p-8 text-left`} dangerouslySetInnerHTML={{ __html: marked.parse(sim.report, { async: false }) as string }} />}
             </div>
           )}
         </>
@@ -275,6 +290,7 @@ const AUD: Record<string, string> = { people: "for people", "AI agents": "for AI
 function DoThese({ actions }: { actions: NonNullable<Sim["actions"]> }) {
   return (
     <section className="mx-auto mt-12 max-w-4xl">
+      <Eyebrow n="02" label="the fixes" color={C.win} />
       <h2 className="text-center font-serif text-[30px]">Do these first</h2>
       <div className="mt-6 space-y-3">
         {actions.map((a, i) => (
@@ -301,6 +317,7 @@ function AgentsPanel({ sim }: { sim: Sim }) {
   const rows = sim.summary!.agents!;
   return (
     <section className="mx-auto mt-12 max-w-4xl">
+      <Eyebrow n="03" label="agent-ready?" color="#9aa4b8" />
       <h2 className="text-center font-serif text-[30px]">Can AI agents buy here?</h2>
       <p className="mt-2 text-center text-[14px] text-white/55">Shoppers now send ChatGPT, Gemini and Claude to buy for them. Agents need facts: exact product, price, terms, a path to checkout.</p>
       <div className="mt-6 grid gap-3 md:grid-cols-3">
@@ -319,3 +336,12 @@ function AgentsPanel({ sim }: { sim: Sim }) {
     </section>
   );
 }
+
+function Eyebrow({ n, label, color }: { n: string; label: string; color: string }) {
+  return (
+    <div className="mb-2 flex items-center justify-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color }}>
+      <span className="grid h-6 w-6 place-items-center rounded-full text-[10px] text-black" style={{ background: color }}>{n}</span>{label}
+    </div>
+  );
+}
+export { Eyebrow };

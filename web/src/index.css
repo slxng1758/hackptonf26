@@ -67,3 +67,17 @@ textarea, input, select { color-scheme: dark; }
 :root[data-theme="storefront"] button[style*="background"]:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #111; }
 :root[data-theme="storefront"] .shimmer { background-image: linear-gradient(90deg, #00b386, #8a4dff, #ff2e5b, #ff9f1c, #00b386); }
 :root[data-theme="storefront"] header .font-serif { font-family: var(--font-sans); font-weight: 900; letter-spacing: -0.03em; }
+
+/* the analyst's report, rendered from markdown */
+.report { font-size: 15px; line-height: 1.65; }
+.report h1 { font-family: var(--font-serif); font-size: 28px; margin: 0 0 12px; text-transform: none; }
+.report h2 { font-family: var(--font-serif); font-size: 21px; margin: 26px 0 8px; text-transform: none; letter-spacing: 0; }
+.report h3 { font-weight: 700; margin: 18px 0 6px; }
+.report p, .report ul, .report ol { margin: 8px 0; }
+.report ul { list-style: disc; padding-left: 22px; } .report ol { list-style: decimal; padding-left: 22px; }
+.report li { margin: 4px 0; }
+.report strong { font-weight: 700; }
+.report table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+.report th, .report td { border-bottom: 1px solid color-mix(in oklab, var(--ink) 15%, transparent); padding: 7px 10px; text-align: left; }
+.report th { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; opacity: .6; }
+.report code { font-family: var(--font-mono); font-size: 13px; padding: 1px 5px; border-radius: 6px; background: color-mix(in oklab, var(--ink) 8%, transparent); }

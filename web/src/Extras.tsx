@@ -26,6 +26,7 @@ export function WordOfMouth({ social, personas }: { social: Social; personas: Pe
 
   return (
     <section className="mx-auto mt-14 max-w-5xl">
+      <Eyebrow n="04" label="word of mouth" color={C.mid} />
       <h2 className="text-center font-serif text-[30px]">Then they talked about it</h2>
       <p className="mx-auto mt-2 max-w-2xl text-center text-[15px] text-white/60">{social.summary.replace(/\*\*/g, "")}</p>
       <div className="mt-6 grid gap-5 md:grid-cols-[1fr_400px]">
@@ -87,6 +88,7 @@ export function Accuracy({ evals }: { evals: EvalScore[] }) {
   const themes = last.real_themes.length ? last.real_themes.map((t) => t.theme) : [...last.matched_themes, ...last.missed_themes];
   return (
     <section className="mx-auto mt-14 max-w-5xl">
+      <Eyebrow n="07" label="accuracy check" color={C.win} />
       <h2 className="text-center font-serif text-[30px]">Were we right?</h2>
       <p className="mt-2 text-center text-[15px] text-white/60">We checked the prediction against real public reviews the customers never saw.</p>
       <div className="mt-6 grid gap-5 md:grid-cols-3">
@@ -124,6 +126,7 @@ export function Accuracy({ evals }: { evals: EvalScore[] }) {
 export function Learned({ changes, personas }: { changes: PersonaChange[]; personas: Persona[] }) {
   return (
     <section className="mx-auto mt-14 max-w-3xl">
+      <Eyebrow n="08" label="evolution" color={C.brain} />
       <h2 className="text-center font-serif text-[30px]">What they learned for next time</h2>
       <div className="mt-6 space-y-3">
         {changes.map((c, i) => { const p = who(personas, c.persona_id); return (
@@ -142,5 +145,13 @@ export function Learned({ changes, personas }: { changes: PersonaChange[]; perso
         ); })}
       </div>
     </section>
+  );
+}
+
+function Eyebrow({ n, label, color }: { n: string; label: string; color: string }) {
+  return (
+    <div className="mb-2 flex items-center justify-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color }}>
+      <span className="grid h-6 w-6 place-items-center rounded-full text-[10px] text-black" style={{ background: color }}>{n}</span>{label}
+    </div>
   );
 }

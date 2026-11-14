@@ -1,6 +1,6 @@
 // The website drawn as a map of the pages customers actually visited. Avatars walk between pages as they click,
 // then leave through the exits on the right: bought, maybe later, or left.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C } from "./theme";
 import type { Persona, Sim } from "./Simulate";
@@ -78,8 +78,7 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
   });
 
   return (
-    <div className="relative mt-8 overflow-x-auto rounded-3xl border border-white/10 bg-[radial-gradient(ellipse_at_top,rgba(63,240,212,0.06),transparent_60%)]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
-      <div className="relative mx-auto" style={{ width, height: height + 60 }}>
+    <Fit width={width} height={height + 60}>
         <svg className="absolute inset-0" width={width} height={height + 60}>
           {[...edges.values()].map((e) => {
             const a = nodes.get(e.a)!, b = nodes.get(e.b)!;
@@ -135,36 +134,57 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
             )}
           </button>
         ))}
-      </div>
-      <Ticker sim={sim} />
+    </Fit>
+  );
+}
+
+// Scale the map down to the screen so the exits on the right are never cut off.
+function Fit({ width, height, children }: { width: number; height: number; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [k, setK] = useState(1);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const ro = new ResizeObserver(() => setK(Math.min(1, (el.clientWidth - 16) / width)));
+    ro.observe(el); return () => ro.disconnect();
+  }, [width]);
+  return (
+    <div ref={ref} className="relative mt-6 overflow-hidden rounded-3xl border border-white/10 panel" style={{ height: height * k + 16, backgroundImage: "radial-gradient(rgba(127,127,127,0.18) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
+      <div className="absolute left-1/2 top-2" style={{ width, height, transform: `translateX(-50%) scale(${k})`, transformOrigin: "top center" }}>{children}</div>
     </div>
   );
 }
 
-// What everyone is thinking right now, as a tape along the bottom of the map.
-function Ticker({ sim }: { sim: Sim }) {
+// What everyone is thinking right now: big speech cards drifting past, above the map.
+export function ThoughtStream({ sim }: { sim: Sim }) {
   const items = sim.personas.flatMap((p) => {
     const d = sim.decisions[p.id], steps = sim.live[p.id] ?? [];
     const last = steps[steps.length - 1];
     const text = d ? d.quote : last?.thought;
     if (!text) return [];
     const o = outcome(sim, p.id);
-    return [{ p, text, color: o === "bought" ? C.win : o === "maybe" ? C.mid : o === "left" ? C.loss : "rgba(255,255,255,0.75)", feeling: (d?.feeling ?? last?.feeling ?? "neutral") as Feeling }];
+    return [{ p, text, o, feeling: (d?.feeling ?? last?.feeling ?? "neutral") as Feeling }];
   });
   if (!items.length) return null;
-  const row = items.map((it, i) => (
-    <span key={i} className="mx-6 inline-flex items-center gap-2 align-middle">
-      <Avatar seed={it.p.avatar.seed} archetype={it.p.archetype} model={it.p.model} age={it.p.age} size={22} feeling={it.feeling} />
-      <b className="text-[12px]" style={{ color: SHIRT[it.p.archetype] }}>{it.p.name}</b>
-      <span className="text-[12px]" style={{ color: it.color }}>{it.text.length > 120 ? it.text.slice(0, 120) + "…" : it.text}</span>
-    </span>
-  ));
-  return (
-    <div className="relative overflow-hidden border-t border-white/10 bg-black/40 py-2">
-      <div className="absolute left-0 top-0 z-10 flex h-full items-center gap-1.5 bg-gradient-to-r from-[var(--bg)] via-[var(--bg)] to-transparent pl-3 pr-8 font-mono text-[10px] font-semibold tracking-widest" style={{ color: sim.status === "browsing" ? C.loss : "rgba(255,255,255,0.4)" }}>
-        {sim.status === "browsing" && <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: C.loss }} />}{sim.status === "browsing" ? "LIVE" : "HEARD"}
+  const live = sim.status === "browsing";
+  const card = (it: (typeof items)[number], i: number) => (
+    <div key={i} className="mx-2 inline-flex w-[360px] shrink-0 items-start gap-3 whitespace-normal rounded-2xl border border-white/15 bg-[var(--card)] p-3 align-top shadow-lg panel"
+      style={{ borderLeft: `5px solid ${it.o === "bought" ? C.win : it.o === "maybe" ? C.mid : it.o === "left" ? C.loss : SHIRT[it.p.archetype] ?? C.brain}` }}>
+      <div className="shrink-0"><Avatar seed={it.p.avatar.seed} archetype={it.p.archetype} model={it.p.model} age={it.p.age} size={44} feeling={it.feeling} /></div>
+      <div className="min-w-0">
+        <div className="text-[13px]"><b>{it.p.name}</b> <span className="text-white/45">· {it.p.kind === "agent" ? "AI agent" : it.p.archetype}</span>
+          {it.o && <span className="ml-1 font-mono text-[10px] font-semibold uppercase" style={{ color: it.o === "bought" ? C.win : it.o === "maybe" ? C.mid : C.loss }}>{it.o === "bought" ? "bought" : it.o === "maybe" ? "maybe later" : "left"}</span>}</div>
+        <p className="mt-0.5 line-clamp-3 text-[14px] leading-snug text-white/85">“{it.text}”</p>
       </div>
-      <div className="ticker whitespace-nowrap" style={{ animationDuration: `${Math.max(30, items.length * 9)}s` }}>{row}{row}</div>
     </div>
+  );
+  return (
+    <section className="mt-6">
+      <div className="mb-2 flex items-center justify-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.25em]" style={{ color: live ? C.loss : "rgba(127,127,127,0.9)" }}>
+        {live && <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: C.loss }} />}{live ? "live · what they're thinking" : "what they said"}
+      </div>
+      <div className="relative overflow-hidden py-1" style={{ maskImage: "linear-gradient(90deg, transparent, black 6%, black 94%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 6%, black 94%, transparent)" }}>
+        <div className="ticker flex w-max" style={{ animationDuration: `${Math.max(40, items.length * 7)}s` }}>{items.map(card)}{items.map((it, i) => card(it, i + 100))}</div>
+      </div>
+    </section>
   );
 }
