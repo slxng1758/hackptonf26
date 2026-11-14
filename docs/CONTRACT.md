@@ -110,3 +110,16 @@ summarizing → analyzing → done`. `/approve` and `/recast` resume the paused 
   session / eval / owner), scoped to the business + a lineage (rerun keeps it), with a `memory_version` per edit.
   The evolver writes it, and also updates the type's `/memories/<archetype>.md` as before.
 - `/memories/director/lessons.md`: the director's lessons about running simulations, read into its prompt.
+
+## Customers are deepagents subagents (`b2a/customer.py`)
+
+In director mode every customer (personas and the layer-1 AI shopping agents) is one of the director's deepagents
+subagents, named like `p1-tomas` / `a1-claude-agent`: its own model, its persona as the system prompt, its own browser
+tools (`open_site`, `click`, `scroll`, `back`, `search`, `decide`) and read-only access to `/memories/`. The director opens
+a round (`start_round(layer, customer_ids)`), sends every customer of the round with deepagents' `task` tool in one turn
+(they shop in parallel, capped by `MAX_BROWSERS`), and closes it (`end_round`). `run_base_models` / `run_personas` are gone.
+Customers cast mid-run become subagents through an automatic rebuild of the director (same thread, same checkpoint).
+
+Each tool call records one `live` step as before; `search` is a new step action (`target` = the query). `open_site` shows
+the customer its memory, read fresh from the store. `decide` checks the decision against the visit and sets `outcome`.
+The default pipeline runs the same customer agent when `CUSTOMER_AGENT=1` (otherwise the older loop).

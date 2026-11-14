@@ -138,7 +138,7 @@ def render_cart(p: Product, pid: str, has_item: bool = True) -> str:
 
 def render_checkout(p: Product, pid: str) -> str:
     base = f"/api/products/{pid}"
-    body = (f"<section><h1>Checkout</h1>{_line(p)}<p>This is a test store: placing the order takes no payment and no personal details.</p>"
+    body = (f"<section><h1>Checkout</h1>{_line(p)}<p>Pay when you pick it up: placing the order reserves it, no card needed now.</p>"
             f"<p><a class='btn' href='{base}/order'>Place order</a> <a href='{base}/cart'>Back to cart</a></p></section>")
     return _page(p, pid, body, "Checkout")
 
