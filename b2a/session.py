@@ -6,10 +6,12 @@ scroll, go back, or decide). Each step is saved (screenshot, thought, feeling, a
 from __future__ import annotations
 
 import base64
+import contextvars
 import re
 import time
 import json
 import random
+import os
 import threading
 from pathlib import Path
 from typing import Literal
@@ -63,14 +65,28 @@ class Step(BaseModel):
     target: str = Field(default="", description="for click: the exact text of the link or button to click; otherwise empty")
 
 
+class Suggestion(BaseModel):
+    change: str = Field(description="one concrete change to the product, page or pricing")
+    why: str = Field(description="why it matters to you, one sentence")
+    where: str = Field(default="", description="the page or section it applies to, from what you actually saw (its URL or title)")
+    impact: Literal["would make me buy", "nice to have"]
+
+
 class Decision(BaseModel):
     decision: Literal["buy", "not buy", "maybe later", "would complain", "would recommend"]
     rating: int = Field(ge=1, le=5)
     feeling: Literal["delighted", "interested", "neutral", "confused", "annoyed", "skeptical"]
+    confidence: float = Field(default=0.7, ge=0, le=1, description="how sure you are about this decision, 0-1")
     quote: str = Field(description="what you'd tell a friend about it, first person, max 35 words")
     reasons: list[str] = Field(default_factory=list, description="2-4 concrete reasons, each tied to something you saw")
     missing: str = Field(default="", description="what would have changed your mind, one sentence")
     stars_after_use: int | None = Field(default=None, ge=1, le=5, description="imagine you bought it and used it for a few weeks: the star rating you'd leave in a review (answer even if you didn't buy)")
+    first_impression: str = Field(default="", description="your gut reaction in the first seconds, in your voice, one sentence")
+    review: str = Field(default="", description="your honest review of the product overall, 3-5 sentences, in your voice")
+    liked: list[str] = Field(default_factory=list, description="1-3 things you liked, each tied to something you saw")
+    disliked: list[str] = Field(default_factory=list, description="1-3 things you disliked, each tied to something you saw")
+    would_pay: str = Field(default="", description="what you'd actually pay, e.g. '$18, not $24'")
+    suggestions: list[Suggestion] = Field(default_factory=list, description="1-3 changes you'd actually want, tied to pages you saw")
 
 
 STEP = """You are {name}, {age}, {occupation}. You are a {archetype} customer. {voice}
@@ -96,7 +112,13 @@ Make your decision like a real shopper on this visit, not a reviewer. Real peopl
 if you found something that fits your goal and budget well enough and nothing put you off, you buy. "Maybe later" means you
 leave now and most people who say it never come back, so only choose it if something specific stopped you today.
 Choose "not buy" if it doesn't fit you, "would complain" if something went wrong. If a page was blocked by an automated bot check, real customers would not
-have seen that block: do not penalize the business for it; judge only what you actually saw."""
+have seen that block: do not penalize the business for it; judge only what you actually saw.
+Then write as yourself: your first impression, an honest review, what you liked and disliked, what you'd really pay, and
+1-3 suggestions you'd actually want. Every suggestion names the page it applies to (a URL or page title from what you saw)."""
+
+
+# Never more than this many real browsers at once (sites block bursts, laptops run out of memory).
+_BROWSERS = threading.Semaphore(int((os.getenv("MAX_BROWSERS") or "4")))
 
 # Visible links and buttons only (hidden mobile-menu copies are skipped), with where each link goes.
 VISIBLE_LINKS = """() => {
@@ -204,11 +226,21 @@ def agent_shoppers(name: str, offer: str, families: list[str]) -> list[dict]:
     return [{"id": f"a{i + 1}", "kind": "agent", "name": f"{fam} agent", "age": 30, "occupation": "AI shopping agent",
              "archetype": "AI agent", "segment": "AI shopping agents acting for a user", "share": 0.0,
              "goal": f'Your user asked: "{e.request}"', "budget": e.budget, "voice": AGENT_VOICE, "model": fam,
-             "avatar": {"seed": 900 + i}} for i, fam in enumerate(families)]
+             "layer": 1, "avatar": {"seed": 900 + i}} for i, fam in enumerate(families)]  # layer 1 for b2a/evals + compare
 
 
-def cast(name: str, category: str, context: str, world: str, customers: str, offer: str = "") -> list[dict]:
+def cast(name: str, category: str, context: str, world: str, customers: str, offer: str = "",
+         n: int | None = None, archetypes: list[str] | None = None, models: list[str] | None = None,
+         start: int = 1, segments: str = "") -> list[dict]:
+    """Cast personas. n / archetypes / segments come from the director (after the SEGMENTER); models = the families
+    to spread across (round-robin, so no family dominates); start = first id number, for casting extra personas."""
     ask = CAST.format(name=name, category=category, context=context or "none", world=world or "today, normal times", customers=customers, offer=offer or "see the website")
+    if n:
+        ask += f"\nMake exactly {n} personas."
+    if archetypes:
+        ask += f"\nUse these archetypes, in this order: {', '.join(archetypes)}."
+    if segments:
+        ask += f"\nThe customer segments to cover (from the segment analysis): {segments}"
     try:
         c: Cast = fast().with_structured_output(Cast, method="json_schema").invoke(ask)
     except Exception:
@@ -216,14 +248,15 @@ def cast(name: str, category: str, context: str, world: str, customers: str, off
     total = sum(p.share for p in c.personas) or 1
     rng = random.Random(name)
     from .models import persona_models
-    families = list(persona_models())
+    keyed = list(persona_models())
+    families = [m for m in (models or keyed) if m in keyed] or keyed
     out = []
-    for i, p in enumerate(c.personas):
+    for i, p in enumerate(c.personas[:n] if n else c.personas):
         d = p.model_dump()
-        d["id"] = f"p{i + 1}"
+        d["id"] = f"p{start + i}"
         d["share"] = round(p.share / total, 3)
         d["avatar"] = {"seed": rng.randint(0, 10_000)}
-        d["model"] = families[i % len(families)] if families else "Claude"
+        d["model"] = families[(start - 1 + i) % len(families)] if families else "Claude"
         out.append(d)
     return out
 
@@ -233,8 +266,11 @@ def _img_msg(text: str, jpg: bytes) -> HumanMessage:
                                  {"type": "image", "source_type": "base64", "mime_type": "image/jpeg", "data": base64.b64encode(jpg).decode()}])
 
 
-def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_step, max_steps: int = 10) -> dict:
-    """One persona, one real browser session. Returns the session with every step and the final decision."""
+def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_step, max_steps: int = 10, shot_prefix: str = "") -> dict:
+    """One agent, one real browser session. Returns the session with every step and the final decision.
+
+    `persona` is an agent: a customer persona (layer 2, with its injected `memory`) or an AI shopping agent on an errand
+    (layer 1, session.agent_shoppers)."""
     from playwright.sync_api import sync_playwright
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -261,6 +297,7 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
         for n in range(1, max_steps + 1):
             pg.wait_for_timeout(900)
             shot = out_dir / f"{persona['id']}_{n}.jpg"
+            shot_name = shot_prefix + shot.name
             try:
                 jpg = pg.screenshot(type="jpeg", quality=55, timeout=15000)
                 shot.write_bytes(jpg)
@@ -276,7 +313,7 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
             blocked = is_bot_wall(text, pg.title() if pg else "")
             if blocked:
                 # Our automated browser hit a bot check. Real customers would not see this, so it must not count against the business.
-                step = {"n": n, "url": pg.url, "title": pg.title(), "shot": shot.name if jpg else None, "blocked": True,
+                step = {"n": n, "url": pg.url, "title": pg.title(), "shot": shot_name if jpg else None, "blocked": True,
                         "thought": "(A security check blocked our test browser here. Real customers wouldn't see this, so it doesn't count.)",
                         "feeling": "neutral", "action": "back", "target": ""}
                 steps.append(step)
@@ -287,13 +324,14 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                 except Exception:
                     pass
                 continue
-            prompt = STEP.format(**{**persona, "memory": persona.get("memory") or "nothing yet"}, world=world or "today, normal times", context=context or "none", url=pg.url, n=n, max_steps=max_steps,
-                                 links=", ".join(links) or "(none)", text=text, history=" → ".join(history) or "just arrived")
+            page = dict(world=world or "today, normal times", context=context or "none", url=pg.url, n=n, max_steps=max_steps,
+                        links=", ".join(links) or "(none)", text=text, history=" → ".join(history) or "just arrived")
+            prompt = STEP.format(**{**persona, "memory": persona.get("memory") or "nothing yet"}, **page)
             try:
                 s: Step = ask(Step, [_img_msg(prompt, jpg)] if jpg else prompt)
             except Exception as e:
                 s = Step(thought=f"(couldn't read the page: {type(e).__name__})", feeling="confused", action="decide")
-            step = {"n": n, "url": pg.url, "title": pg.title() if pg else "", "shot": shot.name if jpg else None,
+            step = {"n": n, "url": pg.url, "title": pg.title() if pg else "", "shot": shot_name if jpg else None,
                     "thought": s.thought, "feeling": s.feeling, "action": s.action, "target": s.target}
             steps.append(step)
             history.append(f"[{pg.url}] thought: {s.thought} ({s.feeling}) → {s.action} {s.target}".strip())
@@ -336,25 +374,34 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
         d: Decision = ask(Decision, q)
     except Exception:
         d = ask(Decision, q + "\nFill in every field.")
-    return {"persona": persona["id"], "steps": steps, "decision": d.model_dump()}
+    return {"persona": persona["id"], **agent_tags(persona), "steps": steps, "decision": d.model_dump()}
 
 
-def run_all(personas: list[dict], url: str, world: str, context: str, out_dir: Path, on_step, on_done) -> list[dict]:
-    """All personas browse in parallel, each in its own browser."""
+def agent_tags(a: dict) -> dict:
+    """What identifies an agent: (model family, persona or none, memory version)."""
+    layer = a.get("layer", 2)
+    return {"agent_id": a["id"], "layer": layer, "model": a.get("model"),
+            "persona_id": None if layer == 1 else a.get("persona_id", a["id"]), "memory_version": a.get("memory_version", 0)}
+
+
+def run_all(personas: list[dict], url: str, world: str, context: str, out_dir: Path, on_step, on_done, shot_prefix: str = "") -> list[dict]:
+    """All agents browse in parallel, each in its own browser, at most MAX_BROWSERS at a time."""
     results: list[dict] = []
     lock = threading.Lock()
 
     def go(p, i):
         time.sleep(i * 2.5)  # stagger arrivals so the site doesn't see seven bots at once
         try:
-            r = browse(p, url, world, context, out_dir, on_step)
+            with _BROWSERS:
+                r = browse(p, url, world, context, out_dir, on_step, shot_prefix=shot_prefix)
         except Exception as e:
-            r = {"persona": p["id"], "steps": [], "decision": None, "error": f"{type(e).__name__}: {e}"[:200]}
+            r = {"persona": p["id"], **agent_tags(p), "steps": [], "decision": None, "error": f"{type(e).__name__}: {e}"[:200]}
         with lock:
             results.append(r)
         on_done(p["id"], r)
 
-    threads = [threading.Thread(target=go, args=(p, i), daemon=True) for i, p in enumerate(personas)]
+    # each thread gets a copy of the caller's context, so LangSmith nests every session under the sim's trace
+    threads = [threading.Thread(target=contextvars.copy_context().run, args=(go, p, i), daemon=True) for i, p in enumerate(personas)]
     for t in threads:
         t.start()
     for t in threads:

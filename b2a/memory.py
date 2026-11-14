@@ -10,6 +10,13 @@ Vector Search over the memory text (Gemini embeddings). Otherwise a LangGraph In
 runs/memory_store.json. See b2a/mongo.py.
 
 similar(): a new customer also recalls lessons from the most similar *other* customer types (vector search).
+
+Two more layers, used by the director (b2a/director.py), in the same store but their own namespaces so they never show
+up as a "customer type" in everything() or similar():
+  /memories/business/<persona_id>.md   what ONE persona learned about THIS business (product-specific: "real buyers say
+                                       it shrinks in the dryer"), scoped to the business host + a lineage (the first sim
+                                       of a chain; rerun keeps it), with a memory_version bumped on every edit
+  /memories/director/lessons.md        the director's own lessons about running simulations
 """
 from __future__ import annotations
 
@@ -21,7 +28,9 @@ from deepagents.backends import CompositeBackend, FilesystemBackend, StoreBacken
 from langgraph.store.memory import InMemoryStore
 
 FILE = Path(__file__).resolve().parent.parent / "runs" / "memory_store.json"
+EXTRA_FILE = FILE.with_name("memory_store_extra.json")  # local copy of the business + director namespaces
 NS = ("customer-memory",)
+DIRECTOR_NS = ("director-memory",)
 _lock = threading.Lock()
 _store: InMemoryStore | None = None
 
@@ -57,6 +66,10 @@ def store():
             if FILE.exists():
                 for key, value in json.loads(FILE.read_text()).items():
                     _store.put(NS, key, value)
+            if EXTRA_FILE.exists():
+                for ns, items in json.loads(EXTRA_FILE.read_text()).items():
+                    for key, value in items.items():
+                        _store.put(tuple(ns.split("|")), key, value)
         return _store
 
 
@@ -68,15 +81,26 @@ def persist():
     items = {it.key: it.value for it in s.search(NS, limit=10_000)}
     FILE.parent.mkdir(parents=True, exist_ok=True)
     FILE.write_text(json.dumps(items, indent=2))
+    extra: dict[str, dict] = {}
+    for ns in s.list_namespaces(limit=10_000):
+        if tuple(ns) != NS:
+            extra["|".join(ns)] = {it.key: it.value for it in s.search(tuple(ns), limit=10_000)}
+    EXTRA_FILE.write_text(json.dumps(extra, indent=2))
 
 
 def _backend() -> StoreBackend:
     return StoreBackend(namespace=lambda _rt: NS, store=store())
 
 
-def backend_for(sim_dir: Path) -> CompositeBackend:
-    """What the Deep Agents orchestrator sees: the simulation's files, plus /memories/ for long-term memory."""
-    return CompositeBackend(default=FilesystemBackend(root_dir=str(sim_dir), virtual_mode=True), routes={"/memories/": _backend()})
+def backend_for(sim_dir: Path, business: tuple[str, ...] | None = None) -> CompositeBackend:
+    """What the Deep Agents orchestrator sees: the simulation's files, plus /memories/ for long-term memory.
+    With `business` (business_ns()), also /memories/business/ (this business's persona memory) and /memories/director/."""
+    routes = {"/memories/": _backend()}
+    if business:
+        s = store()
+        routes["/memories/business/"] = StoreBackend(namespace=lambda _rt: business, store=s)
+        routes["/memories/director/"] = StoreBackend(namespace=lambda _rt: DIRECTOR_NS, store=s)
+    return CompositeBackend(default=FilesystemBackend(root_dir=str(sim_dir), virtual_mode=True), routes=routes)
 
 
 def _key(archetype: str) -> str:
@@ -142,3 +166,75 @@ def for_persona(p: dict) -> str:
         return own
     extra = "\n".join(f"{l} (learned by a similar {n['type']} customer)" for n in near for l in n["lessons"])
     return (own + "\n" if own else "") + "From similar customers:\n" + extra
+
+
+# ---------------------------------------------------------------- business memory + director lessons (b2a/director.py)
+
+_write_lock = threading.Lock()  # not _lock: store() takes that one on every call
+
+
+def business_ns(url: str, lineage: str) -> tuple[str, ...]:
+    """Namespace of one business's persona memory. Store labels can't contain periods, hence the underscores."""
+    from urllib.parse import urlparse
+    u = url if url.startswith("http") else "https://" + url
+    parts = urlparse(u).path.strip("/").split("/")
+    host = parts[2] if parts[:2] == ["api", "products"] and len(parts) > 2 else urlparse(u).netloc.removeprefix("www.").lower()
+    return ("business-memory", (host or "no-host").replace(".", "_"), lineage)
+
+
+def _now() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _put(ns: tuple[str, ...], key: str, content: str, **extra):
+    it = store().get(ns, key)
+    old = dict(it.value) if it else {}
+    # the shape deepagents' StoreBackend writes, plus our own fields (it ignores the extras)
+    store().put(ns, key, {**old, "content": content, "encoding": "utf-8", "created_at": old.get("created_at") or _now(),
+                          "modified_at": _now(), **extra})
+
+
+def business_read(ns: tuple[str, ...], pid: str) -> tuple[str, int]:
+    """(memory text, memory_version) of one persona at this business. Version 0 = never written."""
+    it = store().get(ns, f"/{pid}.md")
+    v = dict(it.value) if it else {}
+    c = v.get("content", "")
+    return ("\n".join(c) if isinstance(c, list) else c), int(v.get("version", 0))
+
+
+def business_snapshot(ns: tuple[str, ...], pids: list[str]) -> dict[str, tuple[str, int]]:
+    return {p: business_read(ns, p) for p in pids}
+
+
+def business_write(ns: tuple[str, ...], pid: str, text: str) -> int:
+    """Replace one persona's business memory; returns the new memory_version."""
+    with _write_lock:
+        _, v = business_read(ns, pid)
+        _put(ns, f"/{pid}.md", text.strip() + "\n", version=v + 1)
+        return v + 1
+
+
+def business_bump(ns: tuple[str, ...], before: dict[str, tuple[str, int]]) -> dict[str, tuple[str, str, int]]:
+    """After an agent edited the files itself: give every changed one a new version. {pid: (before, after, version)}."""
+    out = {}
+    with _write_lock:
+        for pid, (old, v) in before.items():
+            now, v_now = business_read(ns, pid)
+            if now.strip() != old.strip():
+                nv = max(v, v_now) + 1
+                _put(ns, f"/{pid}.md", now, version=nv)
+                out[pid] = (old.strip(), now.strip(), nv)
+    return out
+
+
+def director_lessons(limit: int = 2000) -> str:
+    it = store().get(DIRECTOR_NS, "/lessons.md")
+    c = (dict(it.value) if it else {}).get("content", "")
+    return ("\n".join(c) if isinstance(c, list) else c)[-limit:]
+
+
+def add_director_lesson(lesson: str):
+    with _write_lock:
+        cur = director_lessons(100_000)
+        _put(DIRECTOR_NS, "/lessons.md", (cur.rstrip() + "\n" if cur.strip() else "") + f"- {lesson.strip()}\n")

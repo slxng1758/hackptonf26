@@ -76,3 +76,37 @@ Set `MONGODB_URI` (and optionally `MONGODB_DB`, default `hackpton`) in `.env`. W
 **Collections:** `customer_memory` (deepagents `/memories/` via `langgraph-store-mongodb`, with a vector index `memory_vectors` on Gemini embeddings), `simulations` (one doc per run, flat `agents` array), `sessions` (each customer's browsing steps), `evals` (one doc per accuracy score). Simulations are mirrored in the background on every save.
 
 **New customers' memory:** `personas[].memory` now starts with their own type's lessons plus "From similar customers:" lessons found by vector search (cosine ≥ 0.65).
+
+## Director mode (`b2a/director.py`)
+
+One deep agent runs the whole simulation and logs a reason for every step. On with `"director": true` in `POST /api/sims`
+(or `DIRECTOR=1`). The default pipeline is unchanged. New `POST /api/sims` fields: `models: string[]` (from
+`GET /api/models`), `world_preset` (a key of `GET /api/worlds`), `case_id` (a `data/<case>` to score against with
+`evals.score`), `director`, `stub` (no browsers, fixture results, for testing).
+
+It uses the existing pieces: Layer 1 = `session.agent_shoppers` (`a1`, `a2`… now tagged `"layer": 1`, so
+`evals`/`compare` see them), Layer 2 = personas starting from `memory.for_persona` plus their own memory at this
+business, scoring = `evals.score` + `feedback_for_evolver` + `improvement`, word of mouth = `social.run` +
+`network.analyze`, summary = `sim._summarize` + `compare.summary`.
+
+New keys on the simulation object (all modes; empty unless the director ran):
+```
+runs[]       { n, layer, agents[], decisions{}, clicked_buy[], memory_versions{}, summary, status }   one per browsing pass
+director[]   { t, tool, reason, args, result }   why the director did each thing
+todos[]      the director's live plan (write_todos)
+budget       { max_*, used counts, left }
+```
+`decisions[id]` also has `confidence, first_impression, review, liked[], disliked[], would_pay,
+suggestions[{change, why, where, impact}]` (all modes), plus `layer, model, persona_id, memory_version` (director).
+`personas[]` in director mode also carry `layer`, `memory_version`, `general_memory`.
+`persona_changes[]` from the director carry `memory_version`.
+
+**Status (director):** `briefing → casting → awaiting_approval → base_models → browsing → scoring → evolving → social →
+summarizing → analyzing → done`. `/approve` and `/recast` resume the paused director, also after a server restart
+(checkpoint in `runs/checkpoints.sqlite`). `/rerun` on a director sim starts a director round with the same customers.
+
+**Memory, two more layers in the same store** (own namespaces, so `everything()` / `similar()` still list only customer types):
+- `/memories/business/<persona_id>.md`: what one persona learned at this business (product-specific, tagged by source:
+  session / eval / owner), scoped to the business + a lineage (rerun keeps it), with a `memory_version` per edit.
+  The evolver writes it, and also updates the type's `/memories/<archetype>.md` as before.
+- `/memories/director/lessons.md`: the director's lessons about running simulations, read into its prompt.

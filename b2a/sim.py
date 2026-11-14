@@ -61,8 +61,8 @@ def persona_md(p: dict) -> str:
 
 
 class SimJob:
-    def __init__(self, inp: dict):
-        self.id = datetime.now().strftime("%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
+    def __init__(self, inp: dict, sim_id: str | None = None):
+        self.id = sim_id or datetime.now().strftime("%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
         self.inp = inp
         self.status = "casting"
         self.error = None
@@ -78,6 +78,12 @@ class SimJob:
         self.evals: list[dict] = list(inp.get("evals_so_far") or [])
         self.social: dict | None = None
         self.actions: list[dict] = []
+        # director mode (b2a/director.py): every browsing pass, the director's reasons, its plan and budget
+        self.runs: list[dict] = []
+        self.director: list[dict] = []
+        self.todos: list[dict] = []
+        self.budget: dict | None = None
+        inp["lineage"] = inp.get("lineage") or self.id  # business-memory lineage: rerun() keeps it, a fresh sim starts one
         self.dir = SIMS / self.id
         for d in ("personas", "sessions", "shots"):
             (self.dir / d).mkdir(parents=True, exist_ok=True)
@@ -96,7 +102,8 @@ class SimJob:
         return {"id": self.id, "input": self.inp, "status": self.status, "error": self.error, "personas": self.personas,
                 "live": self.live, "decisions": self.decisions, "summary": self.summary, "report": self.report,
                 "steps": self.steps, "memory": evolved, "round": self.round, "parent": self.parent,
-                "persona_changes": self.persona_changes, "evals": self.evals, "social": self.social, "actions": self.actions}
+                "persona_changes": self.persona_changes, "evals": self.evals, "social": self.social, "actions": self.actions,
+                "runs": self.runs, "director": self.director, "todos": self.todos, "budget": self.budget}
 
     def save(self):
         with self._lock:
@@ -139,7 +146,17 @@ class SimJob:
         self.log("approved", f"owner approved {len(self.personas)} personas")
         threading.Thread(target=self._run, daemon=True).start()
 
+    def trace_meta(self) -> dict:
+        """LangSmith metadata, so every trace can be found by sim, business and memory lineage."""
+        return {"sim_id": self.id, "host": _host(self.inp["url"]), "lineage": self.inp.get("lineage"), "round": self.round,
+                "director": bool(self.inp.get("director")), "stub": bool(self.inp.get("stub"))}
+
     def _run(self):
+        import langsmith
+        with langsmith.trace("simulation", metadata=self.trace_meta(), tags=["sim"]):
+            self._pipeline()
+
+    def _pipeline(self):
         i = self.inp
         try:
             for p in self.personas:
@@ -185,6 +202,48 @@ class SimJob:
             self.log("error", self.error)
         self.save()
 
+    def browse_agents(self, agents: list[dict], layer: int) -> dict:
+        """One browsing pass (used by the director): these agents browse in parallel. Every pass is kept in self.runs, so
+        scores can compare layer 1, layer 2 and every memory version. Layer 1 = AI shopping agents (session.agent_shoppers)."""
+        i = self.inp
+        run = {"n": 0, "layer": layer, "agents": [a["id"] for a in agents], "decisions": {}, "clicked_buy": [],
+               "memory_versions": {a["id"]: a.get("memory_version", 0) for a in agents}, "status": "running"}
+        with self._lock:  # the director can start two passes at once (parallel tool calls)
+            n = run["n"] = len(self.runs) + 1
+            self.runs.append(run)
+            for a in agents:
+                self.live[a["id"]] = []
+        (self.dir / "shots" / f"r{n}").mkdir(parents=True, exist_ok=True)
+        hist = self.dir / "runs" / f"r{n}"  # per-run history, outside /sessions so the analyst only reads the latest
+        hist.mkdir(parents=True, exist_ok=True)
+        names = {p["id"]: p["name"] for p in self.personas}
+        for a in agents:
+            (self.dir / "personas" / f"{a['id']}.md").write_text(persona_md(a))
+        got = run["decisions"]
+
+        def on_step(aid, step):
+            if step is not None:
+                with self._lock:
+                    self.live[aid].append(step)
+            self.save()
+
+        def on_done(aid, r):
+            (self.dir / "sessions" / f"{aid}.json").write_text(json.dumps(r, indent=2))
+            (hist / f"{aid}.json").write_text(json.dumps(r, indent=2))
+            if r.get("decision"):
+                got[aid] = self.decisions[aid] = {**r["decision"], **{k: r.get(k) for k in ("layer", "model", "persona_id", "memory_version")}}
+                self.log("decision", f"{names.get(aid, aid)}: {r['decision']['decision']} ({r['decision']['rating']}/5)")
+            else:
+                self.log("error", f"{aid}: {r.get('error')}")
+
+        session.run_all(agents, i["url"], i.get("world", ""), i.get("context", ""), self.dir / "shots" / f"r{n}", on_step, on_done, shot_prefix=f"r{n}/")
+        run["clicked_buy"] = sorted(a for a in got if any(x.get("cart") for x in self.live.get(a, [])))
+        run["status"] = "done"
+        self.summary = {**(self.summary or {}), **self._summarize()}
+        run["summary"] = {k: self.summary.get(k) for k in ("buy_rate", "rating", "confidence")}
+        self.save()
+        return run
+
     def _summarize(self):
         agents = {p["id"] for p in self.personas if p.get("kind") == "agent"}
         share = {p["id"]: p["share"] for p in self.personas}
@@ -209,7 +268,8 @@ class SimJob:
                 d = self.decisions[p["id"]]
                 agent_rows.append({"persona": p["id"], "model": p.get("model"), "bought": p["id"] in carted or BUYS.get(d["decision"], 0) >= 1,
                                    "decision": d["decision"], "missing": d.get("missing", ""), "quote": d.get("quote", "")})
-        return {"agents": agent_rows, "buy_rate": round(buy, 3), "clicked_buy": sorted(carted), "by_model": {k: {"bought": v[0], "of": v[1]} for k, v in by_model.items()}, "rating": round(rating, 2), "decisions": counts,
+        conf = [d.get("confidence") for d in got.values() if d.get("confidence") is not None]
+        return {"agents": agent_rows, "confidence": round(sum(conf) / len(conf), 2) if conf else None, "buy_rate": round(buy, 3), "clicked_buy": sorted(carted), "by_model": {k: {"bought": v[0], "of": v[1]} for k, v in by_model.items()}, "rating": round(rating, 2), "decisions": counts,
                 "missing": [{"persona": pid, "text": d["missing"]} for pid, d in got.items()]}
 
     def _actions(self):
@@ -269,7 +329,7 @@ class SimJob:
             ],
             backend=memory.backend_for(self.dir),  # sim files + /memories/ (long-term, shared across businesses)
         )
-        for update in agent.stream({"messages": [{"role": "user", "content": "Begin."}]}, config={"recursion_limit": 80}, stream_mode="updates"):
+        for update in agent.stream({"messages": [{"role": "user", "content": "Begin."}]}, config={"recursion_limit": 80, "run_name": "analyst", "metadata": self.trace_meta(), "tags": ["sim"]}, stream_mode="updates"):
             for node in update.values():
                 for m in (node or {}).get("messages", []) if isinstance(node, dict) else []:
                     for call in getattr(m, "tool_calls", None) or []:
@@ -292,6 +352,9 @@ SIMS_LIVE: dict[str, SimJob] = {}
 
 
 def start(inp: dict) -> SimJob:
+    from . import director
+    if director.enabled(inp):
+        return director.start(inp)
     job = SimJob(inp)
     SIMS_LIVE[job.id] = job
     job.save()
@@ -306,8 +369,17 @@ def get(sim_id: str):
     return json.loads(p.read_text()) if p.exists() else None
 
 
-def approve(sim_id: str, personas: list[dict] | None) -> bool:
+def _live_or_restored(sim_id: str):
+    """The running job, or a director sim paused for approval before a server restart, rebuilt from disk."""
     job = SIMS_LIVE.get(sim_id)
+    if job:
+        return job
+    from . import director
+    return director.restore(sim_id)
+
+
+def approve(sim_id: str, personas: list[dict] | None) -> bool:
+    job = _live_or_restored(sim_id)
     if not job or job.status != "awaiting_approval":
         return False
     job.approve(personas)
@@ -351,8 +423,11 @@ def teach(sim_id: str, truth: str) -> list[dict] | None:
         f = SIMS / sim_id / "personas" / f"{p['id']}.md"
         body = f.read_text().split("## Memory", 1)[0].rstrip() if f.exists() else persona_md(p).rstrip()
         f.write_text(body + "\n\n## Memory\n" + r.memory.strip() + "\n")
-        changes.append({"persona_id": p["id"], "iteration": view.get("round", 0) + 1, "lesson": "From the owner: " + r.lesson,
-                        "before": before, "after": r.memory.strip(), "source": "human"})
+        change = {"persona_id": p["id"], "iteration": view.get("round", 0) + 1, "lesson": "From the owner: " + r.lesson,
+                  "before": before, "after": r.memory.strip(), "source": "human"}
+        if view["input"].get("director") and p.get("kind") != "agent":
+            change["memory_version"] = memory.business_write(memory.business_ns(view["input"]["url"], view["input"].get("lineage") or sim_id), p["id"], r.memory)
+        changes.append(change)
     if job:
         job.persona_changes.extend(changes)
         job.log("owner", f"real-world context: {truth[:200]}")
@@ -395,7 +470,7 @@ def set_social(sim_id: str, social: dict) -> bool:
 
 def recast(sim_id: str, feedback: str) -> bool:
     """Owner says the personas are off ("my customers are older"): cast again with that correction."""
-    job = SIMS_LIVE.get(sim_id)
+    job = _live_or_restored(sim_id)
     if not job or job.status != "awaiting_approval":
         return False
     job.status = "casting"
@@ -410,6 +485,9 @@ def rerun(sim_id: str, change: str = "") -> SimJob | None:
     src = get(sim_id)
     if not src or src.get("status") != "done":
         return None
+    if (src.get("input") or {}).get("director"):
+        from . import director
+        return director.rerun(src, change)
     inp = {**src["input"], "round": src.get("round", 0) + 1, "parent": sim_id, "evals_so_far": src.get("evals") or []}
     if change:
         inp["context"] = change

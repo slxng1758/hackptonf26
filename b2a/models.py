@@ -28,7 +28,7 @@ def brain():
     """The deep agent and its sub-agents."""
     _anthropic_key()
     from langchain_anthropic import ChatAnthropic
-    return ChatAnthropic(model=os.getenv("BRAIN_MODEL", "claude-sonnet-5-5"), max_tokens=4096, timeout=90, max_retries=2)
+    return ChatAnthropic(model=(os.getenv("BRAIN_MODEL") or "claude-sonnet-5-5"), max_tokens=4096, timeout=90, max_retries=2)
 
 
 @lru_cache
@@ -36,7 +36,7 @@ def fast():
     """Cheap model for persona work."""
     _anthropic_key()
     from langchain_anthropic import ChatAnthropic
-    return ChatAnthropic(model=os.getenv("FAST_MODEL", "claude-haiku-5-5"), max_tokens=4096, timeout=60, max_retries=2)
+    return ChatAnthropic(model=(os.getenv("FAST_MODEL") or "claude-haiku-5-5"), max_tokens=4096, timeout=60, max_retries=2)
 
 
 @lru_cache
@@ -45,13 +45,13 @@ def shoppers() -> dict:
     out = {}
     if _anthropic_key():
         from langchain_anthropic import ChatAnthropic
-        out["Claude"] = ChatAnthropic(model=os.getenv("CLAUDE_SHOPPER", "claude-haiku-5-5"), max_tokens=600, timeout=60, max_retries=2)
+        out["Claude"] = ChatAnthropic(model=(os.getenv("CLAUDE_SHOPPER") or "claude-haiku-5-5"), max_tokens=600, timeout=60, max_retries=2)
     if os.getenv("OPENAI_API_KEY"):
         from langchain_openai import ChatOpenAI
-        out["GPT"] = ChatOpenAI(model=os.getenv("GPT_SHOPPER", "gpt-5.4-mini"), timeout=60, max_retries=2)
+        out["GPT"] = ChatOpenAI(model=(os.getenv("GPT_SHOPPER") or "gpt-5.4-mini"), timeout=60, max_retries=2)
     if os.getenv("GOOGLE_API_KEY"):
         from langchain_google_genai import ChatGoogleGenerativeAI
-        out["Gemini"] = ChatGoogleGenerativeAI(model=os.getenv("GEMINI_SHOPPER", "gemini-2.5-flash"), timeout=60, max_retries=2)
+        out["Gemini"] = ChatGoogleGenerativeAI(model=(os.getenv("GEMINI_SHOPPER") or "gemini-2.5-flash"), timeout=60, max_retries=2)
     return out
 
 
@@ -61,16 +61,16 @@ def persona_models() -> dict:
     out = {}
     if os.getenv("GOOGLE_API_KEY"):
         from langchain_google_genai import ChatGoogleGenerativeAI
-        out["Gemini"] = ChatGoogleGenerativeAI(model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"), timeout=60, max_retries=2)
+        out["Gemini"] = ChatGoogleGenerativeAI(model=(os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"), timeout=60, max_retries=2)
     if _anthropic_key():
         out["Claude"] = fast()
     if os.getenv("OPENAI_API_KEY"):
         from langchain_openai import ChatOpenAI
-        out["GPT"] = ChatOpenAI(model=os.getenv("GPT_SHOPPER", "gpt-5.4-mini"), timeout=60, max_retries=2)
+        out["GPT"] = ChatOpenAI(model=(os.getenv("GPT_SHOPPER") or "gpt-5.4-mini"), timeout=60, max_retries=2)
     if os.getenv("AWS_ACCESS_KEY_ID") or os.getenv("AWS_PROFILE"):
         # Amazon Bedrock: Amazon's own Nova (the model family behind Amazon's shopping assistant) and Meta's Llama.
         from langchain_aws import ChatBedrockConverse
-        region = os.getenv("AWS_REGION", "us-east-1")
+        region = (os.getenv("AWS_REGION") or "us-east-1")
         if os.getenv("NOVA_MODEL_ID"):
             out["Amazon Nova"] = ChatBedrockConverse(model=os.environ["NOVA_MODEL_ID"], region_name=region, max_tokens=1500)
         if os.getenv("LLAMA_BEDROCK_MODEL_ID"):

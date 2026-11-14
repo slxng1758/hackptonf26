@@ -93,6 +93,25 @@ class SimIn(BaseModel):
     customers: str = Field("", max_length=20000)
     context: str = Field("", max_length=1000, description="what changed about the product")
     world: str = Field("", max_length=300, description="the world the customers live in")
+    models: list[str] = Field(default_factory=list, description="model families to play customers (GET /api/models); empty = all keyed")
+    world_preset: str | None = Field(None, description="a key of GET /api/worlds")
+    case_id: str | None = Field(None, description="backtest case in data/ to score against (b2a/evals.py)")
+    director: bool = Field(False, description="the director agent runs the simulation (also on with DIRECTOR=1)")
+    stub: bool = Field(False, description="director stub mode: no browsers, fixture results")
+
+
+@app.get("/api/models")
+def list_models():
+    """Model families that can play customers (only those with an API key)."""
+    from b2a.models import persona_models
+    return list(persona_models().keys())
+
+
+@app.get("/api/worlds")
+def list_worlds():
+    """One-click world presets for the director (put the key in world_preset)."""
+    from b2a.director import WORLDS
+    return WORLDS
 
 
 def _name_from(description: str) -> str:
