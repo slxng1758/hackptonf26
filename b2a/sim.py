@@ -304,12 +304,15 @@ def recast(sim_id: str, feedback: str) -> bool:
     return True
 
 
-def rerun(sim_id: str) -> SimJob | None:
-    """Next round: the same customers, now carrying what they learned, visit again."""
+def rerun(sim_id: str, change: str = "") -> SimJob | None:
+    """Next round: the same customers, now carrying what they learned, visit again. With `change`, the owner changed the
+    site and wants a fair before/after with the same people."""
     src = get(sim_id)
     if not src or src.get("status") != "done":
         return None
     inp = {**src["input"], "round": src.get("round", 0) + 1, "parent": sim_id}
+    if change:
+        inp["context"] = change
     job = SimJob(inp)
     SIMS_LIVE[job.id] = job
     mem = src.get("memory") or {}
@@ -319,12 +322,32 @@ def rerun(sim_id: str) -> SimJob | None:
     return job
 
 
-def list_sims():
+def _host(url: str) -> str:
+    from urllib.parse import urlparse
+    u = url if url.startswith("http") else "https://" + url
+    return urlparse(u).netloc.removeprefix("www.").lower()
+
+
+def _row(d: dict) -> dict:
+    bought = 0
+    for pid, dec in (d.get("decisions") or {}).items():
+        carted = any(x.get("cart") for x in (d.get("live") or {}).get(pid, []))
+        bought += int(carted or BUYS.get(dec.get("decision"), 0) >= 1)
+    i = d["input"]
+    return {"id": d["id"], "name": i.get("name") or _host(i["url"]), "host": _host(i["url"]), "status": d["status"],
+            "round": d.get("round", 0), "context": i.get("context", ""), "world": i.get("world", ""),
+            "bought": bought, "of": len(d.get("decisions") or {}), "buy_rate": (d.get("summary") or {}).get("buy_rate")}
+
+
+def list_sims(host: str | None = None):
+    """Every run, newest first; with host, the timeline for one business."""
     out = []
     for p in sorted(SIMS.glob("*/sim.json"), reverse=True):
         try:
-            d = json.loads(p.read_text())
-            out.append({"id": d["id"], "name": d["input"]["name"], "status": d["status"], "buy_rate": (d.get("summary") or {}).get("buy_rate")})
+            r = _row(json.loads(p.read_text()))
         except Exception:
-            pass
+            continue
+        if host and r["host"] != _host(host):
+            continue
+        out.append(r)
     return out

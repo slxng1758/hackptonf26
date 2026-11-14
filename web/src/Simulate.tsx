@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, PANEL } from "./theme";
 import { SiteMap, outcome } from "./SiteMap";
+import { Timeline } from "./Timeline";
 import { Accuracy, Learned, WordOfMouth } from "./Extras";
 import type { SimExtras } from "./sim-extras";
 
@@ -84,6 +85,7 @@ export function SimView({ id }: { id: string }) {
   const [report, setReport] = useState(false);
   const [fix, setFix] = useState("");
   const [truth, setTruth] = useState("");
+  const [change, setChange] = useState("");
   const [teaching, setTeaching] = useState(false);
   const [taught, setTaught] = useState<number | null>(null);
   const [demo, setDemo] = useState<SimExtras | null>(null);
@@ -113,7 +115,7 @@ export function SimView({ id }: { id: string }) {
     } finally { setTeaching(false); }
   }
   async function rerun() {
-    const r = await fetch(`/api/sims/${id}/rerun`, { method: "POST" });
+    const r = await fetch(`/api/sims/${id}/rerun`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ change: change.trim() }) });
     if (r.ok) location.hash = `#sim=${(await r.json()).id}`;
   }
 
@@ -147,6 +149,7 @@ export function SimView({ id }: { id: string }) {
           </div>
         )}
         {sim.error && <p className="mt-2 text-[13px]" style={{ color: C.loss }}>{sim.error}</p>}
+        <Timeline url={sim.input.url} current={sim.id} />
       </div>
 
       {sim.status === "casting" && (
@@ -216,8 +219,10 @@ export function SimView({ id }: { id: string }) {
                 </form>
                 {taught != null && <p className="mt-2 text-[13px]" style={{ color: C.brain }}>{taught === 0 ? "That didn't change anyone's memory." : `${taught} persona${taught > 1 ? "s" : ""} updated their memory. See "What they learned" above.`}</p>}
               </div>
-              <button onClick={rerun} className="rounded-2xl px-8 py-4 text-[16px] font-semibold text-black" style={{ background: C.brain, boxShadow: `0 0 40px ${C.brain}66` }}>Run again with what they learned →</button>
-              <p className="mt-2 text-[12px] text-white/40">same customers, now carrying their memory into round {(sim.round ?? 0) + 2}</p>
+              <input value={change} onChange={(e) => setChange(e.target.value)} placeholder="Changed your site? Say what, e.g. added prices to the Nocturne page (optional)"
+                className="mx-auto mb-3 block w-full max-w-xl rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-center text-[14px] outline-none focus:border-[#d16bff]" />
+              <button onClick={rerun} className="rounded-2xl px-8 py-4 text-[16px] font-semibold text-black" style={{ background: C.brain, boxShadow: `0 0 40px ${C.brain}66` }}>{change.trim() ? "Test the change with the same customers →" : "Run again with what they learned →"}</button>
+              <p className="mt-2 text-[12px] text-white/40">same customers, carrying their memory into round {(sim.round ?? 0) + 2}, so before and after is a fair comparison</p>
             </div>
           )}
 

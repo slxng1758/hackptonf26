@@ -41,7 +41,7 @@ export function App() {
         {view.kind !== "start" && <button onClick={() => setView({ kind: "start" })} className="rounded-full border border-white/20 px-4 py-1.5 text-[13px] hover:border-white/50">Try another site</button>}
       </header>
       {err && <div className="mx-auto mt-4 max-w-2xl rounded-xl border border-[#ff3355]/40 bg-[#ff3355]/10 px-4 py-2 text-center text-[13px] text-[#ff8099]">{err}</div>}
-      {view.kind === "start" && <Start onGo={go} />}
+      {view.kind === "start" && <Start onGo={go} onOpen={(id) => setView({ kind: "sim", id })} />}
       {view.kind === "sim" && <SimView key={view.id} id={view.id} />}
       {view.kind === "job" && (job && job.id === view.id ? <Dashboard job={job} /> : <div className="grid h-[60vh] place-items-center font-mono text-white/40">loading…</div>)}
     </div>

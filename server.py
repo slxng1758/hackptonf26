@@ -97,8 +97,8 @@ def sim_start(body: SimIn):
 
 
 @app.get("/api/sims")
-def sim_list():
-    return sim.list_sims()
+def sim_list(host: str | None = None):
+    return sim.list_sims(host)
 
 
 @app.get("/api/sims/{sim_id}")
@@ -143,9 +143,13 @@ def sim_teach(sim_id: str, body: Teach):
     return {"changes": out}
 
 
+class Rerun(BaseModel):
+    change: str = Field("", max_length=500, description="what the owner changed on the site since this run")
+
+
 @app.post("/api/sims/{sim_id}/rerun")
-def sim_rerun(sim_id: str):
-    job = sim.rerun(sim_id)
+def sim_rerun(sim_id: str, body: Rerun | None = None):
+    job = sim.rerun(sim_id, (body.change if body else "").strip())
     if not job:
         raise HTTPException(409, "Only a finished simulation can run again.")
     return {"id": job.id}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Avatar } from "./Avatar";
 import { C } from "./theme";
+import { YourSites } from "./Timeline";
 
 const WORLDS = ["Normal times", "COVID-19 (2020)", "A recession", "Holiday rush"];
 const CROWD = [
@@ -11,7 +12,7 @@ const CROWD = [
   { seed: 250, a: "first-time user", age: 19, f: "confused" },
 ] as const;
 
-export function Start({ onGo }: { onGo: (b: { url: string; context: string; world: string }) => void }) {
+export function Start({ onGo, onOpen }: { onGo: (b: { url: string; context: string; world: string }) => void; onOpen: (id: string) => void }) {
   const [url, setUrl] = useState("");
   const [more, setMore] = useState(false);
   const [context, setContext] = useState("");
@@ -48,6 +49,7 @@ export function Start({ onGo }: { onGo: (b: { url: string; context: string; worl
           </div>
         </div>
       )}
+      <YourSites onOpen={onOpen} />
     </div>
   );
 }
