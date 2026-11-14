@@ -133,18 +133,18 @@ export function App() {
     <div className="min-h-screen">
       {/* ---------- the stage ---------- */}
       <section className="relative flex min-h-screen flex-col bg-[#08080d] text-paper">
-        <header className="flex items-center justify-between gap-3 px-5 py-4 md:px-10">
-          <div className="flex items-baseline gap-3">
-            <h1 className="font-serif text-[22px] font-extrabold">Inheritance</h1>
-            {run && <span className="hidden font-serif text-[15px] italic text-paper/50 sm:inline">{run.title}</span>}
+        <header className="flex items-start justify-between gap-3 px-6 py-4">
+          <div className="pt-12">
+            <div className="font-mono text-[10px] uppercase tracking-[0.35em] text-white/40">generations view</div>
+            <div className="mt-1 font-serif text-[28px] leading-tight text-white">{run ? run.title : "Generations"}</div>
           </div>
           <div className="flex items-center gap-2">
             {runs.length > 0 && (
-              <select value={runId ?? ""} onChange={(e) => { follow.current = true; setPlaying(false); setRunId(e.target.value); setRun(null); }} className="max-w-[200px] rounded-full border border-paper/20 bg-transparent px-3 py-1.5 text-[12px] text-paper/80">
+              <select value={runId ?? ""} onChange={(e) => { follow.current = true; setPlaying(false); setRunId(e.target.value); setRun(null); }} className="mt-12 max-w-[200px] rounded-full border border-paper/20 bg-transparent px-3 py-1.5 text-[12px] text-paper/80">
                 {runs.map((r) => <option key={r.id} value={r.id} className="text-ink">{r.title} · {r.status}</option>)}
               </select>
             )}
-            <button onClick={() => setShowNew(!showNew)} className="rounded-full bg-paper px-4 py-1.5 text-[13px] font-semibold text-ink">New world</button>
+            <button onClick={() => setShowNew(!showNew)} className="mt-12 rounded-full border border-white/20 px-4 py-1.5 font-mono text-[11px] uppercase tracking-widest text-white/80 hover:text-white">New world</button>
           </div>
         </header>
         {showNew && (

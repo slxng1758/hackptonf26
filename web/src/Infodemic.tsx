@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { C, KIND_COLOR } from "./theme";
+import { Header, Legend, PANEL } from "./ui";
 
 interface Person { id: number; village: number; role: string; x: number; y: number }
 interface Variant { id: number; parent: number | null; text: string; short: string; day: number; person: number; role: string; belief: number; practice: number; myth: number }
@@ -106,10 +107,10 @@ export function Infodemic() {
         g.addColorStop(1, "rgba(0,0,0,0)");
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.arc(cx + x * S, cy + y * S, S * 0.32, 0, Math.PI * 2); ctx.fill();
-        ctx.font = "600 12px Inter, sans-serif"; ctx.textAlign = "center";
-        ctx.fillStyle = bad ? "rgba(255,90,110,0.95)" : "rgba(200,210,255,0.55)";
+        ctx.font = "600 11px 'JetBrains Mono', monospace"; ctx.textAlign = "center";
+        ctx.fillStyle = bad ? C.sick : "rgba(242,239,232,0.55)";
         const ly = cy + y * S + (y > 0 ? S * 0.3 : -S * 0.3);
-        ctx.fillText(`${data.villages[vi].name.toUpperCase()}${bad ? "  ·  WATER BAD" : ""}`, cx + x * S, ly);
+        ctx.fillText(`${data.villages[vi].name}${bad ? ((data as { message?: string }).message ? " · exposed" : " · well gone bad") : ""}`, cx + x * S, ly);
       });
 
       // edges
@@ -180,12 +181,8 @@ export function Infodemic() {
       <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
 
       {/* top: title + counters */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-6">
-        <div>
-          <div className="font-mono text-[11px] uppercase tracking-[0.35em] text-white/40">Infodemic</div>
-          <div className="mt-1 font-serif text-[30px] leading-none">The sickness, and what people say about it</div>
-          <div className="mt-2 font-mono text-[12px] text-white/40">day {String(day).padStart(2, "0")} of {data.days} · {data.population} people · {data.villages.length} groups</div>
-        </div>
+      <Header eyebrow="network view" title={`Day ${day} of ${data.days}`} sub={`${data.population} people · ${data.villages.length} groups`} />
+      <div className="pointer-events-none absolute right-6 top-16 flex items-start justify-end">
         <div className="flex gap-6 text-right">
           <div>
             <div className="font-mono text-[44px] font-semibold leading-none" style={{ color: SICK, textShadow: `0 0 24px ${SICK}` }}>{f.sick_total}</div>
@@ -204,7 +201,7 @@ export function Infodemic() {
 
       {/* across many worlds: the honest comparison */}
       {sweep && (
-        <div className="absolute left-6 top-32 w-72 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
+        <div className={`absolute left-6 top-40 w-72 p-4 ${PANEL}`}>
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/40">across {sweep.seeds} random worlds</div>
           <div className="mt-3 space-y-2.5">
             {Object.entries(sweep.scenarios).map(([k, v]) => (
@@ -229,23 +226,10 @@ export function Infodemic() {
       )}
 
       {/* left: what people believe */}
-      <div className="absolute bottom-28 left-6 w-60 space-y-2">
-        {(["truth", "ritual", "myth", "unsafe"] as const).map((k) => (
-          <div key={k}>
-            <div className="flex items-center justify-between font-mono text-[11px] text-white/70">
-              <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: COLOR[k], boxShadow: `0 0 10px ${COLOR[k]}` }} />{LABEL[k]}</span>
-              <span>{counts[k]}</span>
-            </div>
-            <div className="mt-1 h-1 rounded-full bg-white/5">
-              <div className="h-1 rounded-full transition-all duration-300" style={{ width: `${(counts[k] / data.population) * 100}%`, background: COLOR[k], boxShadow: `0 0 8px ${COLOR[k]}` }} />
-            </div>
-          </div>
-        ))}
-        <div className="flex items-center gap-2 pt-1 font-mono text-[11px] text-white/50"><span className="h-2 w-2 rounded-full border-2" style={{ borderColor: SICK }} /> sick</div>
-      </div>
+      <Legend counts={counts} className="absolute bottom-28 left-6" />
 
       {/* right: family tree of sayings */}
-      <div className="absolute bottom-28 right-6 top-36 w-[340px] overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
+      <div className={`absolute bottom-28 right-6 top-40 w-[340px] overflow-y-auto p-4 ${PANEL}`}>
         <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/40">family tree of the saying</div>
         <div className="mt-3 space-y-2">
           {alive.map((v) => {

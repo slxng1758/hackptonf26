@@ -29,12 +29,12 @@ export function Paper() {
 
   return (
     <div className="min-h-screen bg-[#08080d] px-4 pb-32 pt-16">
-      <article key={day} className="paper-in mx-auto max-w-5xl bg-[#f4ecd6] px-8 pb-10 pt-6 text-[#1d1a15] shadow-2xl" style={{ backgroundImage: "radial-gradient(rgba(120,90,40,.08) 1px, transparent 1px)", backgroundSize: "4px 4px" }}>
-        <div className="flex items-end justify-between border-b border-[#1d1a15] pb-1 font-serif text-[12px] italic">
+      <article key={day} className="paper-in mx-auto max-w-5xl bg-[#11121a] px-8 pb-10 pt-6 text-[#f2efe8] border border-white/10 shadow-2xl" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.035) 1px, transparent 1px)", backgroundSize: "4px 4px" }}>
+        <div className="flex items-end justify-between border-b border-[#f2efe8] pb-1 font-serif text-[12px] italic">
           <span>Vol. I · No. {day + 1}</span><span>Price, one copper</span><span>Day {day} of the sickness</span>
         </div>
         <h1 className="masthead py-2 text-center text-[64px] leading-none md:text-[84px]">The Valley Crier</h1>
-        <div className="border-y-[3px] border-double border-[#1d1a15] py-1 text-center font-serif text-[12px] uppercase tracking-[0.3em]">
+        <div className="border-y-[3px] border-double border-[#f2efe8] py-1 text-center font-serif text-[12px] uppercase tracking-[0.3em]">
           {data.villages.map((v) => v.name).join(" · ")}
         </div>
 
@@ -43,15 +43,15 @@ export function Paper() {
         </h2>
         <p className="mt-3 text-center font-serif text-[19px] italic">{top ? `Saying now repeated by ${top.n} of ${data.population} souls. ` : ""}{sub}.</p>
 
-        <div className="mt-6 grid gap-6 border-t border-[#1d1a15] pt-5 md:grid-cols-[1fr_1.3fr_1fr]">
-          <section className="md:border-r md:border-[#1d1a15]/30 md:pr-6">
+        <div className="mt-6 grid gap-6 border-t border-[#f2efe8] pt-5 md:grid-cols-[1fr_1.3fr_1fr]">
+          <section className="md:border-r md:border-[#f2efe8]/30 md:pr-6">
             <h3 className="font-serif text-[15px] font-extrabold uppercase tracking-widest">Taken Ill</h3>
             <div className="mt-1 font-serif text-[72px] font-extrabold leading-none">{f.sick_total}</div>
             <p className="font-serif text-[14px] italic">souls since the sickness came. {[...f.h].filter((c) => c === "I").length} lie abed today.</p>
             <svg viewBox={`0 0 ${data.days} 40`} className="mt-3 h-16 w-full" preserveAspectRatio="none">
-              {series.map((s, i) => <rect key={i} x={i} y={40 - (s / max) * 40} width={0.8} height={(s / max) * 40} fill="#1d1a15" />)}
+              {series.map((s, i) => <rect key={i} x={i} y={40 - (s / max) * 40} width={0.8} height={(s / max) * 40} fill="#f2efe8" />)}
             </svg>
-            <div className="mt-4 border border-[#1d1a15] p-3">
+            <div className="mt-4 border border-[#f2efe8] p-3">
               <h4 className="font-serif text-[13px] font-extrabold uppercase tracking-widest">The Healer's Notice</h4>
               <p className="mt-1 font-serif text-[14px] leading-snug">Of all who speak the saying, <b>{truthShare}</b> still know <i>why</i> one boils the water. The rest keep the custom by habit, or by faith.</p>
             </div>
@@ -60,30 +60,30 @@ export function Paper() {
           <section>
             <h3 className="font-serif text-[15px] font-extrabold uppercase tracking-widest">Overheard at the Market</h3>
             {overheard.map(({ v, n }) => (
-              <blockquote key={v.id} className="mt-3 border-l-2 border-[#1d1a15] pl-3">
+              <blockquote key={v.id} className="mt-3 border-l-2 border-[#f2efe8] pl-3">
                 <p className="font-serif text-[20px] leading-snug">“{v.text}”</p>
                 <footer className="mt-1 font-serif text-[13px] italic">first said by {ROLE_NAME[v.role] ?? "someone"}, day {v.day} · believed by {n} · {kind(v) === "myth" ? "a matter of faith" : kind(v) === "truth" ? "the healer's own words" : kind(v) === "unsafe" ? "the healer disapproves" : "custom"}</footer>
               </blockquote>
             ))}
           </section>
 
-          <section className="md:border-l md:border-[#1d1a15]/30 md:pl-6">
+          <section className="md:border-l md:border-[#f2efe8]/30 md:pl-6">
             <h3 className="font-serif text-[15px] font-extrabold uppercase tracking-widest">Map of the Valley</h3>
             <svg viewBox="-1.1 -1.1 2.2 2.2" className="mt-2 w-full">
-              <circle cx="0" cy="0" r="1.05" fill="none" stroke="#1d1a15" strokeWidth="0.01" strokeDasharray="0.03 0.02" />
+              <circle cx="0" cy="0" r="1.05" fill="none" stroke="#f2efe8" strokeWidth="0.01" strokeDasharray="0.03 0.02" />
               {centers.map(([x, y], vi) => {
                 const bad = data.contaminated[vi] !== undefined && day >= data.contaminated[vi];
                 return (
                   <g key={vi}>
-                    <line x1={0} y1={0} x2={x} y2={y} stroke="#1d1a15" strokeWidth="0.012" strokeDasharray="0.04 0.03" />
-                    <circle cx={x} cy={y} r={0.16} fill="none" stroke="#1d1a15" strokeWidth="0.015" />
-                    {bad && <path d={`M${x - 0.08} ${y - 0.08} L${x + 0.08} ${y + 0.08} M${x + 0.08} ${y - 0.08} L${x - 0.08} ${y + 0.08}`} stroke="#d6203f" strokeWidth="0.03" />}
-                    <text x={x} y={y + (y > 0 ? 0.3 : -0.22)} textAnchor="middle" fontSize="0.13" fontFamily="Fraunces, serif" fontStyle="italic" fill="#1d1a15">{data.villages[vi].name}</text>
+                    <line x1={0} y1={0} x2={x} y2={y} stroke="#f2efe8" strokeWidth="0.012" strokeDasharray="0.04 0.03" />
+                    <circle cx={x} cy={y} r={0.16} fill="none" stroke="#f2efe8" strokeWidth="0.015" />
+                    {bad && <path d={`M${x - 0.08} ${y - 0.08} L${x + 0.08} ${y + 0.08} M${x + 0.08} ${y - 0.08} L${x - 0.08} ${y + 0.08}`} stroke="#ff3355" strokeWidth="0.03" />}
+                    <text x={x} y={y + (y > 0 ? 0.3 : -0.22)} textAnchor="middle" fontSize="0.13" fontFamily="Fraunces, serif" fontStyle="italic" fill="#f2efe8">{data.villages[vi].name.split(" ").slice(0, 2).join(" ")}</text>
                   </g>
                 );
               })}
-              <rect x={-0.07} y={-0.07} width={0.14} height={0.14} fill="#1d1a15" />
-              <text x={0} y={0.24} textAnchor="middle" fontSize="0.1" fontFamily="Fraunces, serif" fill="#1d1a15">Market</text>
+              <rect x={-0.07} y={-0.07} width={0.14} height={0.14} fill="#f2efe8" />
+              <text x={0} y={0.24} textAnchor="middle" fontSize="0.1" fontFamily="Fraunces, serif" fill="#f2efe8">Market</text>
             </svg>
             <p className="font-serif text-[12px] italic">✕ marks a well gone foul.</p>
           </section>

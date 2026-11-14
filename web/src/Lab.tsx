@@ -64,8 +64,8 @@ export function Lab() {
         {/* input */}
         <aside className="space-y-4">
           <div>
-            <div className="font-mono text-[11px] uppercase tracking-[0.35em] text-white/40">Message Lab</div>
-            <h1 className="mt-1 font-serif text-[30px] leading-tight">Will your health message survive being retold?</h1>
+            <div className="font-mono text-[10px] uppercase tracking-[0.35em] text-white/40">message lab</div>
+            <h1 className="mt-1 font-serif text-[28px] leading-tight">Will your health message survive being retold?</h1>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {EXAMPLES.map((e) => (

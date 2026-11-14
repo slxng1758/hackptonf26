@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Controls } from "./Controls";
 import { kind, useEpi, villageCenters, LABEL, type Kind } from "./epi";
 import { C, KIND_COLOR } from "./theme";
+import { Header, Legend } from "./ui";
 
 const SHIRT: Record<Kind, string> = { ...KIND_COLOR, none: "#5b6075" };
 interface Bubble { person: number; from: number; text: string; k: Kind; born: number }
@@ -164,20 +165,8 @@ export function Village() {
   return (
     <div className="relative h-screen overflow-hidden">
       <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
-      <div className="pointer-events-none absolute left-6 top-16">
-        <div className="font-serif text-[30px] leading-none text-white">{(data as { message?: string }).message ? "The neighborhood" : "The valley"}, day {day}</div>
-        <div className="mt-2 font-mono text-[12px] text-white/45">{f.sick_total} have fallen sick · {data.population} people · {data.villages.length} groups</div>
-      </div>
-      <div className="pointer-events-none absolute right-6 top-16 rounded-2xl border border-white/10 bg-white/[0.04] p-4 font-mono backdrop-blur">
-        {(["truth", "ritual", "myth", "unsafe"] as const).map((k) => (
-          <div key={k} className="flex items-center gap-3 py-0.5 text-[13px]">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: SHIRT[k], boxShadow: `0 0 8px ${SHIRT[k]}` }} />
-            <span className="w-36 text-[12px] text-white/65">{LABEL[k]}</span>
-            <span className="font-mono font-semibold">{counts[k]}</span>
-          </div>
-        ))}
-        <div className="mt-2 flex items-center gap-3 border-t border-white/10 pt-2 text-[12px] text-white/65"><span className="h-2.5 w-2.5 rounded-full border-2 border-[#ff3355]" /> sick</div>
-      </div>
+      <Header eyebrow="village view" title={`${(data as { message?: string }).message ? "The neighborhood" : "The valley"}, day ${day}`} sub={`${f.sick_total} fell sick · ${data.population} people · ${data.villages.length} groups`} />
+      <Legend counts={counts} className="absolute right-6 top-16" />
       <div className="absolute inset-x-0 bottom-0 p-6">
         <Controls {...epi} data={data} />
       </div>

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Controls } from "./Controls";
 import { kind, useEpi, type Kind, type Variant } from "./epi";
 import { C, KIND_COLOR } from "./theme";
+import { Header, PANEL } from "./ui";
 
 const LETTER: Record<Kind, string> = { truth: "T", ritual: "R", myth: "M", unsafe: "U", none: "?" };
 const strain = (v: Variant) => `${LETTER[kind(v)]}-${String(v.id).padStart(2, "0")}`;
@@ -113,15 +114,9 @@ export function Petri() {
   return (
     <div className="relative h-screen overflow-hidden bg-[#08080d] font-mono text-white">
       <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
-      <div className="pointer-events-none absolute left-6 top-16 text-[11px] leading-relaxed text-white/60">
-        <div className="text-[10px] tracking-[0.3em] text-white/35">SPECIMEN</div>
-        <div className="text-[18px] font-semibold tracking-wide text-white">{((data as { message?: string }).message ? "MESSAGE TRIAL" : "VALLEY OUTBREAK")} · {data.villages.length} SITES</div>
-        <div>DAY {String(day).padStart(2, "0")} / {data.days} · 37.0°C · n={data.population}</div>
-        <div className="mt-2 text-[#ff3355]">INFECTED (CUMULATIVE) {f.sick_total}</div>
-        <div>LIVE STRAINS {live.length}</div>
-      </div>
-      <div className="absolute right-6 top-16 max-h-[65vh] w-[320px] overflow-y-auto rounded-lg border border-white/10 bg-black/50 p-3 backdrop-blur">
-        <div className="text-[10px] tracking-[0.3em] text-white/35">STRAIN REGISTER</div>
+      <Header eyebrow="petri dish view" title={`Day ${day} of ${data.days}`} sub={<>{f.sick_total} fell sick · {live.length} live strains · {data.villages.length} groups</>} />
+      <div className={`absolute right-6 top-16 max-h-[65vh] w-[320px] overflow-y-auto p-4 ${PANEL}`}>
+        <div className="text-[10px] uppercase tracking-[0.3em] text-white/40">strain register</div>
         {live.map(({ v, n }) => (
           <div key={v.id} className="mt-2 border-t border-white/5 pt-2">
             <div className="flex items-center justify-between text-[11px]">
