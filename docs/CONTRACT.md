@@ -12,6 +12,10 @@ Backend: `http://localhost:4620` (`server.py`, engine in `b2a/sim.py` + `b2a/ses
 | POST | `/api/sims/{id}/approve` | `{ personas?: Persona[] }` | `{ ok: true }`, or 409 if not awaiting approval |
 | GET | `/api/shots/{id}/shots/{file}` | | screenshot JPEG from a browsing step |
 
+`cart: true` on a step = the persona clicked add to cart / buy / download there. That counts as buying (`buy_rate` uses it), even if they later say "maybe later".
+
+`input.offer` = what the site sells and its prices, filled in automatically when only `url` is sent.
+
 `context` = what changed about the product. `world` = the world customers live in (e.g. "spring 2020, COVID, masks required in stores").
 
 **Status:** `casting → awaiting_approval → browsing → analyzing → done` (or `error`).
@@ -21,9 +25,9 @@ Backend: `http://localhost:4620` (`server.py`, engine in `b2a/sim.py` + `b2a/ses
 ```
 id, input, status, error
 personas[]   { id: "p1", name, age, occupation, archetype, segment, share, goal, budget, voice, avatar: { seed } }
-live         { [persona_id]: Step[] }      Step = { n, url, title, shot, blocked?, thought, feeling, action, target }
+live         { [persona_id]: Step[] }      Step = { n, url, title, shot, blocked?, cart?, thought, feeling, action, target }
 decisions    { [persona_id]: { decision, rating, feeling, quote, reasons[], missing } }
-summary      { buy_rate, rating, decisions: { [decision]: count }, missing: [{ persona, text }] }
+summary      { buy_rate, clicked_buy: persona_id[], rating, decisions: { [decision]: count }, missing: [{ persona, text }] }
 report       markdown from the analyst agent
 memory       { [persona_id]: "## Memory" text the evolver wrote }
 steps[]      { t, kind, note }   agent trace
