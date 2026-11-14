@@ -576,14 +576,21 @@ def _host(url: str) -> str:
 
 
 def _row(d: dict) -> dict:
-    bought = 0
+    # People and AI agents are counted separately, so the sidebar and timeline match the headline ("0 of 6 people").
+    agents = {p["id"] for p in d.get("personas") or [] if p.get("kind") == "agent"}
+    bought = a_bought = people = 0
     for pid, dec in (d.get("decisions") or {}).items():
         carted = any(x.get("cart") for x in (d.get("live") or {}).get(pid, []))
-        bought += int(carted or BUYS.get(dec.get("decision"), 0) >= 1)
+        b = int(carted or BUYS.get(dec.get("decision"), 0) >= 1)
+        if pid in agents:
+            a_bought += b
+        else:
+            bought += b
+            people += 1
     i = d["input"]
     return {"id": d["id"], "name": i.get("name") or _host(i["url"]), "host": _host(i["url"]), "status": d["status"],
             "round": d.get("round", 0), "context": i.get("context", ""), "world": i.get("world", ""),
-            "bought": bought, "of": len(d.get("decisions") or {}), "buy_rate": (d.get("summary") or {}).get("buy_rate")}
+            "bought": bought, "of": people, "agents_bought": a_bought, "agents_of": len(agents & set(d.get("decisions") or {})), "buy_rate": (d.get("summary") or {}).get("buy_rate")}
 
 
 def list_sims(host: str | None = None):

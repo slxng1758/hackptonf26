@@ -297,6 +297,17 @@ def cast(name: str, category: str, context: str, world: str, customers: str, off
         d["avatar"] = {"seed": rng.randint(0, 10_000)}
         d["model"] = families[(start - 1 + i) % len(families)] if families else "Claude"
         out.append(d)
+    # Gemini's free tier allows ~20 requests a day, and one customer uses up to 11. Cap how many it plays
+    # (GEMINI_PERSONAS, default 1) and hand the rest to the other families, so a run never stalls on quota.
+    cap = int(os.getenv("GEMINI_PERSONAS", "1"))
+    others = [f for f in families if f != "Gemini"]
+    if others:
+        seen = 0
+        for j, d in enumerate(out):
+            if d["model"] == "Gemini":
+                seen += 1
+                if seen > cap:
+                    d["model"] = others[j % len(others)]
     return out
 
 

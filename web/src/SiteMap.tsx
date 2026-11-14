@@ -125,7 +125,7 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
               <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={40} feeling={feeling} busy={moving} />
             </div>
             {(sim.live[p.id] ?? []).some((x) => x.cart) && <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold text-black" style={{ background: C.win }}>✓</span>}
-            <div className="mt-0.5 text-center font-mono text-[9px] text-white/70">{p.name}{p.model && <span className="block text-white/35" title={p.model_note}>{p.played_by ? `${p.model}→${p.played_by}` : p.model}</span>}</div>
+            <div className="mx-auto mt-0.5 w-[44px] truncate text-center font-mono text-[9px] text-white/70">{p.name}{p.model && <span className="block text-white/35" title={p.model_note}>{p.played_by ? `${p.model}→${p.played_by}` : p.model}</span>}</div>
             {thought && (
               <div key={thought} className={`bubble pointer-events-none absolute bottom-full left-1/2 mb-1 w-[200px] -translate-x-1/2 rounded-xl px-2.5 py-1.5 text-left text-[11px] leading-snug shadow-lg ${moving && first ? "block" : "hidden group-hover:block"}`}
                 style={{ background: d ? ({ bought: C.win, maybe: C.mid, left: "#fff" }[outcome(sim, p.id) ?? "left"]) : "#fff", color: "#000" }}>

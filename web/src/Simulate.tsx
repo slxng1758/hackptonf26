@@ -487,7 +487,7 @@ function Bento({ sim, buyers, decided, botsBought, botsDone, goto }: { sim: Sim;
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Kpi label="Simulated conversion" value={pct(buyers, decided)} sub={`${buyers} of ${decided} panelists bought`} color={tone(buyers, decided)} onClick={() => goto("map")} />
         <Kpi label="AI agent checkout" value={pct(botsBought, botsDone)} sub={`${botsBought} of ${botsDone} agents completed their user's errand`} color={tone(botsBought, botsDone)} onClick={() => goto("agents")} delay={0.05} />
-        <Kpi label="Top blocker" value={sim.actions?.[0] ? `${sim.actions[0].who.length} lost` : "–"} sub={sim.actions?.[0]?.fix ?? "Writing recommendations…"} color={C.loss} onClick={() => goto("fixes")} delay={0.1} />
+        <Kpi label="Top blocker" value={sim.actions?.[0] ? `${sim.actions[0].who.length} hit it` : "–"} sub={sim.actions?.[0]?.fix ?? "Writing recommendations…"} color={C.loss} onClick={() => goto("fixes")} delay={0.1} />
         <Kpi label="Avg. steps per session" value={avgSteps} sub={`${sessions.length} sessions on the real site`} onClick={() => goto("map")} delay={0.15} />
       </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.25fr_1fr]">

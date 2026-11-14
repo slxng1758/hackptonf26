@@ -29,7 +29,7 @@ const ROUTES = [
 function Scene() {
   return (
     <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1440 860" preserveAspectRatio="xMidYMid slice" aria-hidden
-      style={{ maskImage: "radial-gradient(ellipse 38% 46% at 50% 50%, transparent 55%, black 100%)", WebkitMaskImage: "radial-gradient(ellipse 38% 46% at 50% 50%, transparent 55%, black 100%)" }}>
+      style={{ maskImage: "radial-gradient(ellipse 46% 58% at 50% 50%, transparent 62%, black 100%)", WebkitMaskImage: "radial-gradient(ellipse 46% 58% at 50% 50%, transparent 62%, black 100%)" }}>
       <defs><linearGradient id="trail" x1="0" x2="1"><stop offset="0" stopColor={C.win} /><stop offset="1" stopColor={C.brain} /></linearGradient></defs>
       {ROUTES.map((r, i) => <path key={i} d={r.path} fill="none" stroke="url(#trail)" strokeOpacity=".35" strokeWidth="1.5" strokeDasharray="6 7" className="flow" />)}
       {PAGES.map((p) => (
@@ -92,7 +92,7 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
   return (
     <div className="relative overflow-hidden">
     <Scene />
-    <div className="relative mx-auto flex min-h-[calc(100vh-64px)] max-w-2xl flex-col items-center justify-center px-6 text-center">
+    <div className="relative mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-6 py-14 text-center">
       <div className="flex -space-x-3">
         {CROWD.map((c, i) => <div key={i} className="rounded-full ring-4 ring-[var(--bg)]" style={{ animationDelay: `${i * 0.2}s` }}><Avatar seed={c.seed} archetype={c.a} age={c.age} feeling={c.f} size={64} busy /></div>)}
       </div>

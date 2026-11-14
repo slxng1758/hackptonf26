@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SIMS = ROOT / "runs" / "sims"
 
 FRICTION = {"confused", "annoyed", "skeptical"}
-MAX_SHOTS = 12
+MAX_SHOTS = int(os.getenv("LENS_SHOTS", "6"))  # each shot is one Gemini call; free tier is ~20 a day
 
 
 def model_name() -> str:
