@@ -7,6 +7,7 @@ interface Shot { persona_id: string; persona: string; archetype: string; model: 
 interface Hotspot { page: string; label: string; issue: string; fix: string; severity: number; count: number; personas: string[] }
 interface LensData { model: string; shots: Shot[]; hotspots: Hotspot[]; summary: string }
 
+const page = (s: string) => s.replace(/\/api\/product\/[\w-]+\.html/g, "the product page");
 const sev = (s: number) => (s >= 2.5 ? C.loss : s >= 1.5 ? C.mid : C.brain);
 
 export function Lens({ simId }: { simId: string }) {
@@ -36,11 +37,11 @@ export function Lens({ simId }: { simId: string }) {
       {state === "running" && <p className="mt-8 text-center text-white/60">Gemini is reading the screenshots<span className="animate-pulse">…</span></p>}
       {state === "ready" && lens && (
         <>
-          {lens.summary && <p className={`${PANEL} mx-auto mt-6 max-w-4xl p-4 text-[15px] leading-relaxed`}>{lens.summary}</p>}
+          {lens.summary && <p className={`${PANEL} mx-auto mt-6 max-w-4xl p-4 text-[15px] leading-relaxed`}>{page(lens.summary)}</p>}
           <div className="mt-6 grid gap-3 md:grid-cols-2">
             {lens.hotspots.map((h, i) => (
               <div key={i} className={`${PANEL} p-4`} style={{ borderLeft: `4px solid ${sev(h.severity)}` }}>
-                <div className="flex items-baseline justify-between gap-2"><span className="text-[15px] font-semibold">{h.label}</span><span className="font-mono text-[11px] text-white/50">{h.count} customer{h.count > 1 ? "s" : ""} · {h.page}</span></div>
+                <div className="flex items-baseline justify-between gap-2"><span className="text-[15px] font-semibold">{h.label}</span><span className="font-mono text-[11px] text-white/50">{h.count} customer{h.count > 1 ? "s" : ""} · {page(h.page)}</span></div>
                 <p className="mt-1 text-[13.5px] text-white/75">{h.issue}</p>
                 <p className="mt-1 text-[13px]"><span className="font-semibold" style={{ color: C.win }}>Fix:</span> <span className="text-white/75">{h.fix}</span></p>
               </div>

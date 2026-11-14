@@ -26,6 +26,10 @@ const ROUTES = [
   { path: "M1210 660 C 1120 720, 1060 740, 1020 740", dur: 7, seed: 913, a: "quality-first", age: 63, f: "interested", say: "50 washes, ok" },
 ] as const;
 
+// A real Amazon listing (public Amazon Reviews 2023 dataset), rebuilt and served by our API. In local dev the API is on
+// 127.0.0.1:4620 (the vite dev server only listens on IPv6); deployed, the API shares the page's origin.
+const amazonExample = () => (location.port === "4621" ? "http://127.0.0.1:4620" : location.origin) + "/api/product/B09LHS6RGF.html";
+
 function Scene() {
   return (
     <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1440 860" preserveAspectRatio="xMidYMid slice" aria-hidden
@@ -135,8 +139,8 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
 
       <div className="mt-4 flex flex-wrap justify-center gap-2 text-[13px]">
         <span className="text-white/35">try:</span>
-        <button onClick={() => { setMode("site"); setUrl("melomed.io"); onGo({ url: "melomed.io", description: "", name: "", price: "", ...extra() }); }}
-          className="text-white/60 underline decoration-white/20 hover:text-white">melomed.io</button>
+        <button onClick={() => { const u = amazonExample(); setMode("site"); setUrl(u); onGo({ url: u, description: "", name: "Hairginkgo mannequin head", price: "", ...extra() }); }}
+          className="text-white/60 underline decoration-white/20 hover:text-white">an Amazon listing</button>
         <span className="text-white/20">·</span>
         <button onClick={() => { setMode("describe"); setDescription(EXAMPLE.description); setName(EXAMPLE.name); setPrice(EXAMPLE.price); go(EXAMPLE); }}
           className="text-white/60 underline decoration-white/20 hover:text-white">an oat milk latte</button>

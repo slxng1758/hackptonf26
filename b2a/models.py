@@ -51,7 +51,7 @@ def shoppers() -> dict:
         out["GPT"] = ChatOpenAI(model=(os.getenv("GPT_SHOPPER") or "gpt-5.4-mini"), timeout=60, max_retries=2)
     if os.getenv("GOOGLE_API_KEY"):
         from langchain_google_genai import ChatGoogleGenerativeAI
-        out["Gemini"] = ChatGoogleGenerativeAI(model=(os.getenv("GEMINI_SHOPPER") or "gemini-2.5-flash"), timeout=60, max_retries=2)
+        out["Gemini"] = ChatGoogleGenerativeAI(model=(os.getenv("GEMINI_SHOPPER") or "gemini-3.5-flash"), timeout=60, max_retries=2)
     return out
 
 
@@ -61,7 +61,7 @@ def persona_models() -> dict:
     out = {}
     if os.getenv("GOOGLE_API_KEY"):
         from langchain_google_genai import ChatGoogleGenerativeAI
-        out["Gemini"] = ChatGoogleGenerativeAI(model=(os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"), timeout=60, max_retries=2)
+        out["Gemini"] = ChatGoogleGenerativeAI(model=(os.getenv("GEMINI_MODEL") or "gemini-3.5-flash"), timeout=60, max_retries=2)
     if _anthropic_key():
         out["Claude"] = fast()
     if os.getenv("OPENAI_API_KEY"):

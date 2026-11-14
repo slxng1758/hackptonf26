@@ -24,7 +24,7 @@ export function Timeline({ url, current }: { url: string; current: string }) {
               {prev && r.status === "done" && up !== 0 && <span className="font-mono text-[11px]" style={{ color: up > 0 ? C.win : C.loss }}>{up > 0 ? "▲" : "▼"}</span>}
             </div>
             <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full" style={{ width: `${r.of ? (r.bought / r.of) * 100 : 0}%`, background: C.win }} /></div>
-            {!!r.agents_of && <div className="mt-1 font-mono text-[10px] text-white/45">agents {r.agents_bought}/{r.agents_of}</div>}
+            <div className={`mt-1 font-mono text-[10px] text-white/45 ${r.agents_of ? "" : "invisible"}`}>agents {r.agents_bought ?? 0}/{r.agents_of ?? 0}</div>
             <div className="mt-1 max-w-[150px] truncate text-[11px] text-white/50">{r.context || (r.round ? "after learning" : "first test")}</div>
           </a>
         );

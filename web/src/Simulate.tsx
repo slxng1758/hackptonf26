@@ -88,6 +88,7 @@ const host = (u: string) => u.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
 export function SimView({ id }: { id: string }) {
   const [sim, setSim] = useState<Sim | null>(null);
+  const [missing, setMissing] = useState(false);
   const [cast, setCast] = useState<Persona[] | null>(null);
   const [editing, setEditing] = useState<{ p: Persona; isNew: boolean } | null>(null);
   const [showWhy, setShowWhy] = useState(false);
@@ -111,13 +112,14 @@ export function SimView({ id }: { id: string }) {
 
   useEffect(() => {
     let alive = true;
-    const tick = () => fetch(`/api/sims/${id}`).then((r) => r.json()).then((s: Sim) => { if (alive) { setSim(s); if (s.status === "awaiting_approval" && !cast) setCast(s.personas); } }).catch(() => {});
+    const tick = () => fetch(`/api/sims/${id}`).then((r) => r.json()).then((s: Sim) => { if (alive && !s.id) setMissing(true); if (alive && s.id) { setSim(s); if (s.status === "awaiting_approval" && !cast) setCast(s.personas); } }).catch(() => {});
     tick();
     const building = !sim || ["casting", "briefing", "resuming"].includes(sim.status);  // stream the agent's reasoning smoothly
     const t = setInterval(() => { if (!sim || !["done", "error"].includes(sim.status)) tick(); }, building ? 600 : 1500);
     return () => { alive = false; clearInterval(t); };
   }, [id, sim?.status]); // eslint-disable-line
 
+  if (missing) return <div className="grid h-[60vh] place-items-center text-center text-white/60"><div><p className="text-[18px]">This test isn't here anymore.</p><a href="#" className="mt-3 inline-block underline">Start a new test</a></div></div>;
   if (!sim) return <div className="grid h-[60vh] place-items-center font-mono text-white/40">loading…</div>;
 
   async function recast() {
@@ -158,7 +160,7 @@ export function SimView({ id }: { id: string }) {
     <div className="mx-auto max-w-[1400px] px-6 pb-16">
       {/* one headline that always says what is happening */}
       <div className="pt-6 text-center">
-        <div className="font-mono text-[12px] text-white/40">{sim.round ? <span className="mr-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.brain }}>round {sim.round + 1} · they remember round {sim.round}</span> : null}{host(sim.input.url)}{sim.input.context ? ` · ${sim.input.context}` : ""}{sim.input.world ? ` · ${sim.input.world}` : ""}</div>
+        <div className="font-mono text-[12px] text-white/40">{sim.round ? <span className="mr-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.brain }}>round {sim.round + 1} · they remember round {sim.round}</span> : null}{/\/api\/product\//.test(sim.input.url) ? "Amazon listing, rebuilt from the public Amazon Reviews 2023 dataset" : host(sim.input.url)}{sim.input.context ? ` · ${sim.input.context}` : ""}{sim.input.world ? ` · ${sim.input.world}` : ""}</div>
         <h1 className="mt-2 font-serif text-[40px] leading-tight">
           {["casting", "briefing"].includes(sim.status) && <>Casting customers for {name}<span className="animate-pulse">…</span></>}
           {sim.status === "awaiting_approval" && <>Review your test panel</>}
@@ -434,12 +436,13 @@ function funnel(sim: Sim) {
   const people = sim.personas.filter((p) => p.kind !== "agent");
   const steps = (id: string) => sim.live[id] ?? [];
   const landed = people.filter((p) => steps(p.id).length > 0);
-  const explored = landed.filter((p) => new Set(steps(p.id).map((x) => x.url.split("#")[0])).size > 1);
   const bought = landed.filter((p) => outcome(sim, p.id) === "bought");
   const acted = landed.filter((p) => steps(p.id).some((x) => x.cart) || outcome(sim, p.id) === "bought");
+  // A one-page store has nothing to click past, so scrolling on or acting counts as engaging. Keeps the funnel monotonic.
+  const explored = landed.filter((p) => steps(p.id).length > 1 || acted.includes(p));
   return [
     { label: "Landed on the site", n: landed.length },
-    { label: "Explored past the first page", n: explored.length },
+    { label: "Kept looking past the first screen", n: explored.length },
     { label: "Reached a buy decision (cart, buy, download)", n: acted.length },
     { label: "Converted", n: bought.length },
   ];

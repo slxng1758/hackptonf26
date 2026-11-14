@@ -7,10 +7,11 @@ AI shopping agents and AI customers open your real site, click around, decide wh
 
 <p align="center">
   Built at <b>HackPrinceton Fall 2026</b> &nbsp;·&nbsp; 
-  Track: <b>Business &amp; Enterprise</b> &nbsp;
+  Track: <b>Business &amp; Enterprise</b>
+</p>
 
 <p align="center">
-  <img src="docs/media/summary.png" alt="Results for melomed.io: simulated conversion 43%, AI agent checkout 67%, the top blocker, a conversion funnel, the top three recommendations and the most-shared complaint" width="100%">
+  <img src="docs/media/summary.png" alt="Results for a real Amazon listing (a mannequin head): 3 of 6 customers would buy, 3 of 3 AI shopping agents could check out, the top blocker, a conversion funnel, the top recommendations and the most-shared complaint" width="100%">
 </p>
 
 ---
@@ -19,7 +20,7 @@ AI shopping agents and AI customers open your real site, click around, decide wh
 
 **You used to design your website for people.** Someone searched, clicked your site, looked at the photos, felt something, and bought.
 
-**Now an AI agent shops first, and a person approves.** People tell ChatGPT, Gemini or Grok *"find me a mood journal app under $5 a month and get it."* The agent reads your site, compares you with the others, and builds the shortlist. If it can't find your price or tell whether it's a subscription, it skips you, and you never learn you lost a customer. The person still makes the final call, so you have to win both: **facts for the agent, trust and feeling for the person.**
+**Now an AI agent shops first, and a person approves.** People tell ChatGPT, Gemini or Grok *"find me a meal kit under $60 a week and order it."* The agent reads your site, compares you with the others, and builds the shortlist. If it can't find your price or tell whether it's a subscription, it skips you, and you never learn you lost a customer. The person still makes the final call, so you have to win both: **facts for the agent, trust and feeling for the person.**
 
 By 2030, AI agents could make **10% to 20% of US online shopping** for people, Morgan Stanley forecasts. Already, **nearly 23% of Americans** made at least one AI-assisted purchase in the past month ([Digital Commerce 360, Dec 2025](https://www.digitalcommerce360.com/2025/12/09/morgan-stanley-ai-agentic-shoppers-385-billion-online-sales/)). Traffic from AI sources to US retail sites rose **393%** year over year in Q1 2026, and it **converted 42% better** than other visits ([Adobe via CMOtech, Apr 2026](https://cmotech.news/story/adobe-says-ai-retail-traffic-surges-as-readability-lags)).
 
@@ -35,7 +36,7 @@ By 2030, AI agents could make **10% to 20% of US online shopping** for people, M
 
 **Paste your website (or text it). Two kinds of shoppers try it:**
 
-- **AI shopping agents** (Gemini, Claude and GPT), each sent on the same errand a real user would give them, such as *"Find me an app that builds a playlist from my mood, and tell me what it costs before I download it."* **Can they buy here?** If not, what fact were they missing?
+- **AI shopping agents** (Gemini, Claude and GPT), each sent on the same errand a real user would give them, such as *"Find me a 14-inch training mannequin head with 100% real hair, and order it if it comes with a free table clamp, as long as the total stays around $28."* **Can they buy here?** If not, what fact were they missing?
 - **Customers with real preferences:** a price-sensitive student, a quality-first nurse, a skeptic, a first-timer, each with a budget and a goal, each played by a different model.
 
 They use your **real site** in a real browser, click through it, decide, and **talk about it**. Then you get **a short list of fixes**, each tagged *for people*, *for AI agents* or *both*: "the checkout takes too many steps," "it's priced above what they'd pay," "an agent can't tell if it's a subscription." Change something, test again with the same shoppers, and see if it worked.
@@ -53,14 +54,14 @@ They use your **real site** in a real browser, click through it, decide, and **t
 - **Can AI agents buy here?** One plain shopping agent per model (Gemini, Claude, GPT) gets a user's errand written from your site and tries to complete it. They're logical, not emotional: if they can't verify the price or terms, they don't buy, and they say what was missing. Shown as robots on the map.
 - **Do these first.** One prioritized list of 3 to 5 fixes from everything above, each with the evidence, who it wins back, the page it's on, its effort, and whether it's for people, AI agents or both.
 - **Different AI, different taste.** Customers are played by different model families (Gemini, Claude and GPT), and the result is broken down by model, so one lab's taste doesn't decide for everyone.
-- **Then they talk about it.** Every customer posts about their visit in their own voice. Then they read each other's posts and reply, repost or scroll past, for two rounds. The result is a feed and a who-reacted-to-whom network. PageRank over replies and reposts finds whose opinion spreads furthest, so you know which complaint to fix first. On melomed.io, a post about the free journal app spread furthest because another customer challenged it about encryption, and the shared worry that travelled was that "free" never says what happens after.
+- **Then they talk about it.** Every customer posts about their visit in their own voice. Then they read each other's posts and reply, repost or scroll past, for two rounds. The result is a feed and a who-reacted-to-whom network. PageRank over replies and reposts finds whose opinion spreads furthest, so you know which complaint to fix first. On a real Amazon listing for a training mannequin head, the doubt that spread furthest was whether the hair is really human. A skeptic's post carried it, and five other customers echoed it in their replies, so the top fix became "state one hair material and add proof."
 - **What would win them over.** Each customer who didn't buy says what would have changed their mind, and an analyst agent writes a report: buy rate by customer type, where people got stuck, what convinced the buyers, the top 3 fixes and which complaint is most likely to spread.
-- **Teach them what real customers do.** Type what actually happens ("most of our buyers are college students who journal at night, nobody reads the Science page"). Each persona the account applies to rewrites its memory, and the change is tagged **from real people**.
+- **Teach them what real customers do.** Type what actually happens ("most of our buyers are cosmetology students buying for class, and they care about shedding more than price"). Each persona the account applies to rewrites its memory, and the change is tagged **from real people**.
 - **Change something and test again.** Run the same customers again, carrying their memory, so before and after is a fair comparison. Every test of your site is on a timeline, for example **3/7** bought, then **5/7** after they learned.
 - **Customers remember across businesses.** What price-sensitive shoppers learned on one site is saved to long-term memory, so the next business's price-sensitive persona starts smarter.
 
 <p align="center">
-  <img src="docs/media/meet.png" alt="Review your test panel: seven customers with their age, type, which model plays them and whether they carry memory from earlier tests, below the timeline of earlier tests for this site" width="90%">
+  <img src="docs/media/meet.png" alt="Review your test panel: five customers with their age, type, share of buyers, which model plays them and whether they carry memory from earlier tests, plus an Add customer button and the AI shopping agents' errand" width="90%">
 </p>
 
 <p align="center">
@@ -68,11 +69,19 @@ They use your **real site** in a real browser, click through it, decide, and **t
 </p>
 
 <p align="center">
+  <img src="docs/media/hotspots.png" alt="Friction hotspots: Gemini boxes the exact part of each screenshot where customers got stuck, such as an unclear material line and missing ratings, with a fix for each" width="90%">
+</p>
+
+<p align="center">
+  <img src="docs/media/word-of-mouth.png" alt="Word of mouth: the customers' posts next to the who-reacted-to-whom network, with the most influential customer highlighted and a summary of the opinion that spread furthest" width="90%">
+</p>
+
+<p align="center">
   <img src="docs/media/report.png" alt="Page one of the PDF report: KPIs, conversion funnel and prioritized recommendations" width="60%">
 </p>
 
 <p align="center">
-  <img src="docs/media/replay.png" alt="A session replay: each step shows the real screenshot the persona saw, what they thought, and what they clicked, with a 'chose to buy' tag on the step where they clicked Download on the App Store" width="90%">
+  <img src="docs/media/replay.png" alt="One customer's page: who she is, her goal, budget and memory, then her journey, each step with the real screenshot she saw, what she thought, and a buy action tag where she clicked Add to Cart" width="90%">
 </p>
 
 ## How we keep it honest

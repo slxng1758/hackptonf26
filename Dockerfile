@@ -18,6 +18,7 @@ RUN pip install -r requirements.txt
 COPY server.py ./
 COPY b2a/ ./b2a/
 COPY fixtures/ ./fixtures/
+COPY data/ ./data/
 COPY --from=web /web/dist ./web/dist
 EXPOSE 4620
 # One worker on purpose: running simulations live in this process's memory.

@@ -19,9 +19,9 @@ export function PrintReport({ id }: { id: string }) {
   const name = sim.input.name || sim.input.url;
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const steps = (pid: string) => sim.live[pid] ?? [];
-  const explored = people.filter((p) => new Set(steps(p.id).map((x) => x.url)).size > 1).length;
+  const explored = people.filter((p) => steps(p.id).length > 1 || steps(p.id).some((x) => x.cart) || outcome(sim, p.id) === "bought").length;
   const acted = people.filter((p) => steps(p.id).some((x) => x.cart) || outcome(sim, p.id) === "bought").length;
-  const funnel = [["Landed on the site", people.length], ["Explored past the first page", explored], ["Reached a buy decision", acted], ["Converted", bought]] as const;
+  const funnel = [["Landed on the site", people.length], ["Kept looking past the first screen", explored], ["Reached a buy decision", acted], ["Converted", bought]] as const;
 
   return (
     <div id="print-ready" className="print-doc mx-auto max-w-[780px] bg-[#ffffff] px-10 py-10 text-[#101828]">
@@ -31,13 +31,13 @@ export function PrintReport({ id }: { id: string }) {
       </div>
 
       <h1 className="mt-6 text-[28px] font-bold leading-tight tracking-tight">{name}</h1>
-      <div className="mt-1 text-[13px] text-[#667085]">{sim.input.url}{sim.input.context ? ` · change tested: ${sim.input.context}` : ""}{sim.round ? ` · round ${sim.round + 1}` : ""}</div>
+      <div className="mt-1 text-[13px] text-[#667085]">{/\/api\/product\//.test(sim.input.url) ? "Amazon listing, rebuilt from the public Amazon Reviews 2023 dataset" : sim.input.url}{sim.input.context ? ` · change tested: ${sim.input.context}` : ""}{sim.round ? ` · round ${sim.round + 1}` : ""}</div>
 
       <div className="mt-6 grid grid-cols-4 gap-3">
         {[["Simulated conversion", pct(bought, people.length), `${bought} of ${people.length} panelists`],
           ["AI agent checkout", pct(agentsOk, agents.length), `${agentsOk} of ${agents.length} agents`],
           ["Sessions", String(Object.keys(sim.live).length), "on the real site"],
-          ["Top blocker", sim.actions?.[0] ? `${sim.actions[0].who.length} lost` : "–", "see recommendation 1"]].map(([l, v, s]) => (
+          ["Top blocker", sim.actions?.[0] ? `${sim.actions[0].who.length} hit it` : "–", "see recommendation 1"]].map(([l, v, s]) => (
           <div key={l} className="rounded-lg border border-[#e4e7ec] p-3"><div className="text-[11px] text-[#667085]">{l}</div><div className="text-[24px] font-bold">{v}</div><div className="text-[11px] text-[#667085]">{s}</div></div>
         ))}
       </div>

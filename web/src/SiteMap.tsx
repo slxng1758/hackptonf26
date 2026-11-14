@@ -22,6 +22,7 @@ function keyOf(u: string, rootHost: string) {
     const x = new URL(u);
     const path = x.pathname.replace(/\/+$/, "") || "/";
     const host = x.host.replace(/^www\./, "");
+    if (path.startsWith("/api/product/")) return { key: host + path, label: "Product page" };  // the rebuilt Amazon listing
     const label = host !== rootHost ? host + (path === "/" ? "" : " · " + decodeURIComponent(path.split("/").filter(Boolean).pop() ?? "").replace(/[-_]+/g, " ")) : path === "/" ? "Home" : decodeURIComponent(path.split("/").filter(Boolean).pop() ?? "").replace(/[-_]+/g, " ").replace(/\.\w+$/, "");
     return { key: host + path, label: label.charAt(0).toUpperCase() + label.slice(1) };
   } catch { return { key: u, label: u }; }

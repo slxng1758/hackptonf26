@@ -81,7 +81,9 @@ from fastapi.staticfiles import StaticFiles
 sim.SIMS.mkdir(parents=True, exist_ok=True)
 app.mount("/api/shots", StaticFiles(directory=str(sim.SIMS)), name="shots")
 (sim.RUNS / "amazon" / "pages").mkdir(parents=True, exist_ok=True)
-app.mount("/api/product", StaticFiles(directory=str(sim.RUNS / "amazon" / "pages")), name="product")  # Amazon eval product pages
+# Amazon eval product pages: freshly built ones in runs/, else the committed demo listing in data/ (so a deploy has it).
+_pages = sim.RUNS / "amazon" / "pages"
+app.mount("/api/product", StaticFiles(directory=str(_pages if _pages.exists() else __import__("pathlib").Path(__file__).parent / "data" / "amazon_pages")), name="product")  # Amazon eval product pages
 
 
 class SimIn(BaseModel):
