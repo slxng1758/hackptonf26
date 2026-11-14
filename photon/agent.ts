@@ -26,7 +26,8 @@ async function api(path: string, body?: unknown) {
   return r.json();
 }
 const host = (u: string) => u.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-const looksLikeSite = (t: string) => /^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(t.trim());
+// Find a website anywhere in the text: "can you test melomed.io?" → "melomed.io"
+const findSite = (t: string) => t.match(/\b(https?:\/\/)?([a-z0-9-]+\.)+(com|io|co|org|net|ai|app|shop|store|biz|us|dev|xyz|me|info|cafe|restaurant)(\/[^\s]*)?\b/i)?.[0]?.replace(/[.,!?)]+$/, "");
 
 function castText(sim: any) {
   const lines = sim.personas.map((p: any, i: number) => `${i + 1}. ${p.name}, ${p.age}, ${p.occupation} (${p.archetype}${p.model ? `, played by ${p.model}` : ""})`);
@@ -63,10 +64,11 @@ async function handle(key: string, text: string) {
   if (["help", "?", "hi", "hey", "hello"].includes(low)) {
     return c.send(`Hi! I test your website on AI customers before you launch. Text me your website (e.g. yourshop.com) and I'll have 4-7 customers try it, then tell you who'd buy and what would win the rest over.`);
   }
-  if (looksLikeSite(t) && c.stage !== "approval") {
-    const { id } = await api("/api/sims", { url: t });
+  const site = findSite(t);
+  if (site && c.stage !== "approval") {
+    const { id } = await api("/api/sims", { url: site });
     Object.assign(c, { sim: id, stage: "casting", seen: "" });
-    return c.send(`Reading ${host(t)} and finding your customers… about 30 seconds.`);
+    return c.send(`Reading ${host(site)} and finding your customers… about 30 seconds.`);
   }
   if (!c.sim) return c.send(`Text me your website to start, e.g. yourshop.com`);
 
@@ -147,10 +149,12 @@ if (TERMINAL) {
         const key = m.space.id;
         if (!chats.has(key)) {
           chats.set(key, { stage: "idle", seen: "", send: async (text) => {
+            console.log(`→ ${new Date().toLocaleTimeString()} ${text.slice(0, 80).replace(/\n/g, " ")}`);
             await photon.projects.sendMessage({ path: { id: project }, headers: { "idempotency-key": `ar:${key}:${Date.now()}:${text.length}` },
               body: { spaceId: key, senderId: m.receivedBy.id, content: { type: "text", format: "plain", text } } });
           } });
         }
+        console.log(`← ${new Date().toLocaleTimeString()} ${m.content.text.slice(0, 80)}`);
         handle(key, m.content.text).catch((e) => console.error("handle:", e.message));
       }
     } catch (e: any) { console.error("poll:", e.message ?? e); }
