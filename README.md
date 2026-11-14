@@ -10,7 +10,7 @@ AI shopping agents and AI customers open your real site, click around, decide wh
   Track: <b>Business &amp; Enterprise</b> &nbsp;
 
 <p align="center">
-  <img src="docs/media/map.png" alt="The site map: each page customers visited is a card with a real screenshot, avatars stand on the pages they reached, and three exits on the right count who bought, who said maybe later and who left" width="100%">
+  <img src="docs/media/summary.png" alt="Results for melomed.io: simulated conversion 43%, AI agent checkout 67%, the top blocker, a conversion funnel, the top three recommendations and the most-shared complaint" width="100%">
 </p>
 
 ---
@@ -60,7 +60,15 @@ They use your **real site** in a real browser, click through it, decide, and **t
 - **Customers remember across businesses.** What price-sensitive shoppers learned on one site is saved to long-term memory, so the next business's price-sensitive persona starts smarter.
 
 <p align="center">
-  <img src="docs/media/meet.png" alt="Meet your customers: seven avatars with their name, age, archetype, which model plays them and a 'remembers other sites' badge, above a timeline of earlier tests and a Let them in button" width="90%">
+  <img src="docs/media/meet.png" alt="Review your test panel: seven customers with their age, type, which model plays them and whether they carry memory from earlier tests, below the timeline of earlier tests for this site" width="90%">
+</p>
+
+<p align="center">
+  <img src="docs/media/map.png" alt="The Sessions tab: what each customer is thinking right now, above a map of the real pages they visited, with avatars and AI-agent robots standing where they are and exits for bought, maybe later and left" width="90%">
+</p>
+
+<p align="center">
+  <img src="docs/media/report.png" alt="Page one of the PDF report: KPIs, conversion funnel and prioritized recommendations" width="60%">
 </p>
 
 <p align="center">
