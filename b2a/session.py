@@ -141,7 +141,8 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
     model = fast()
     with sync_playwright() as p:
         b = p.chromium.launch(args=["--disable-gpu", "--use-gl=swiftshader", "--disable-dev-shm-usage"])
-        pg = b.new_page(viewport={"width": 1280, "height": 800})
+        ctx = b.new_context(viewport={"width": 1280, "height": 800})
+        pg = ctx.new_page()
         try:
             pg.goto(url, timeout=30000, wait_until="domcontentloaded")
         except Exception:
@@ -188,7 +189,11 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                 break
             try:
                 if s.action == "click" and s.target:
+                    before = len(ctx.pages)
                     pg.get_by_text(s.target, exact=False).first.click(timeout=6000)
+                    pg.wait_for_timeout(1200)
+                    if len(ctx.pages) > before:  # link opened a new tab: follow it like a real person would
+                        pg = ctx.pages[-1]
                     pg.wait_for_load_state("domcontentloaded", timeout=15000)
                 elif s.action == "scroll":
                     pg.mouse.wheel(0, 700)
