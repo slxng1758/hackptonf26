@@ -77,6 +77,7 @@ class SimJob:
         self.persona_changes: list[dict] = []
         self.evals: list[dict] = list(inp.get("evals_so_far") or [])
         self.social: dict | None = None
+        self.actions: list[dict] = []
         self.dir = SIMS / self.id
         for d in ("personas", "sessions", "shots"):
             (self.dir / d).mkdir(parents=True, exist_ok=True)
@@ -95,7 +96,7 @@ class SimJob:
         return {"id": self.id, "input": self.inp, "status": self.status, "error": self.error, "personas": self.personas,
                 "live": self.live, "decisions": self.decisions, "summary": self.summary, "report": self.report,
                 "steps": self.steps, "memory": evolved, "round": self.round, "parent": self.parent,
-                "persona_changes": self.persona_changes, "evals": self.evals, "social": self.social}
+                "persona_changes": self.persona_changes, "evals": self.evals, "social": self.social, "actions": self.actions}
 
     def save(self):
         with self._lock:
@@ -117,6 +118,11 @@ class SimJob:
             for p in self.personas:  # long-term memory: start from what this type of customer learned on other sites
                 p["memory"] = memory.for_archetype(p["archetype"])
                 p["inherited"] = bool(p["memory"])
+            try:  # layer 1: plain AI shopping agents on the same site, one per model family
+                from .models import persona_models
+                self.personas += session.agent_shoppers(i["name"], i.get("offer", ""), list(persona_models()))
+            except Exception as e:
+                self.log("error", f"agents: {type(e).__name__}: {e}"[:200])
             self.log("cast", " · ".join(f"{p['name']} ({p['archetype']}, {round(p['share'] * 100)}%)" for p in self.personas))
             self.status = "awaiting_approval"
         except Exception as e:
@@ -158,7 +164,7 @@ class SimJob:
             self.save()
             try:  # word of mouth: they post, read each other, reply or repost
                 from . import social
-                self.social = social.run(self.personas, self.decisions, i.get("name") or i["url"])
+                self.social = social.run([p for p in self.personas if p.get("kind") != "agent"], self.decisions, i.get("name") or i["url"])
                 if self.social:
                     (self.dir / "social.json").write_text(json.dumps(self.social, indent=2))
                     self.log("social", f"{len(self.social['posts'])} posts · spreads furthest: "
@@ -170,6 +176,7 @@ class SimJob:
             before = {p["id"]: (p.get("memory") or "").strip() for p in self.personas}
             self._analyze()
             self._record_changes(before)
+            self._actions()
             self.status = "done"
         except Exception as e:
             self.status, self.error = "error", f"{type(e).__name__}: {e}"[:300]
@@ -177,8 +184,9 @@ class SimJob:
         self.save()
 
     def _summarize(self):
+        agents = {p["id"] for p in self.personas if p.get("kind") == "agent"}
         share = {p["id"]: p["share"] for p in self.personas}
-        got = {pid: d for pid, d in self.decisions.items()}
+        got = {pid: d for pid, d in self.decisions.items() if pid not in agents}
         w = sum(share[pid] for pid in got) or 1
         carted = {pid for pid, steps in self.live.items() if any(x.get("cart") for x in steps)}
         # what they did beats what they said: a buy/download click counts as buying
@@ -189,12 +197,52 @@ class SimJob:
             counts[d["decision"]] = counts.get(d["decision"], 0) + 1
         by_model: dict[str, list[int]] = {}
         for p in self.personas:
-            if p["id"] in got:
+            if p["id"] in got and p.get("kind") != "agent":
                 m = by_model.setdefault(p.get("model", "Claude"), [0, 0])
                 m[1] += 1
                 m[0] += int(p["id"] in carted or BUYS.get(got[p["id"]]["decision"], 0) >= 1)
-        return {"buy_rate": round(buy, 3), "clicked_buy": sorted(carted), "by_model": {k: {"bought": v[0], "of": v[1]} for k, v in by_model.items()}, "rating": round(rating, 2), "decisions": counts,
+        agent_rows = []
+        for p in self.personas:
+            if p["id"] in agents and p["id"] in self.decisions:
+                d = self.decisions[p["id"]]
+                agent_rows.append({"persona": p["id"], "model": p.get("model"), "bought": p["id"] in carted or BUYS.get(d["decision"], 0) >= 1,
+                                   "decision": d["decision"], "missing": d.get("missing", ""), "quote": d.get("quote", "")})
+        return {"agents": agent_rows, "buy_rate": round(buy, 3), "clicked_buy": sorted(carted), "by_model": {k: {"bought": v[0], "of": v[1]} for k, v in by_model.items()}, "rating": round(rating, 2), "decisions": counts,
                 "missing": [{"persona": pid, "text": d["missing"]} for pid, d in got.items()]}
+
+    def _actions(self):
+        """The to-do list for the owner: concrete fixes, each tied to who it wins back and the evidence."""
+        from typing import Literal
+        from pydantic import BaseModel, Field
+
+        class Action(BaseModel):
+            fix: str = Field(description="the change, imperative and concrete, max 14 words (e.g. 'Put one Buy button on the product page')")
+            why: str = Field(description="the evidence, quoting or paraphrasing what customers or agents said or hit, max 30 words")
+            audience: Literal["people", "AI agents", "both"]
+            who: list[str] = Field(description="names of the customers or agents this would win back")
+            page: str = Field(default="", description="the page or step it's on, if known")
+            effort: Literal["small", "medium", "big"]
+
+        class Actions(BaseModel):
+            items: list[Action] = Field(min_length=1, max_length=5)
+
+        people = {p["id"]: p for p in self.personas}
+        lines = []
+        for pid, d in self.decisions.items():
+            p = people.get(pid, {})
+            kind = "AI agent" if p.get("kind") == "agent" else f"customer ({p.get('archetype')}, {round(p.get('share', 0) * 100)}%)"
+            lines.append(f"- {p.get('name')} [{kind}]: {d['decision']} {d['rating']}/5. \"{d['quote']}\" Missing: {d.get('missing', '')}")
+        spread = (self.social or {}).get("summary", "")
+        ask = (f"A simulated test of {self.inp.get('name')} ({self.inp['url']}). Results:\n" + "\n".join(lines)
+               + (f"\nWord of mouth: {spread}" if spread else "") + f"\nAnalyst report:\n{self.report[:3000]}\n\n"
+               "List the 3-5 fixes that would win back the most customers and AI agents, most valuable first. Separate what AI "
+               "shopping agents need (clear facts, prices, structure, a path to buy) from what people need (trust, feeling, "
+               "price, ease). Only fixes grounded in the evidence above.")
+        try:
+            r: Actions = brain().with_structured_output(Actions, method="json_schema").invoke(ask)
+            self.actions = [a.model_dump() for a in r.items]
+        except Exception as e:
+            self.log("error", f"actions: {type(e).__name__}: {e}"[:200])
 
     def _record_changes(self, before: dict):
         """What each persona learned this round: its memory before and after the evolver ran."""

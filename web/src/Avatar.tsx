@@ -8,8 +8,42 @@ const SKIN = ["#f7d7bd", "#ecbf98", "#d39a6a", "#a8704a", "#734a30"];
 const HAIR = ["#2a201b", "#4a3226", "#7a4e2f", "#c08a4a", "#e2c06d", "#3a3a40"];
 export const SHIRT: Record<string, string> = {
   "price-sensitive": "#ffb547", "quality-first": "#3ff0d4", "brand-loyal": "#d16bff", "function-first": "#6aa8ff",
-  "first-time user": "#7be38a", skeptic: "#ff5c77", enthusiast: "#ff8fd1",
+  "first-time user": "#7be38a", skeptic: "#ff5c77", enthusiast: "#ff8fd1", "AI agent": "#9aa4b8",
 };
+const MODEL_GLOW: Record<string, string> = { Gemini: "#4f8bff", Claude: "#ff8a4c", GPT: "#19c37d", "Amazon Nova": "#ff9900", Llama: "#7a5cff", Grok: "#e5e5e5" };
+
+// AI shopping agents get a small robot: brushed-metal head, visor, eyes lit in their model's color.
+function Robot({ size, feeling, model, busy, uid }: { size: number; feeling: Feeling; model: string; busy: boolean; uid: string }) {
+  const glow = MODEL_GLOW[model] ?? "#3ff0d4";
+  const id = (k: string) => `${k}${uid}`;
+  const happy = feeling === "delighted" || feeling === "interested";
+  const sad = feeling === "annoyed" || feeling === "skeptical" || feeling === "confused";
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" className={busy ? "avatar-bob" : ""} aria-hidden>
+      <defs>
+        <clipPath id={id("rc")}><circle cx="50" cy="50" r="50" /></clipPath>
+        <linearGradient id={id("metal")} x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stopColor="#f4f6fa" /><stop offset=".55" stopColor="#c3cad6" /><stop offset="1" stopColor="#8a93a3" /></linearGradient>
+        <linearGradient id={id("visor")} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#1b2030" /><stop offset="1" stopColor="#0b0e16" /></linearGradient>
+        <radialGradient id={id("eye")}><stop offset="0" stopColor="#fff" /><stop offset=".35" stopColor={glow} /><stop offset="1" stopColor={glow} stopOpacity="0" /></radialGradient>
+      </defs>
+      <g clipPath={`url(#${id("rc")})`}>
+        <rect width="100" height="100" style={{ fill: "var(--avatar-bg)" }} />
+        <path d="M18 106 Q19 80 50 77 Q81 80 82 106 Z" fill={`url(#${id("metal")})`} />
+        <circle cx="50" cy="90" r="4" fill={glow} opacity=".9" />
+        <rect x="44" y="64" width="12" height="12" rx="3" fill="#9aa3b2" />
+        <line x1="50" y1="22" x2="50" y2="13" stroke="#9aa3b2" strokeWidth="2.5" strokeLinecap="round" />
+        <circle cx="50" cy="11" r="4" fill={glow}>{busy && <animate attributeName="opacity" values="1;.3;1" dur="1.2s" repeatCount="indefinite" />}</circle>
+        <rect x="24" y="22" width="52" height="46" rx="16" fill={`url(#${id("metal")})`} />
+        <ellipse cx="38" cy="28" rx="10" ry="3" fill="#fff" opacity=".55" />
+        <rect x="30" y="34" width="40" height="22" rx="10" fill={`url(#${id("visor")})`} />
+        <circle cx="41" cy="45" r="7" fill={`url(#${id("eye")})`} />
+        <circle cx="59" cy="45" r="7" fill={`url(#${id("eye")})`} />
+        {happy && <path d="M44 52 Q50 55 56 52" stroke={glow} strokeWidth="1.8" fill="none" strokeLinecap="round" />}
+        {sad && <path d="M44 54 Q50 51 56 54" stroke={glow} strokeWidth="1.8" fill="none" strokeLinecap="round" />}
+      </g>
+    </svg>
+  );
+}
 
 function rnd(seed: number) {
   // mix the seed first: small seeds made the first draw tiny, so every skin tone came out the same
@@ -34,9 +68,10 @@ const MOUTH: Record<Feeling, string> = {
   skeptical: "M44.5 60.5 Q51 60.5 55.8 57",
 };
 
-export function Avatar({ seed, feeling = "neutral", archetype = "", age = 30, size = 64, busy = false }:
-  { seed: number; feeling?: Feeling; archetype?: string; age?: number; size?: number; busy?: boolean }) {
+export function Avatar({ seed, feeling = "neutral", archetype = "", age = 30, size = 64, busy = false, model = "" }:
+  { seed: number; feeling?: Feeling; archetype?: string; age?: number; size?: number; busy?: boolean; model?: string }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
+  if (archetype === "AI agent") return <Robot size={size} feeling={feeling} model={model} busy={busy} uid={uid} />;
   const id = (k: string) => `${k}${uid}`;
   const r = rnd(seed);
   const skin = SKIN[Math.floor(r() * SKIN.length)];

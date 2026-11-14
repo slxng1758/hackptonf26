@@ -6,15 +6,16 @@ import { Timeline } from "./Timeline";
 import { Accuracy, Learned, WordOfMouth } from "./Extras";
 import type { SimExtras } from "./sim-extras";
 
-export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number }; model?: string; memory?: string; inherited?: boolean }
+export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number }; model?: string; memory?: string; inherited?: boolean; kind?: "agent" }
 interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; thought: string; feeling: Feeling; action: string; target: string }
 interface Decision { decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string }
 export interface Sim extends Partial<SimExtras> {
   id: string; input: { url: string; name: string; category: string; context: string; world: string; customers: string };
   status: "casting" | "awaiting_approval" | "browsing" | "talking" | "analyzing" | "done" | "error"; error: string | null;
   personas: Persona[]; live: Record<string, SimStep[]>; decisions: Record<string, Decision>;
-  summary: { buy_rate: number; by_model?: Record<string, { bought: number; of: number }>; rating: number; decisions: Record<string, number>; missing: { persona: string; text: string }[] } | null;
+  summary: { agents?: { persona: string; model: string; bought: boolean; decision: string; missing: string; quote: string }[]; buy_rate: number; by_model?: Record<string, { bought: number; of: number }>; rating: number; decisions: Record<string, number>; missing: { persona: string; text: string }[] } | null;
   report: string; steps: { t: string; kind: string; note: string }[]; memory: Record<string, string>; round?: number; parent?: string | null;
+  actions?: { fix: string; why: string; audience: "people" | "AI agents" | "both"; who: string[]; page: string; effort: "small" | "medium" | "big" }[];
 }
 
 const DEC_COLOR: Record<string, string> = { buy: C.win, "would recommend": C.win, "maybe later": C.mid, "not buy": C.loss, "would complain": C.loss };
@@ -26,7 +27,7 @@ function PersonaCard({ p, onRemove }: { p: Persona; onRemove?: () => void }) {
     <div className={`${PANEL} rise relative p-4`}>
       {onRemove && <button onClick={onRemove} className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full text-white/35 hover:bg-white/10 hover:text-white" aria-label="remove">×</button>}
       <div className="flex items-center gap-3">
-        <Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={56} feeling="neutral" />
+        <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={56} feeling="neutral" />
         <div>
           <div className="text-[15px] font-semibold">{p.name}, {p.age}</div>
           <div className="text-[12px] text-white/50">{p.occupation}</div>
@@ -46,7 +47,7 @@ function Replay({ sim, p, onClose }: { sim: Sim; p: Persona; onClose: () => void
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 p-6 backdrop-blur" onClick={onClose}>
       <div className={`${PANEL} mx-auto max-w-5xl bg-[var(--card)] p-6`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4"><Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={64} feeling={d?.feeling ?? "neutral"} />
+          <div className="flex items-center gap-4"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={64} feeling={d?.feeling ?? "neutral"} />
             <div><div className="font-serif text-[26px]">{p.name}'s session</div><div className="text-[13px] text-white/50">{p.age} · {p.occupation} · {p.archetype}{p.model ? ` · played by ${p.model}` : ""} · wants: {p.goal}</div></div></div>
           <button onClick={onClose} className="text-[22px] text-white/50 hover:text-white">×</button>
         </div>
@@ -56,7 +57,7 @@ function Replay({ sim, p, onClose }: { sim: Sim; p: Persona; onClose: () => void
               {s.shot ? <img src={shot(sim.id, s.shot)} alt="" className="w-full rounded-lg border border-white/10" /> : <div className="rounded-lg bg-white/5" />}
               <div>
                 <div className="font-mono text-[11px] text-white/40">step {s.n} · {s.url.replace(/^https?:\/\//, "")}{s.blocked && <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-white/60">blocked by a bot check · not a customer issue</span>}{s.cart && <span className="ml-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.win }}>🛒 chose to buy</span>}</div>
-                <div className="mt-2 flex items-start gap-3"><Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={40} feeling={s.feeling} /><p className="rounded-xl rounded-tl-none bg-white/[0.06] px-3 py-2 text-[14px] leading-snug">“{s.thought}”</p></div>
+                <div className="mt-2 flex items-start gap-3"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={40} feeling={s.feeling} /><p className="rounded-xl rounded-tl-none bg-white/[0.06] px-3 py-2 text-[14px] leading-snug">“{s.thought}”</p></div>
                 <div className="mt-2 font-mono text-[12px]" style={{ color: SHIRT[p.archetype] }}>→ {s.action === "click" ? `clicked “${s.target}”` : s.action === "decide" ? "ready to decide" : s.action}  <span className="text-white/40">· felt {s.feeling}</span></div>
               </div>
             </li>
@@ -125,10 +126,14 @@ export function SimView({ id }: { id: string }) {
   }
 
   const name = sim.input.name || host(sim.input.url);
-  const decided = Object.keys(sim.decisions).length;
-  const buyers = sim.personas.filter((p) => outcome(sim, p.id) === "bought").length;
+  const humans = sim.personas.filter((p) => p.kind !== "agent");
+  const bots = sim.personas.filter((p) => p.kind === "agent");
+  const decided = humans.filter((p) => sim.decisions[p.id]).length;
+  const buyers = humans.filter((p) => outcome(sim, p.id) === "bought").length;
+  const botsDone = bots.filter((p) => sim.decisions[p.id]).length;
+  const botsBought = bots.filter((p) => outcome(sim, p.id) === "bought").length;
   const live = ["browsing", "talking", "analyzing", "done"].includes(sim.status);
-  const unconvinced = sim.personas.filter((p) => sim.decisions[p.id] && outcome(sim, p.id) !== "bought" && sim.decisions[p.id].missing);
+  const unconvinced = humans.filter((p) => sim.decisions[p.id] && outcome(sim, p.id) !== "bought" && sim.decisions[p.id].missing);
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 pb-16">
@@ -138,12 +143,18 @@ export function SimView({ id }: { id: string }) {
         <h1 className="mt-2 font-serif text-[40px] leading-tight">
           {sim.status === "casting" && <>Reading {name}<span className="animate-pulse">…</span></>}
           {sim.status === "awaiting_approval" && <>Meet your customers</>}
-          {sim.status === "browsing" && <>{decided} of {sim.personas.length} have decided<span className="animate-pulse">…</span></>}
+          {sim.status === "browsing" && <>{decided + botsDone} of {sim.personas.length} have decided<span className="animate-pulse">…</span></>}
           {sim.status === "talking" && <><span style={{ color: buyers ? C.win : C.loss }}>{buyers} of {decided}</span> would buy · <span className="text-white/50">now they're posting about it<span className="animate-pulse">…</span></span></>}
           {sim.status === "analyzing" && <><span style={{ color: buyers ? C.win : C.loss }}>{buyers} of {decided}</span> would buy · <span className="text-white/50">writing up why<span className="animate-pulse">…</span></span></>}
           {sim.status === "done" && <><span style={{ color: buyers / Math.max(decided, 1) >= 0.5 ? C.win : buyers ? C.mid : C.loss }}>{buyers} of {decided}</span> customers would buy from {name}</>}
           {sim.status === "error" && <span style={{ color: C.loss }}>Something broke</span>}
         </h1>
+        {bots.length > 0 && botsDone > 0 && ["talking", "analyzing", "done"].includes(sim.status) && (
+          <div className="mt-2 text-[17px]">
+            <span className="font-semibold" style={{ color: botsBought / botsDone >= 0.5 ? C.win : botsBought ? C.mid : C.loss }}>{botsBought} of {botsDone} AI shopping agents</span>
+            <span className="text-white/60"> could complete the purchase for their user</span>
+          </div>
+        )}
         {sim.summary?.by_model && Object.keys(sim.summary.by_model).length > 1 && (
           <div className="mt-3 flex justify-center gap-2 font-mono text-[12px]">
             {Object.entries(sim.summary.by_model).map(([m, v]) => <span key={m} className="rounded-full border border-white/15 px-3 py-1 text-white/70">{m} customers: <b className="text-white">{v.bought}/{v.of}</b> bought</span>)}
@@ -162,10 +173,10 @@ export function SimView({ id }: { id: string }) {
       {sim.status === "awaiting_approval" && cast && (
         <div className="mt-10 text-center">
           <div className="flex flex-wrap justify-center gap-6">
-            {cast.map((p, i) => (
+            {cast.filter((p) => p.kind !== "agent").map((p, i) => (
               <div key={p.id} className="rise group relative w-[150px]" style={{ animationDelay: `${i * 0.08}s` }}>
                 <button onClick={() => setCast(cast.filter((x) => x.id !== p.id))} className="absolute right-3 top-0 z-10 hidden h-6 w-6 place-items-center rounded-full bg-white/15 text-white/70 hover:bg-[#ff3355] hover:text-white group-hover:grid" aria-label={`remove ${p.name}`}>×</button>
-                <div className="mx-auto w-fit rounded-full" style={{ boxShadow: `0 0 0 3px ${SHIRT[p.archetype]}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={96} /></div>
+                <div className="mx-auto w-fit rounded-full" style={{ boxShadow: `0 0 0 3px ${SHIRT[p.archetype]}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={96} /></div>
                 <div className="mt-3 text-[15px] font-semibold">{p.name}, {p.age}</div>
                 <div className="font-mono text-[11px]" style={{ color: SHIRT[p.archetype] }}>{p.archetype}</div>
                 {p.model && <div className="mt-1 inline-block rounded-full border border-white/15 px-2 py-0.5 font-mono text-[10px] text-white/60">played by {p.model}</div>}
@@ -174,6 +185,21 @@ export function SimView({ id }: { id: string }) {
               </div>
             ))}
           </div>
+          {cast.some((p) => p.kind === "agent") && (
+            <div className="mx-auto mt-10 max-w-3xl">
+              <div className="font-mono text-[11px] uppercase tracking-[0.25em] text-white/45">plus AI shopping agents, sent by a user</div>
+              <p className="mt-1 text-[14px] text-white/70">{cast.find((p) => p.kind === "agent")!.goal}</p>
+              <div className="mt-4 flex flex-wrap justify-center gap-6">
+                {cast.filter((p) => p.kind === "agent").map((p) => (
+                  <div key={p.id} className="group relative w-[120px]">
+                    <button onClick={() => setCast(cast.filter((x) => x.id !== p.id))} className="absolute right-2 top-0 z-10 hidden h-6 w-6 place-items-center rounded-full bg-white/15 text-white/70 hover:bg-[#ff3355] hover:text-white group-hover:grid" aria-label={`remove ${p.name}`}>×</button>
+                    <div className="mx-auto w-fit"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} size={76} feeling="neutral" /></div>
+                    <div className="mt-2 text-[14px] font-semibold">{p.name}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <button disabled={!cast.length} onClick={approve} className="mt-10 rounded-2xl px-10 py-4 text-[17px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 40px ${C.win}66` }}>Let them in →</button>
           <p className="mt-3 text-[12px] text-white/35">hover anyone to remove them</p>
           <form onSubmit={(e) => { e.preventDefault(); if (fix.trim().length > 1) recast(); }} className="mx-auto mt-6 flex max-w-xl gap-2">
@@ -189,6 +215,9 @@ export function SimView({ id }: { id: string }) {
           <SiteMap sim={sim} onOpen={setOpen} />
           <p className="mt-3 text-center text-[12px] text-white/35">click anyone to replay their visit · hover a page to see it</p>
 
+          {sim.actions && sim.actions.length > 0 && <DoThese actions={sim.actions} />}
+          {sim.status === "done" && sim.summary?.agents && sim.summary.agents.length > 0 && <AgentsPanel sim={sim} />}
+
           {(() => { const x = { ...demo, ...Object.fromEntries(Object.entries({ social: sim.social, evals: sim.evals, persona_changes: sim.persona_changes }).filter(([, v]) => v && (!Array.isArray(v) || v.length))) } as Partial<SimExtras>; return <>
             {x.social && <WordOfMouth social={x.social} personas={sim.personas} />}
             {x.evals && x.evals.length > 0 && <Accuracy evals={x.evals} />}
@@ -201,7 +230,7 @@ export function SimView({ id }: { id: string }) {
               <div className="mt-5 space-y-3">
                 {unconvinced.map((p) => (
                   <div key={p.id} className={`${PANEL} flex items-center gap-4 p-4`}>
-                    <Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={48} feeling={sim.decisions[p.id].feeling} />
+                    <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={48} feeling={sim.decisions[p.id].feeling} />
                     <p className="text-[15px] leading-snug text-white/85"><b>{p.name}:</b> {sim.decisions[p.id].missing}</p>
                   </div>
                 ))}
@@ -238,5 +267,55 @@ export function SimView({ id }: { id: string }) {
       )}
       {open && <Replay sim={sim} p={open} onClose={() => setOpen(null)} />}
     </div>
+  );
+}
+
+// ---------- the owner's to-do list ----------
+const AUD: Record<string, string> = { people: "for people", "AI agents": "for AI agents", both: "for people + agents" };
+function DoThese({ actions }: { actions: NonNullable<Sim["actions"]> }) {
+  return (
+    <section className="mx-auto mt-12 max-w-4xl">
+      <h2 className="text-center font-serif text-[30px]">Do these first</h2>
+      <div className="mt-6 space-y-3">
+        {actions.map((a, i) => (
+          <div key={i} className={`${PANEL} rise flex gap-4 p-5`} style={{ animationDelay: `${i * 0.08}s` }}>
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-mono text-[18px] font-bold text-black" style={{ background: i === 0 ? C.win : i === 1 ? C.mid : C.brain }}>{i + 1}</div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[17px] font-semibold">{a.fix}</span>
+                <span className="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: a.audience === "AI agents" ? "#9aa4b8" : a.audience === "both" ? C.brain : C.win }}>{AUD[a.audience]}</span>
+                <span className="rounded-full border border-white/15 px-2 py-0.5 font-mono text-[10px] text-white/60">{a.effort} fix</span>
+              </div>
+              <p className="mt-1 text-[14px] text-white/70">{a.why}</p>
+              <p className="mt-1 font-mono text-[11px] text-white/40">wins back: {a.who.join(", ")}{a.page ? ` · on ${a.page}` : ""}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ---------- layer 1: can AI shopping agents buy here? ----------
+function AgentsPanel({ sim }: { sim: Sim }) {
+  const rows = sim.summary!.agents!;
+  return (
+    <section className="mx-auto mt-12 max-w-4xl">
+      <h2 className="text-center font-serif text-[30px]">Can AI agents buy here?</h2>
+      <p className="mt-2 text-center text-[14px] text-white/55">Shoppers now send ChatGPT, Gemini and Claude to buy for them. Agents need facts: exact product, price, terms, a path to checkout.</p>
+      <div className="mt-6 grid gap-3 md:grid-cols-3">
+        {rows.map((r) => { const p = sim.personas.find((x) => x.id === r.persona)!; return (
+          <div key={r.persona} className={`${PANEL} p-4`}>
+            <div className="flex items-center gap-3">
+              <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} size={48} feeling={sim.decisions[p.id]?.feeling ?? "neutral"} />
+              <div><div className="text-[15px] font-semibold">{p.name}</div>
+                <div className="font-mono text-[12px] font-semibold" style={{ color: r.bought ? C.win : C.loss }}>{r.bought ? "✓ could buy" : "✗ couldn't buy"}</div></div>
+            </div>
+            <p className="mt-3 text-[13px] text-white/75">“{r.quote}”</p>
+            {!r.bought && r.missing && <p className="mt-2 text-[12px] text-white/50"><span className="text-white/70">Needed:</span> {r.missing}</p>}
+          </div>
+        ); })}
+      </div>
+    </section>
   );
 }

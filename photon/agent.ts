@@ -30,8 +30,10 @@ const host = (u: string) => u.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 const findSite = (t: string) => t.match(/\b(https?:\/\/)?([a-z0-9-]+\.)+(com|io|co|org|net|ai|app|shop|store|biz|us|dev|xyz|me|info|cafe|restaurant)(\/[^\s]*)?\b/i)?.[0]?.replace(/[.,!?)]+$/, "");
 
 function castText(sim: any) {
-  const lines = sim.personas.map((p: any, i: number) => `${i + 1}. ${p.name}, ${p.age}, ${p.occupation} (${p.archetype}${p.model ? `, played by ${p.model}` : ""})`);
-  return `Meet your ${sim.personas.length} customers at ${sim.input.name || host(sim.input.url)}:\n${lines.join("\n")}\n\nReply "ok" to let them in, or tell me what's off (e.g. "my customers are older").`;
+  const people = sim.personas.filter((p: any) => p.kind !== "agent");
+  const bots = sim.personas.filter((p: any) => p.kind === "agent");
+  const lines = people.map((p: any, i: number) => `${i + 1}. ${p.name}, ${p.age}, ${p.occupation} (${p.archetype}${p.model ? `, played by ${p.model}` : ""})`);
+  return `Meet your ${people.length} customers at ${sim.input.name || host(sim.input.url)}:\n${lines.join("\n")}` + (bots.length ? `\n\nPlus ${bots.length} AI shopping agents (${bots.map((b: any) => b.model).join(", ")}) on a user's errand: ${bots[0].goal.replace(/^Your user asked: /, "")}` : "") + `\n\nReply "ok" to let them in, or tell me what's off (e.g. "my customers are older").`;
 }
 
 function bought(sim: any, pid: string) {
@@ -41,14 +43,16 @@ function bought(sim: any, pid: string) {
 }
 
 function resultText(sim: any) {
-  const decided = Object.keys(sim.decisions);
-  const n = sim.personas.filter((p: any) => bought(sim, p.id)).length;
+  const people = sim.personas.filter((p: any) => p.kind !== "agent" && sim.decisions[p.id]);
+  const bots = sim.personas.filter((p: any) => p.kind === "agent" && sim.decisions[p.id]);
+  const n = people.filter((p: any) => bought(sim, p.id)).length;
   const name = sim.input.name || host(sim.input.url);
-  const out = [`${n} of ${decided.length} customers would buy from ${name}.`];
+  const out = [`${n} of ${people.length} customers would buy from ${name}.` + (bots.length ? ` ${bots.filter((p: any) => bought(sim, p.id)).length} of ${bots.length} AI shopping agents could buy for their user.` : "")];
+  if (sim.actions?.length) out.push("Do these first:\n" + sim.actions.slice(0, 3).map((a: any, i: number) => `${i + 1}. ${a.fix} (${a.audience === "AI agents" ? "for AI agents" : a.audience === "both" ? "for people + agents" : "for people"})`).join("\n"));
   const bm = sim.summary?.by_model;
   if (bm && Object.keys(bm).length > 1) out.push(Object.entries(bm).map(([m, v]: any) => `${m} ${v.bought}/${v.of}`).join(" · "));
-  const misses = sim.personas.filter((p: any) => sim.decisions[p.id] && !bought(sim, p.id) && sim.decisions[p.id].missing).slice(0, 3);
-  if (misses.length) out.push("What would win them over:\n" + misses.map((p: any) => `• ${p.name}: ${sim.decisions[p.id].missing}`).join("\n"));
+  const misses = people.filter((p: any) => !bought(sim, p.id) && sim.decisions[p.id].missing).slice(0, 3);
+  if (misses.length && !sim.actions?.length) out.push("What would win them over:\n" + misses.map((p: any) => `• ${p.name}: ${sim.decisions[p.id].missing}`).join("\n"));
   if (sim.social?.summary) out.push(`What's spreading: ${sim.social.summary.replace(/\*\*/g, "").split(/(?<=\.)\s/)[0]}`);
   out.push(`Watch them shop: ${PUBLIC}/#sim=${sim.id}`);
   out.push(`Tell me what real customers do and they'll learn. Changed your site? Say what you changed, or "again" to test again.`);

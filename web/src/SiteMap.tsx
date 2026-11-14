@@ -123,7 +123,7 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
         {spots.map(({ p, first, x, y, feeling, thought, d, moving }) => (
           <button key={p.id} onClick={() => onOpen(p)} className="group absolute z-10 transition-all duration-[1200ms] ease-in-out" style={{ left: x, top: y }} title={`${p.name} · ${p.archetype}${p.model ? ` · ${p.model}` : ""}`}>
             <div className="rounded-full" style={{ boxShadow: `0 0 0 2.5px ${SHIRT[p.archetype]}, 0 6px 20px rgba(0,0,0,.6)` }}>
-              <Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={40} feeling={feeling} busy={moving} />
+              <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={40} feeling={feeling} busy={moving} />
             </div>
             {(sim.live[p.id] ?? []).some((x) => x.cart) && <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full text-[11px]" style={{ background: C.win }}>🛒</span>}
             <div className="mt-0.5 text-center font-mono text-[9px] text-white/70">{p.name}{p.model && <span className="block text-white/35">{p.model}</span>}</div>
@@ -154,7 +154,7 @@ function Ticker({ sim }: { sim: Sim }) {
   if (!items.length) return null;
   const row = items.map((it, i) => (
     <span key={i} className="mx-6 inline-flex items-center gap-2 align-middle">
-      <Avatar seed={it.p.avatar.seed} archetype={it.p.archetype} age={it.p.age} size={22} feeling={it.feeling} />
+      <Avatar seed={it.p.avatar.seed} archetype={it.p.archetype} model={it.p.model} age={it.p.age} size={22} feeling={it.feeling} />
       <b className="text-[12px]" style={{ color: SHIRT[it.p.archetype] }}>{it.p.name}</b>
       <span className="text-[12px]" style={{ color: it.color }}>{it.text.length > 120 ? it.text.slice(0, 120) + "…" : it.text}</span>
     </span>

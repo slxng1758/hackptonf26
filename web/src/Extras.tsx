@@ -36,7 +36,7 @@ export function WordOfMouth({ social, personas }: { social: Social; personas: Pe
             const tp = t ? who(personas, t.author, social.nodes.find((n) => n.id === t.author)?.label) : null;
             return (
               <div key={post.id} className={`rise flex gap-3 ${post.kind !== "post" ? "ml-8" : ""}`}>
-                <Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={36} feeling={post.sentiment > 0.15 ? "interested" : post.sentiment < -0.15 ? "annoyed" : "neutral"} />
+                <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={36} feeling={post.sentiment > 0.15 ? "interested" : post.sentiment < -0.15 ? "annoyed" : "neutral"} />
                 <div className="min-w-0 flex-1 rounded-xl bg-white/[0.04] px-3 py-2">
                   <div className="flex items-center gap-2 text-[12px]">
                     <b>{p.name}</b>
@@ -128,7 +128,7 @@ export function Learned({ changes, personas }: { changes: PersonaChange[]; perso
       <div className="mt-6 space-y-3">
         {changes.map((c, i) => { const p = who(personas, c.persona_id); return (
           <div key={i} className={`${PANEL} flex gap-4 p-4`}>
-            <div className="h-fit self-start rounded-full" style={{ boxShadow: `0 0 0 2px ${SHIRT[p.archetype] ?? "#888"}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={44} feeling="interested" /></div>
+            <div className="h-fit self-start rounded-full" style={{ boxShadow: `0 0 0 2px ${SHIRT[p.archetype] ?? "#888"}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={44} feeling="interested" /></div>
             <div className="min-w-0 flex-1">
               <div className="text-[14px]"><b>{p.name}</b> <span className="font-mono text-[11px] text-white/40">round {c.iteration}</span>{(c as PersonaChange & { source?: string }).source === "human" && <span className="ml-2 rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.brain }}>from real people</span>}</div>
               <p className="line-clamp-2 text-[14px] text-white/80">{c.lesson}</p>

@@ -185,6 +185,27 @@ def read_site(url: str) -> dict:
 FEELINGS = ["delighted", "interested", "neutral", "confused", "annoyed", "skeptical"]
 
 
+class Errand(BaseModel):
+    request: str = Field(description="what a user asks their AI shopping agent to do on this site, first person, specific, one sentence")
+    budget: str = Field(description="the limit the user gave, concretely")
+
+
+AGENT_VOICE = ("You are an AI shopping agent acting for a user, not a person browsing. You are literal and logical: you need the exact "
+               "product, a clear price including fees, availability, and the terms (returns, subscription, delivery). Marketing, "
+               "urgency and emotion do not move you. If you cannot verify something your user needs, you do not buy.")
+
+
+def agent_shoppers(name: str, offer: str, families: list[str]) -> list[dict]:
+    """Layer 1, 'can an AI agent buy here?': one plain shopping agent per model family, all on the same errand for a user."""
+    e: Errand = fast().with_structured_output(Errand, method="json_schema").invoke(
+        f"Business: {name}. What it sells: {offer or 'see the website'}.\nWrite the most common errand a person would give their AI "
+        f"shopping agent (ChatGPT, Gemini, Claude) for this business, as the user would phrase it.")
+    return [{"id": f"a{i + 1}", "kind": "agent", "name": f"{fam} agent", "age": 30, "occupation": "AI shopping agent",
+             "archetype": "AI agent", "segment": "AI shopping agents acting for a user", "share": 0.0,
+             "goal": f'Your user asked: "{e.request}"', "budget": e.budget, "voice": AGENT_VOICE, "model": fam,
+             "avatar": {"seed": 900 + i}} for i, fam in enumerate(families)]
+
+
 def cast(name: str, category: str, context: str, world: str, customers: str, offer: str = "") -> list[dict]:
     ask = CAST.format(name=name, category=category, context=context or "none", world=world or "today, normal times", customers=customers, offer=offer or "see the website")
     try:
