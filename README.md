@@ -91,11 +91,12 @@ A simulated customer that blames your site for our bugs is worse than no custome
 | What went wrong | What we do now |
 |---|---|
 | Sites show "verify you are human" to automated browsers, and personas blamed the business | Bot walls are detected, skipped and labeled *"blocked by a bot check · not a customer issue"* |
-| Bot protection quietly emptied carts, so a shopper who clicked "Add to cart" saw an empty cart and left angry | Clicking add to cart, buy or download counts as buying, and the persona is told an empty cart afterwards is our test setup |
+| Bot protection quietly emptied carts, so a shopper who clicked "Add to cart" saw an empty cart and left angry | The persona is told an empty cart is our test setup, not the store, so it judges the business on what it saw |
 | Clicks landed on hidden mobile-menu copies of links, so everyone was stuck on the homepage | Only visible links, buttons, filters and product cards are offered, and a link goes where it actually points |
 | Links that open a new tab looked "dead" | The browser follows the new tab, like a person would |
 | Personas were cast with needs the business doesn't serve, and budgets far below its prices | Casting reads what the site actually sells and costs, and only casts people who came on purpose |
-| Models hedge: a shopper picked a size and opened the cart, then said "maybe later" | We count what customers **do**, not what they say |
+| We first counted any "Add to cart" click as a sale, which inflated results | A sale is now a final "buy" (or a placed order on our generated store). Cart then "maybe later" is an **abandoned cart** |
+| On apple.com every customer kept clicking a greyed-out storage option | Customers are told a greyed-out choice unlocks after an earlier one (pick a color first) |
 
 On a JavaScript-heavy site the first version saw a blank page, and personas came out generic. The site is now read in a real browser.
 
@@ -156,15 +157,17 @@ flowchart LR
 
 ## The math
 
-**Bought** means the customer clicked a buy, add-to-cart or download button, or said *buy* or *would recommend*:
+**Outcome.** For customer $i$ with final decision $d_i$ (`b2a/outcome.py`):
 
-$$ \text{bought}_i = \mathbb{1}\left[\text{clicked buy}_i \;\lor\; d_i \in \{\text{buy},\ \text{would recommend}\}\right] $$
+$$ o_i = \begin{cases} \text{bought} & \text{placed the order (our generated store), or } d_i \in \{\text{buy},\ \text{would recommend}\} \text{ (real site)} \\ \text{abandoned cart} & \text{added to cart, then did not buy} \\ \text{maybe} & d_i = \text{maybe later} \\ \text{left} & \text{otherwise} \end{cases} $$
 
-**Weighted buy rate**, where $s_i$ is persona $i$'s share of the customer base and *maybe later* counts as 0.3:
+On a real website our test customers never pay, so the final decision stands in for the purchase. On a store generated from a product description, checkout needs no payment, so buying means placing the order.
 
-$$ \text{buy rate} = \frac{\sum_i s_i \, b_i}{\sum_i s_i}, \qquad b_i = \begin{cases} 1 & \text{bought}_i \\ 0.3 & d_i = \text{maybe later} \\ 0 & \text{otherwise} \end{cases} $$
+**Weighted buy rate**, where $s_i$ is persona $i$'s share of the customer base:
 
-The headline ("3 of 7 would buy") is the unweighted count of $\text{bought}_i$. The share-weighted rate is in the report.
+$$ \text{buy rate} = \frac{\sum_i s_i \, b_i}{\sum_i s_i}, \qquad b_i = \begin{cases} 1 & o_i = \text{bought} \\ 0.3 & o_i \in \{\text{maybe},\ \text{abandoned cart}\} \\ 0 & \text{left} \end{cases} $$
+
+The headline ("2 of 6 would buy") is the unweighted count of $o_i = \text{bought}$, with people and AI agents counted separately. The share-weighted rate is in the report.
 
 **Who spreads furthest.** If customer $a$ replies to or reposts $b$, influence flows from $a$ to $b$ with weight $w_{ab}$ (how many times). PageRank over $n$ customers, damping $d = 0.85$:
 
