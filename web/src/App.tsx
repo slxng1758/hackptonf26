@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Job } from "./types";
-import { Start } from "./Start";
+import { Start, type StartInput } from "./Start";
 import { Dashboard } from "./Dashboard";
 import { SimView } from "./Simulate";
 
@@ -27,10 +27,10 @@ export function App() {
     fetch(`/api/jobs/${view.id}`).then((r) => r.json()).then(setJob).catch(() => {});
   }, [view]);
 
-  async function go(b: { url: string; context: string; world: string }) {
+  async function go(b: StartInput) {
     setErr(null);
     const r = await fetch("/api/sims", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
-    if (!r.ok) { setErr("That doesn't look like a website. Try something like yourbusiness.com"); return; }
+    if (!r.ok) { setErr("Describe your product in a sentence or two (at least 10 characters)."); return; }
     setView({ kind: "sim", id: (await r.json()).id });
   }
 

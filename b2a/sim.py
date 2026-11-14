@@ -362,6 +362,9 @@ def rerun(sim_id: str, change: str = "") -> SimJob | None:
 def _host(url: str) -> str:
     from urllib.parse import urlparse
     u = url if url.startswith("http") else "https://" + url
+    parts = urlparse(u).path.strip("/").split("/")
+    if parts[:2] == ["api", "products"] and len(parts) > 2:  # described product (b2a/product_page.py): one "site" per product
+        return parts[2]
     return urlparse(u).netloc.removeprefix("www.").lower()
 
 

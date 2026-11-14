@@ -61,12 +61,27 @@ function Scene() {
   );
 }
 
-export function Start({ onGo, onOpen }: { onGo: (b: { url: string; context: string; world: string }) => void; onOpen: (id: string) => void }) {
-  const [url, setUrl] = useState("");
+export interface StartInput { description: string; name: string; price: string; context: string; world: string }
+
+const EXAMPLE = {
+  name: "Oat milk latte",
+  price: "$5.50",
+  description: "Our house oat milk latte: a double shot of espresso with steamed oat milk, made to order. Available hot or iced, " +
+    "in 12 oz or 16 oz. Add a flavor shot (vanilla, caramel or lavender) for 75 cents. Order at the counter or ahead online for pickup.",
+};
+
+export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen: (id: string) => void }) {
+  const [description, setDescription] = useState("");
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
   const [more, setMore] = useState(false);
   const [context, setContext] = useState("");
   const [world, setWorld] = useState(WORLDS[0]);
-  const go = (u = url) => u.trim().length > 3 && onGo({ url: u.trim(), context, world: world === WORLDS[0] ? "" : world });
+  const ready = description.trim().length >= 10;
+  const go = (b?: { description: string; name: string; price: string }) => {
+    const x = b ?? { description, name, price };
+    if (x.description.trim().length >= 10) onGo({ ...x, description: x.description.trim(), context, world: world === WORLDS[0] ? "" : world });
+  };
 
   return (
     <div className="relative overflow-hidden">
@@ -75,18 +90,26 @@ export function Start({ onGo, onOpen }: { onGo: (b: { url: string; context: stri
       <div className="flex -space-x-3">
         {CROWD.map((c, i) => <div key={i} className="rounded-full ring-4 ring-[#08080d]" style={{ animationDelay: `${i * 0.2}s` }}><Avatar seed={c.seed} archetype={c.a} age={c.age} feeling={c.f} size={64} busy /></div>)}
       </div>
-      <h1 className="mt-8 font-serif text-[56px] leading-[1.02]">Watch your customers<br /><span className="shimmer">try your website.</span></h1>
-      <p className="mt-3 text-[16px] text-white/55">AI customers open it, click around, think out loud, and decide if they'd buy.</p>
+      <h1 className="mt-8 font-serif text-[56px] leading-[1.02]">Watch your customers<br /><span className="shimmer">try your product.</span></h1>
+      <p className="mt-3 text-[16px] text-white/55">Describe it. AI customers look it over, think out loud, and decide if they'd buy.</p>
 
-      <form onSubmit={(e) => { e.preventDefault(); go(); }} className="mt-10 flex w-full gap-2 rounded-2xl border border-white/15 bg-white/[0.04] p-2 focus-within:border-[#3ff0d4]">
-        <input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} placeholder="yourwebsite.com"
-          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-[18px] outline-none placeholder:text-white/30" />
-        <button className="rounded-xl px-7 text-[16px] font-semibold text-black" style={{ background: C.win, boxShadow: `0 0 30px ${C.win}55` }}>Go</button>
+      <form onSubmit={(e) => { e.preventDefault(); go(); }} className="mt-10 w-full space-y-2 rounded-2xl border border-white/15 bg-white/[0.04] p-3 text-left focus-within:border-[#3ff0d4]">
+        <textarea autoFocus value={description} onChange={(e) => setDescription(e.target.value)} rows={5}
+          placeholder="Describe your product the way you'd explain it to a customer: what it is, what's in it, options, price, how to get it."
+          className="w-full resize-none bg-transparent px-3 py-2 text-[16px] leading-relaxed outline-none placeholder:text-white/30" />
+        <div className="flex gap-2">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Product name (optional)"
+            className="min-w-0 flex-1 rounded-xl border border-white/10 bg-transparent px-3 py-2 text-[14px] outline-none placeholder:text-white/30 focus:border-white/30" />
+          <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price (optional)"
+            className="w-36 rounded-xl border border-white/10 bg-transparent px-3 py-2 text-[14px] outline-none placeholder:text-white/30 focus:border-white/30" />
+          <button disabled={!ready} className="rounded-xl px-7 text-[16px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 30px ${C.win}55` }}>Go</button>
+        </div>
       </form>
 
       <div className="mt-4 flex flex-wrap justify-center gap-2 text-[13px]">
         <span className="text-white/35">try:</span>
-        {["olivesprinceton.com"].map((u) => <button key={u} onClick={() => { setUrl(u); go(u); }} className="text-white/60 underline decoration-white/20 hover:text-white">{u}</button>)}
+        <button onClick={() => { setDescription(EXAMPLE.description); setName(EXAMPLE.name); setPrice(EXAMPLE.price); go(EXAMPLE); }}
+          className="text-white/60 underline decoration-white/20 hover:text-white">an oat milk latte</button>
         <span className="text-white/20">·</span>
         <button onClick={() => setMore(!more)} className="text-white/45 hover:text-white">{more ? "− less" : "+ what changed?"}</button>
       </div>

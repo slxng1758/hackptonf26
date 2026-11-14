@@ -12,6 +12,9 @@ from b2a.presets import PRESETS
 app = FastAPI(title="b2a")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:4621", "http://127.0.0.1:4621"], allow_methods=["*"], allow_headers=["*"])
 
+from b2a.product_page import router as product_router  # description mode: browsable pages for products without a website
+app.include_router(product_router)
+
 
 class Start(BaseModel):
     name: str = Field(min_length=1, max_length=120)
@@ -80,19 +83,37 @@ app.mount("/api/shots", StaticFiles(directory=str(sim.SIMS)), name="shots")
 
 
 class SimIn(BaseModel):
-    url: str = Field(min_length=4, max_length=500)
+    description: str = Field("", max_length=8000, description="the product, as the owner describes it; we turn it into a page the customers browse")
+    url: str = Field("", max_length=500, description="optional: a real website instead of a description")
     name: str = Field("", max_length=120)
+    price: str = Field("", max_length=60)
     category: str = Field("", max_length=200)
     customers: str = Field("", max_length=20000)
     context: str = Field("", max_length=1000, description="what changed about the product")
     world: str = Field("", max_length=300, description="the world the customers live in")
 
 
+def _name_from(description: str) -> str:
+    """Name for a described product when the owner gave none: its first sentence if short, else the first few words."""
+    import re
+    first = re.split(r"(?<=[.!?:])\s|\n", description.strip(), maxsplit=1)[0].strip(" .!?:-#*")
+    return first if len(first) <= 60 else " ".join(first.split()[:6])
+
+
 @app.post("/api/sims")
 def sim_start(body: SimIn):
     d = body.model_dump()
-    if not d["url"].startswith("http"):
-        d["url"] = "https://" + d["url"]
+    if len(d["description"].strip()) >= 10:
+        # description mode: render the owner's own words as a product page (b2a/product_page.py); customers browse that
+        from b2a import product_page
+        d["name"] = d["name"] or _name_from(d["description"])
+        page = product_page.create(product_page.Product(name=d["name"], description=d["description"], price=d["price"], changes=d["context"]))
+        d["url"], d["product_id"], d["offer"] = page["url"], page["id"], d["description"][:2000]
+    elif len(d["url"].strip()) >= 4:
+        if not d["url"].startswith("http"):
+            d["url"] = "https://" + d["url"]
+    else:
+        raise HTTPException(422, "Describe your product (or give a website).")
     return {"id": sim.start(d).id}
 
 
@@ -178,6 +199,48 @@ def long_term_memory():
     """What each type of customer has learned across every business tested."""
     from b2a import memory
     return memory.everything()
+
+
+# ---------- Gemini: UX lens on the customers' screenshots, and a researched world (b2a/gemini.py) ----------
+
+@app.post("/api/sims/{sim_id}/lens")
+def sim_lens(sim_id: str):
+    """Gemini boxes the spots on each page that confused or lost customers, then groups them into hotspots."""
+    from b2a import gemini
+    d = sim.get(sim_id)
+    if not d:
+        raise HTTPException(404, "no such simulation")
+    if d.get("status") != "done":
+        raise HTTPException(409, "Run the lens after the simulation is done.")
+    try:
+        return gemini.run_lens(sim_id, d).model_dump()
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+
+
+@app.get("/api/sims/{sim_id}/lens")
+def sim_lens_get(sim_id: str):
+    from b2a import gemini
+    d = gemini.saved_lens(sim_id)
+    if d is None:
+        raise HTTPException(404, "no lens yet: POST to this route to run it")
+    return d
+
+
+class WorldIn(BaseModel):
+    world: str = Field(min_length=3, max_length=300)
+    product: str = Field("", max_length=300)
+
+
+@app.post("/api/world")
+def world(body: WorldIn):
+    """Gemini + Google Search: what the chosen world was really like, with sources. Put `text` in the sim's world field."""
+    from b2a import gemini
+    try:
+        g = gemini.ground_world(body.world, body.product or "this product")
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+    return {**g.model_dump(), "text": gemini.world_text(g)}
 
 
 @app.get("/api/fixtures/extras")
