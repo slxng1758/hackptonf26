@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from b2a import agent, personas, scan as scanner
+from b2a import agent, personas, scan as scanner, sim
 from b2a.models import shoppers
 from b2a.presets import PRESETS
 
@@ -70,3 +70,51 @@ def job(job_id: str):
 @app.get("/api/lessons")
 def lessons():
     return agent.lessons()
+
+
+# ---------- customer simulation (personas browse the real product) ----------
+from fastapi.staticfiles import StaticFiles
+
+sim.SIMS.mkdir(parents=True, exist_ok=True)
+app.mount("/api/shots", StaticFiles(directory=str(sim.SIMS)), name="shots")
+
+
+class SimIn(BaseModel):
+    url: str = Field(min_length=4, max_length=500)
+    name: str = Field(min_length=1, max_length=120)
+    category: str = Field(min_length=1, max_length=200)
+    customers: str = Field(min_length=3, max_length=20000)
+    context: str = Field("", max_length=1000, description="what changed about the product")
+    world: str = Field("", max_length=300, description="the world the customers live in")
+
+
+@app.post("/api/sims")
+def sim_start(body: SimIn):
+    d = body.model_dump()
+    if not d["url"].startswith("http"):
+        d["url"] = "https://" + d["url"]
+    return {"id": sim.start(d).id}
+
+
+@app.get("/api/sims")
+def sim_list():
+    return sim.list_sims()
+
+
+@app.get("/api/sims/{sim_id}")
+def sim_get(sim_id: str):
+    d = sim.get(sim_id)
+    if not d:
+        raise HTTPException(404, "no such simulation")
+    return d
+
+
+class Approve(BaseModel):
+    personas: list[dict] | None = None
+
+
+@app.post("/api/sims/{sim_id}/approve")
+def sim_approve(sim_id: str, body: Approve):
+    if not sim.approve(sim_id, body.personas):
+        raise HTTPException(409, "This simulation isn't waiting for approval.")
+    return {"ok": True}

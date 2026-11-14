@@ -34,6 +34,7 @@ class Competitor(BaseModel):
 
 class Scan(BaseModel):
     name: str
+    website: str = Field(description="the business's own website URL")
     category: str = Field(description="what it sells and where, e.g. 'Event catering in Princeton, NJ'")
     listing: str = Field(description="how the business describes itself today on its site, max 60 words, quoted or closely paraphrased")
     facts: list[str] = Field(description="8 to 12 concrete, checkable facts from the business's own site: prices, sizes, hours, area, notice, options")
@@ -75,7 +76,7 @@ def scan(query: str) -> dict:
                            if own not in re.sub(r"[^a-z]", "", c["name"].lower())
                            and not re.search(r"chamber|directory|yelp|tripadvisor|yellowpages", (c["name"] + c["url"]).lower())]
     return {
-        "name": data["name"], "category": data["category"], "listing": data["listing"], "facts": data["facts"],
+        "name": data["name"], "url": url or data["website"], "category": data["category"], "listing": data["listing"], "facts": data["facts"],
         "competitors": [c["listing"] for c in data["competitors"]],
         "competitor_meta": [{"name": c["name"], "url": c["url"]} for c in data["competitors"]],
         "customers": data["customers"], "sources": data["sources"], "fetched_site": bool(page),

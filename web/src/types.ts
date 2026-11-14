@@ -1,5 +1,5 @@
 export interface Preset { name: string; category: string; listing: string; facts: string[]; competitors: string[]; customers: string }
-export interface Draft extends Preset { customers_csv: boolean; source: "scan" | "demo"; competitor_meta?: { name: string; url: string }[]; sources?: string[] }
+export interface Draft extends Preset { url?: string; customers_csv: boolean; source: "scan" | "demo"; competitor_meta?: { name: string; url: string }[]; sources?: string[] }
 export interface Segment { name: string; share: number; cares_about: string; tasks: string[] }
 export interface Loss { segment: string; request: string; shopper: string; chose: string; reason: string; missing: string }
 export interface Test {

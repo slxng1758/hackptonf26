@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Draft } from "./types";
 import { C, LABEL, PANEL } from "./theme";
 
-export function Review({ draft, onRun, onBack, busy }: { draft: Draft; onRun: (d: Draft) => void; onBack: () => void; busy: boolean }) {
+export function Review({ draft, onRun, onSimulate, onBack, busy }: { draft: Draft; onRun: (d: Draft) => void; onSimulate: (d: Draft) => void; onBack: () => void; busy: boolean }) {
   const [d, setD] = useState<Draft>(draft);
   const [newFact, setNewFact] = useState("");
   const [editListing, setEditListing] = useState(false);
@@ -20,10 +20,15 @@ export function Review({ draft, onRun, onBack, busy }: { draft: Draft; onRun: (d
           <h1 className="mt-1 font-serif text-[40px] leading-tight">{d.name}</h1>
           <div className="font-mono text-[13px] text-white/50">{d.category}</div>
         </div>
-        <button disabled={!ready || busy} onClick={() => onRun(d)} className="rounded-xl px-7 py-3.5 text-[15px] font-semibold text-black disabled:opacity-40"
-          style={{ background: C.win, boxShadow: `0 0 40px ${C.win}55` }}>
-          {busy ? "Running…" : "Send in the shopping agents →"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button disabled={!ready || busy} onClick={() => onRun(d)} className="rounded-xl border border-white/20 px-5 py-3.5 text-[14px] font-semibold text-white/85 hover:border-white/50 disabled:opacity-40">
+            Test against AI shopping agents
+          </button>
+          <button disabled={d.customers.trim().length < 4} onClick={() => onSimulate(d)} className="rounded-xl px-7 py-3.5 text-[15px] font-semibold text-black disabled:opacity-40"
+            style={{ background: C.win, boxShadow: `0 0 40px ${C.win}55` }}>
+            Simulate my customers →
+          </button>
+        </div>
       </div>
       {!ready && <p className="mt-2 text-[12px]" style={{ color: C.mid }}>Needs a listing, at least one fact, one competitor and a line about your customers.</p>}
 
