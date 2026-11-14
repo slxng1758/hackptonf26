@@ -8,7 +8,7 @@ import { Lens } from "./Lens";
 import { Accuracy, Learned, WordOfMouth } from "./Extras";
 import type { SimExtras } from "./sim-extras";
 
-export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number }; model?: string; memory?: string; inherited?: boolean; kind?: "agent" }
+export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number }; model?: string; memory?: string; inherited?: boolean; kind?: "agent"; played_by?: string; model_note?: string }
 interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; thought: string; feeling: Feeling; action: string; target: string }
 interface Decision { decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string }
 export interface Sim extends Partial<SimExtras> {
@@ -51,7 +51,7 @@ function Replay({ sim, p, onClose }: { sim: Sim; p: Persona; onClose: () => void
       <div className={`${PANEL} mx-auto max-w-5xl bg-[var(--card)] p-6`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={64} feeling={d?.feeling ?? "neutral"} />
-            <div><div className="font-serif text-[26px]">{p.name}'s session</div><div className="text-[13px] text-white/50">{p.age} · {p.occupation} · {p.archetype}{p.model ? ` · played by ${p.model}` : ""} · wants: {p.goal}</div></div></div>
+            <div><div className="font-serif text-[26px]">{p.name}'s session</div><div className="text-[13px] text-white/50">{p.age} · {p.occupation} · {p.archetype}{p.model ? ` · played by ${p.played_by ? `${p.played_by} (${p.model} unavailable)` : p.model}` : ""} · wants: {p.goal}</div></div></div>
           <button onClick={onClose} className="text-[22px] text-white/50 hover:text-white">×</button>
         </div>
         <ol className="mt-6 space-y-5">

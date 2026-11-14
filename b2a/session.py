@@ -278,10 +278,15 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
     history: list[str] = []
     model, backup = persona_model(persona.get("model")), fast()
 
+    fallbacks = {"n": 0, "why": ""}
+
     def ask(schema, msg):
         try:
             return model.with_structured_output(schema).invoke(msg)
-        except Exception:
+        except Exception as e:
+            # the persona's own model failed (e.g. Gemini free-tier quota): Claude stands in, and we say so
+            fallbacks["n"] += 1
+            fallbacks["why"] = fallbacks["why"] or f"{type(e).__name__}: {str(e)[:120]}"
             return backup.with_structured_output(schema).invoke(msg)
 
     with sync_playwright() as p:
@@ -374,7 +379,8 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
         d: Decision = ask(Decision, q)
     except Exception:
         d = ask(Decision, q + "\nFill in every field.")
-    return {"persona": persona["id"], **agent_tags(persona), "steps": steps, "decision": d.model_dump()}
+    return {"persona": persona["id"], **agent_tags(persona), "steps": steps, "decision": d.model_dump(),
+            "fallbacks": fallbacks["n"], "fallback_reason": fallbacks["why"]}
 
 
 def agent_tags(a: dict) -> dict:

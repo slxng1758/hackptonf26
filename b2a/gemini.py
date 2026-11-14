@@ -198,6 +198,10 @@ def lens(view: dict, sim_dir: Path, client=None, workers: int = 4) -> Lens:
         shots = [s for s in ex.map(one, steps) if s]
     hs = hotspots(shots)
     n = len({p["id"] for p in view.get("personas") or []}) or len({s.persona_id for s in shots})
+    errors = [x.error for x in shots if x.error]
+    if shots and len(errors) == len(shots):  # Gemini never answered: say why instead of "no friction found"
+        why = "Gemini's daily free-tier quota is used up" if any("429" in e or "RESOURCE_EXHAUSTED" in e or "Client" in e for e in errors) else errors[0][:120]
+        return Lens(model=model_name(), shots=shots, hotspots=[], summary=f"Gemini couldn't look at the screenshots: {why}. Try again later or with a paid key.")
     return Lens(model=model_name(), shots=shots, hotspots=hs, summary=_summary(hs, n))
 
 

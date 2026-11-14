@@ -171,6 +171,7 @@ class SimJob:
 
             def on_done(pid, r):
                 (self.dir / "sessions" / f"{pid}.json").write_text(json.dumps(r, indent=2))
+                self._note_fallback(pid, r)
                 if r.get("decision"):
                     self.decisions[pid] = r["decision"]
                     self.log("decision", f"{next(p['name'] for p in self.personas if p['id'] == pid)}: {r['decision']['decision']} ({r['decision']['rating']}/5)")
@@ -229,6 +230,7 @@ class SimJob:
 
         def on_done(aid, r):
             (self.dir / "sessions" / f"{aid}.json").write_text(json.dumps(r, indent=2))
+            self._note_fallback(aid, r)
             (hist / f"{aid}.json").write_text(json.dumps(r, indent=2))
             if r.get("decision"):
                 got[aid] = self.decisions[aid] = {**r["decision"], **{k: r.get(k) for k in ("layer", "model", "persona_id", "memory_version")}}
@@ -243,6 +245,16 @@ class SimJob:
         run["summary"] = {k: self.summary.get(k) for k in ("buy_rate", "rating", "confidence")}
         self.save()
         return run
+
+    def _note_fallback(self, pid: str, r: dict):
+        """If a persona's model failed and Claude stood in, record what actually played it (no false 'played by Gemini')."""
+        if not r.get("fallbacks"):
+            return
+        p = next((x for x in self.personas if x["id"] == pid), None)
+        if p and p.get("model") and not p.get("played_by"):
+            p["played_by"] = "Claude"
+            p["model_note"] = f"{p['model']} unavailable ({r.get('fallback_reason', '')[:80]}), Claude stood in for {r['fallbacks']} step(s)"
+            self.log("fallback", f"{p['name']}: {p['model_note']}")
 
     def _summarize(self):
         agents = {p["id"] for p in self.personas if p.get("kind") == "agent"}
@@ -259,7 +271,7 @@ class SimJob:
         by_model: dict[str, list[int]] = {}
         for p in self.personas:
             if p["id"] in got and p.get("kind") != "agent":
-                m = by_model.setdefault(p.get("model", "Claude"), [0, 0])
+                m = by_model.setdefault(p.get("played_by") or p.get("model", "Claude"), [0, 0])
                 m[1] += 1
                 m[0] += int(p["id"] in carted or BUYS.get(got[p["id"]]["decision"], 0) >= 1)
         agent_rows = []
