@@ -4,18 +4,21 @@ import { useEffect, useState } from "react";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, PANEL } from "./theme";
 import type { Persona } from "./Simulate";
+import { OUTCOME_LABEL, outcomeColor, type Outcome } from "./SiteMap";
 
-interface Step { n: number; url: string; title?: string; shot: string | null; blocked?: boolean; cart?: boolean; thought: string; feeling: Feeling; action: string; target: string }
+interface Step { n: number; url: string; title?: string; shot: string | null; blocked?: boolean; cart?: boolean; ordered?: boolean; thought: string; feeling: Feeling; action: string; target: string }
 interface Suggestion { change: string; why: string; where: string; impact: string }
 interface Decision {
   decision: string; rating: number; feeling: Feeling; confidence?: number; quote: string; reasons: string[]; missing: string; stars_after_use?: number | null;
-  first_impression?: string; review?: string; liked?: string[]; disliked?: string[]; would_pay?: string; suggestions?: Suggestion[]
+  first_impression?: string; review?: string; liked?: string[]; disliked?: string[]; would_pay?: string; suggestions?: Suggestion[];
+  // how the decision was reached (newer tests): the step that settled it, and a note if a contradictory first answer was reconsidered
+  deciding_moment?: string; deciding_step?: number; reconsidered?: string; ordered_step?: number; order_possible?: boolean;
 }
 interface Box { box_2d: number[]; label: string; issue: string; fix: string; severity: number }
 interface Detail {
   persona: Persona & { segment?: string; share?: number; goal?: string; budget?: string; voice?: string; occupation?: string; played_by?: string; model_note?: string; memory?: string; inherited?: boolean };
   persona_file: string; cast_prompt: string; prompts_rebuilt: boolean; persona_prompt: string; step_prompts: { n: number; prompt: string; with_screenshot: boolean }[];
-  decide_prompt: string; steps: Step[]; decision: Decision | null; fallbacks: number; fallback_reason: string;
+  decide_prompt: string; steps: Step[]; decision: Decision | null; outcome: Outcome | null; fallbacks: number; fallback_reason: string;
   posts: { id: string; round: number; kind: string; target: string | null; text: string; sentiment: number }[];
   changes: { iteration: number; lesson: string; before: string; after: string; source?: string }[];
   lens: { step: number; boxes: Box[]; why: string }[];
@@ -23,7 +26,9 @@ interface Detail {
 }
 
 const q = (t?: string) => (t ?? "").trim().replace(/^["“”']+|["“”']+$/g, "");
-const OUT: Record<string, [string, string]> = { buy: ["Bought", C.win], "would recommend": ["Bought + would recommend", C.win], "maybe later": ["Maybe later", C.mid], "not buy": ["Left", C.loss], "would complain": ["Would complain", C.loss] };
+// how their mood moved: a swing of 2+ between steps is a turning point
+const MOOD: Record<string, number> = { delighted: 2, interested: 1, neutral: 0, confused: -1, skeptical: -1, annoyed: -2 };
+const WHY: Record<Outcome, string> = { bought: "bought", bought_unhappy: "bought but isn't happy", abandoned_cart: "left the cart", maybe: "said maybe later", left: "didn't buy" };
 const sev = (s: number) => (s >= 2.5 ? C.loss : s >= 1.5 ? C.mid : C.brain);
 
 function Code({ title, text, note }: { title: string; text: string; note?: string }) {
@@ -51,8 +56,17 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
   if (!d) return <div className="grid h-[60vh] place-items-center font-mono text-white/40">loading…</div>;
   const p = d.persona, dec = d.decision;
   const agent = p.kind === "agent";
-  const bought = dec && (dec.decision === "buy" || dec.decision === "would recommend" || d.steps.some((s) => s.cart));
-  const [label, color] = dec ? (bought && !["buy", "would recommend"].includes(dec.decision) ? ["Bought (clicked buy)", C.win] : OUT[dec.decision] ?? [dec.decision, C.mid]) : ["No decision", "#888"];
+  const oc = d.outcome;
+  const bought = oc === "bought" || oc === "bought_unhappy";
+  const label = oc ? OUTCOME_LABEL[oc] : "No decision";
+  const color = oc ? outcomeColor(oc) : "#888";
+  const ordered = d.steps.find((s) => s.ordered), carted = d.steps.find((s) => s.cart);
+  const did = !dec ? "" : ordered ? `Placed the order at step ${ordered.n}${oc === "bought_unhappy" ? `, then said “${dec.decision}”` : ""}.`
+    : carted ? `Added to cart at step ${carted.n} but didn't place the order${dec.order_possible ? " (checkout needed no payment)" : ""}. Said “${dec.decision}”.`
+    : dec.order_possible ? `Never added it to the cart. Said “${dec.decision}”.` : `Said “${dec.decision}”.`;
+  // the memory they really started with: once the run ends p.memory holds the new lessons, so use the first change's "before"
+  const memoryIn = d.changes.length ? d.changes[0].before : p.memory;
+  const goStep = (n: number) => { setTab("journey"); setTimeout(() => document.getElementById(`step-${n}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 60); };
   const lensFor = (n: number) => d.lens.find((l) => l.step === n)?.boxes ?? [];
   const promptFor = (n: number) => d.step_prompts.find((x) => x.n === n);
   const tabs = [["decision", "Decision"], ["journey", `Journey · ${d.steps.length} steps`], ["prompts", "Prompts"], ["learning", "Learning"], ["posts", `Posts · ${d.posts.length}`]];
@@ -76,7 +90,7 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
         </div>
         {dec && (
           <div className="text-right">
-            <div className="text-[26px] font-bold" style={{ color }}>{label}</div>
+            <div className="text-[26px] font-bold capitalize" style={{ color }}>{label}</div>
             <div className="text-[14px] text-white/70">{"★".repeat(dec.rating)}<span className="opacity-30">{"★".repeat(5 - dec.rating)}</span> on the page{dec.stars_after_use ? ` · ${dec.stars_after_use}★ after use` : ""}</div>
             {dec.confidence != null && <div className="text-[12px] text-white/50">confidence {Math.round(dec.confidence * 100)}%</div>}
           </div>
@@ -89,7 +103,7 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
           {[["Goal", p.goal], ["Budget", p.budget], ["How they think", agent ? "Literal and logical: needs the exact product, full price, terms and a path to buy. Marketing doesn't move it." : p.voice]].map(([k, v]) => v && (
             <div key={k}><div className="text-[11px] font-semibold uppercase tracking-wider text-white/45">{k}</div><div className="mt-0.5 text-white/85">{v}</div></div>
           ))}
-          <div><div className="text-[11px] font-semibold uppercase tracking-wider text-white/45">Memory going in</div><div className="mt-0.5 whitespace-pre-wrap text-white/70">{p.memory || "Nothing yet. First visit to this kind of product."}</div></div>
+          <div><div className="text-[11px] font-semibold uppercase tracking-wider text-white/45">Memory going in</div><div className="mt-0.5 whitespace-pre-wrap text-white/70">{memoryIn || (agent ? "None: AI agents start fresh every time." : "Nothing yet. First visit to this kind of product.")}</div></div>
         </aside>
 
         <div className="min-w-0">
@@ -99,6 +113,16 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
 
           {tab === "decision" && dec && (
             <div className="mt-5 space-y-4">
+              <div className="rounded-2xl border-2 p-5" style={{ borderColor: color }}>
+                <div className="text-[12px] font-semibold uppercase tracking-wider" style={{ color }}>Why {p.name} {oc ? WHY[oc] : "decided this"}</div>
+                {dec.deciding_moment && (
+                  <p className="mt-2 text-[16px] leading-snug">{dec.deciding_moment}
+                    {!!dec.deciding_step && <button onClick={() => goStep(dec.deciding_step!)} className="ml-2 whitespace-nowrap rounded-full border px-2 py-0.5 align-middle font-mono text-[11px] hover:bg-white/10" style={{ borderColor: color, color }}>step {dec.deciding_step} →</button>}</p>
+                )}
+                <p className="mt-2 text-[13.5px] text-white/65">{did}</p>
+                {dec.reasons?.length > 0 && <ul className="mt-3 space-y-1 text-[14px]">{dec.reasons.map((r, i) => <li key={i}>· {r}</li>)}</ul>}
+                {dec.reconsidered && <p className="mt-3 text-[12px] text-white/45">Their first answer didn't match the visit ({dec.reconsidered}), so they reconsidered.</p>}
+              </div>
               {dec.first_impression && <div className={`${PANEL} p-5`}><div className="text-[12px] font-semibold text-white/50">First impression</div><p className="mt-1 text-[16px]">“{q(dec.first_impression)}”</p></div>}
               <div className={`${PANEL} p-5`}>
                 <div className="text-[12px] font-semibold text-white/50">What they'd tell a friend</div>
@@ -132,8 +156,12 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
 
           {tab === "journey" && (
             <ol className="mt-5 space-y-5">
-              {d.steps.map((s) => { const boxes = lensFor(s.n); const pr = promptFor(s.n); return (
-                <li key={s.n} className={`${PANEL} grid gap-4 p-4 md:grid-cols-[360px_1fr]`}>
+              {d.steps.map((s, i) => {
+                const boxes = lensFor(s.n), pr = promptFor(s.n), prev = d.steps[i - 1];
+                const swing = prev ? (MOOD[s.feeling] ?? 0) - (MOOD[prev.feeling] ?? 0) : 0;
+                const deciding = !!dec?.deciding_step && dec.deciding_step === s.n;
+                return (
+                <li key={s.n} id={`step-${s.n}`} className={`${PANEL} grid gap-4 p-4 md:grid-cols-[360px_1fr]`} style={deciding ? { outline: `2px solid ${color}` } : undefined}>
                   <div className="relative overflow-hidden rounded-lg border border-white/10">
                     {s.shot ? <img src={`/api/shots/${simId}/shots/${s.shot}`} alt="" className="block w-full" /> : <div className="aspect-[16/10] bg-white/5" />}
                     {boxes.map((b, k) => { const [y0, x0, y1, x1] = b.box_2d; return <div key={k} className="absolute rounded" title={`${b.label}: ${b.issue}`} style={{ top: `${y0 / 10}%`, left: `${x0 / 10}%`, height: `${(y1 - y0) / 10}%`, width: `${(x1 - x0) / 10}%`, border: `3px solid ${sev(b.severity)}` }} />; })}
@@ -142,7 +170,10 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
                     <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-white/50">
                       <span>step {s.n}</span><span className="truncate">{s.url.replace(/^https?:\/\//, "")}</span>
                       {s.blocked && <span className="rounded-full bg-white/10 px-2 text-white/70">bot check · not counted</span>}
-                      {s.cart && <span className="rounded-full px-2 font-semibold text-black" style={{ background: C.win }}>buy action</span>}
+                      {s.cart && <span className="rounded-full px-2 font-semibold" style={{ background: `${C.win}33`, color: C.win }}>clicked “{s.target}”</span>}
+                      {s.ordered && <span className="rounded-full px-2 font-semibold text-black" style={{ background: C.win }}>order placed</span>}
+                      {Math.abs(swing) >= 2 && <span className="rounded-full px-2 font-semibold" style={{ background: `${swing < 0 ? C.loss : C.win}33`, color: swing < 0 ? C.loss : C.win }}>turning point: {prev.feeling} → {s.feeling}</span>}
+                      {deciding && <span className="rounded-full px-2 font-semibold text-black" style={{ background: color }}>made up their mind here</span>}
                     </div>
                     <div className="mt-2 flex items-start gap-2">
                       <div className="shrink-0"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={36} feeling={s.feeling} /></div>
