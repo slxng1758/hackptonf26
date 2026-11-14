@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import shutil
 import threading
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -57,6 +58,8 @@ EVOLVER_SUB = ("You update persona files. For every file in /personas, append or
 def persona_md(p: dict) -> str:
     return (f"# {p['name']} ({p['id']})\n\n- Age: {p['age']}\n- Occupation: {p['occupation']}\n- Archetype: {p['archetype']}\n"
             f"- Segment: {p['segment']} ({round(p['share'] * 100)}% of customers)\n- Goal: {p['goal']}\n- Budget: {p['budget']}\n- Voice: {p['voice']}\n"
+            + (f"- Instructions from the owner: {p['instructions']}\n" if p.get("instructions") else "")
+            + (f"- Edited by the owner\n" if p.get("custom") else "")
             + (f"\n## Memory\n{p['memory']}\n" if p.get("memory") else ""))
 
 
@@ -83,11 +86,35 @@ class SimJob:
         self.director: list[dict] = []
         self.todos: list[dict] = []
         self.budget: dict | None = None
+        # live feed of what the agent is doing (casting reasoning streamed token by token, steps, each persona as it's cast)
+        self.thinking: list[dict] = []
+        self._saved_at = 0.0
         inp["lineage"] = inp.get("lineage") or self.id  # business-memory lineage: rerun() keeps it, a fresh sim starts one
         self.dir = SIMS / self.id
         for d in ("personas", "sessions", "shots"):
             (self.dir / d).mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
+
+    # ---- live feed: what the agent is doing right now (shown while customers are being cast)
+    def think(self, kind: str, title: str, text: str = "", status: str = "running", **extra) -> int:
+        """kind: step | reason | persona | plan | subagent | decision | owner. Returns the event's index."""
+        self.thinking.append({"t": datetime.now().strftime("%H:%M:%S"), "kind": kind, "title": title, "text": text,
+                              "status": status, **extra})
+        self.save()
+        return len(self.thinking) - 1
+
+    def think_more(self, i: int, text: str):
+        """Append streamed text to event i; saves at most ~3 times a second."""
+        self.thinking[i]["text"] += text
+        if time.monotonic() - self._saved_at > 0.3:
+            self.save()
+
+    def think_done(self, i: int, text: str | None = None, status: str = "done", **extra):
+        ev = self.thinking[i]
+        if text is not None:
+            ev["text"] = text
+        ev.update(status=status, **extra)
+        self.save()
 
     def log(self, kind, note):
         self.steps.append({"t": datetime.now().strftime("%H:%M:%S"), "kind": kind, "note": str(note)[:400]})
@@ -103,9 +130,11 @@ class SimJob:
                 "live": self.live, "decisions": self.decisions, "summary": self.summary, "report": self.report,
                 "steps": self.steps, "memory": evolved, "round": self.round, "parent": self.parent,
                 "persona_changes": self.persona_changes, "evals": self.evals, "social": self.social, "actions": self.actions,
-                "runs": self.runs, "director": self.director, "todos": self.todos, "budget": self.budget}
+                "runs": self.runs, "director": self.director, "todos": self.todos, "budget": self.budget,
+                "thinking": self.thinking}
 
     def save(self):
+        self._saved_at = time.monotonic()
         with self._lock:
             v = self.view()
             (self.dir / "sim.json").write_text(json.dumps(v, indent=2))
@@ -118,24 +147,49 @@ class SimJob:
             if feedback:
                 i["customers"] = (i.get("customers") or "") + f"\nThe owner corrected the cast: {feedback}"
                 self.log("owner", f"correction: {feedback}")
+                self.think("owner", "Your correction", feedback, status="done")
+            # 1. understand the product
             if not i.get("name") or not i.get("customers") or not i.get("offer"):
+                ev = self.think("step", "Reading your product", i["url"] if not i.get("product_id") else "your description")
                 site = session.read_site(i["url"])
                 for k in ("name", "category", "customers", "offer"):
                     i[k] = i.get(k) or site[k]
                 self.log("read", f"{i['name']}: {i['category']}")
-            self.personas = session.cast(i["name"], i["category"], i.get("context", ""), i.get("world", ""), i["customers"], i.get("offer", ""))
+                self.think_done(ev, facts={"Business": i["name"], "What it is": i.get("category", ""), "Who buys": i.get("customers", ""),
+                                           "What it sells": i.get("offer", "")})
+            # 2. reason about who the customers are (streamed live; the result drives the casting)
+            ev = self.think("reason", "Thinking about who buys this")
+            reasoning = session.think_about_customers(i["name"], i.get("category", ""), i.get("offer", ""), i.get("customers", ""),
+                                                      i.get("context", ""), i.get("world", ""), feedback, on_text=lambda t: self.think_more(ev, t))
+            self.think_done(ev, reasoning)
+            # 3. write the personas
+            ev = self.think("step", "Writing the personas", "turning that reasoning into specific people")
+            self.personas = session.cast(i["name"], i["category"], i.get("context", ""), i.get("world", ""), i["customers"], i.get("offer", ""),
+                                         segments=reasoning)
+            models = sorted({p.get("model", "") for p in self.personas} - {""})
+            self.think_done(ev, f"{len(self.personas)} customers, played by {' and '.join(models) or 'the default model'}")
             for p in self.personas:  # long-term memory: start from what this type of customer learned on other sites
                 p["memory"] = memory.for_persona(p)  # own type's lessons + similar customers' (vector search)
                 p["inherited"] = bool(p["memory"])
-            try:  # layer 1: plain AI shopping agents on the same site, one per model family
+                self.think("persona", f"{p['name']}, {p['age']}", p.get("why", ""), status="done", persona_id=p["id"],
+                           memory=("starts with lessons from earlier tests (vector search over past customers)" if p["inherited"] else ""))
+            # 4. layer 1: plain AI shopping agents on the same site, one per model family
+            try:
                 from .models import persona_models
-                self.personas += session.agent_shoppers(i["name"], i.get("offer", ""), list(persona_models()))
+                ev = self.think("step", "Adding AI shopping agents", "one per model family, sent on a user's errand")
+                agents = session.agent_shoppers(i["name"], i.get("offer", ""), list(persona_models()))
+                self.personas += agents
+                self.think_done(ev, " · ".join(f"{a['name']} ({a.get('model', '')})" for a in agents) or "none available")
             except Exception as e:
                 self.log("error", f"agents: {type(e).__name__}: {e}"[:200])
             self.log("cast", " · ".join(f"{p['name']} ({p['archetype']}, {round(p['share'] * 100)}%)" for p in self.personas))
+            self.think("step", "Ready for your review", "edit anyone, add your own, then start the test", status="done")
             self.status = "awaiting_approval"
         except Exception as e:
             self.status, self.error = "error", f"{type(e).__name__}: {e}"[:300]
+            running = [k for k, e2 in enumerate(self.thinking) if e2["status"] == "running"]
+            for k in running:
+                self.thinking[k]["status"] = "error"
         self.save()
 
     # ---- phase 2: owner approved → browse → analyze

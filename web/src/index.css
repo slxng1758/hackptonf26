@@ -80,3 +80,14 @@ textarea, input, select { color-scheme: dark; }
 .print-doc .break-inside-avoid { break-inside: avoid; }
 .print-report { font-size: 13px; }
 :root:has(.print-doc) body { background: #fff !important; }
+
+/* persona editor: side drawer */
+.drawer { animation: drawer .32s cubic-bezier(.2,.8,.2,1); }
+@keyframes drawer { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+.scrim { animation: scrim .2s ease; }
+@keyframes scrim { from { opacity: 0; } to { opacity: 1; } }
+.range-ink { accent-color: var(--ink); }
+
+/* streamed text: blinking cursor while the agent is still writing */
+.caret::after { content: "▍"; margin-left: 1px; color: var(--ink); opacity: .7; animation: caret 1s steps(1) infinite; }
+@keyframes caret { 50% { opacity: 0; } }

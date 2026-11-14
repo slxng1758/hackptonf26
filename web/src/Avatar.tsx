@@ -10,7 +10,7 @@ export const SHIRT: Record<string, string> = {
   "price-sensitive": "#ffb547", "quality-first": "#3ff0d4", "brand-loyal": "#d16bff", "function-first": "#6aa8ff",
   "first-time user": "#7be38a", skeptic: "#ff5c77", enthusiast: "#ff8fd1", "AI agent": "#9aa4b8",
 };
-const MODEL_GLOW: Record<string, string> = { Gemini: "#4f8bff", Claude: "#ff8a4c", GPT: "#19c37d", "Amazon Nova": "#ff9900", Llama: "#7a5cff", Grok: "#e5e5e5" };
+export const MODEL_GLOW: Record<string, string> = { Gemini: "#4f8bff", Claude: "#ff8a4c", GPT: "#19c37d", "Amazon Nova": "#ff9900", Llama: "#7a5cff", Grok: "#e5e5e5" };
 
 // AI shopping agents get a small robot: brushed-metal head, visor, eyes lit in their model's color.
 function Robot({ size, feeling, model, busy, uid }: { size: number; feeling: Feeling; model: string; busy: boolean; uid: string }) {

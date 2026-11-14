@@ -222,7 +222,7 @@ class DirectorJob(SimJob):
     def _load(self, v: dict):
         """Rebuild from sim.json after a restart. The graph itself resumes from the SQLite checkpoint (thread_id = sim id)."""
         for k in ("personas", "live", "decisions", "summary", "report", "steps", "persona_changes", "evals", "social",
-                  "actions", "runs", "director", "todos", "status", "error"):
+                  "actions", "runs", "director", "todos", "status", "error", "thinking"):
             if k in v and v[k] is not None:
                 setattr(self, k, v[k])
         b = v.get("budget") or {}
@@ -271,18 +271,35 @@ class DirectorJob(SimJob):
         self.save()
 
     def _trace(self, update: dict):
+        """Every step the deep agent takes, into the steps log and the live feed the owner watches."""
+        if not hasattr(self, "_sub_ev"):
+            self._sub_ev, self._plan_ev = {}, None
         for node in update.values():
             for m in (node or {}).get("messages", []) if isinstance(node, dict) else []:
+                if getattr(m, "type", "") == "ai":  # the director's own reasoning between tool calls
+                    c = m.content
+                    text = c if isinstance(c, str) else " ".join(b.get("text", "") for b in c if isinstance(b, dict) and b.get("type") == "text")
+                    if text.strip():
+                        self.think("reason", "Director", text.strip()[:1500], status="done")
                 for call in getattr(m, "tool_calls", None) or []:
                     a = call.get("args", {})
                     if call["name"] == "write_todos":
                         self.todos = a.get("todos", [])
+                        if self._plan_ev is None:
+                            self._plan_ev = self.think("plan", "The plan", status="done", todos=self.todos)
+                        else:
+                            self.thinking[self._plan_ev]["todos"] = self.todos
                         self.save()
                     elif call["name"] == "task":
-                        self.log(a.get("subagent_type", "subagent"), (a.get("description") or "")[:300])
+                        who = a.get("subagent_type", "subagent")
+                        self.log(who, (a.get("description") or "")[:300])
+                        self._sub_ev[call.get("id")] = self.think("subagent", who, (a.get("description") or "")[:600])
                 if getattr(m, "type", "") == "tool" and getattr(m, "name", "") == "task":
                     c = m.content if isinstance(m.content, str) else json.dumps(m.content)
                     self.log("answer", c[:400])
+                    i = self._sub_ev.pop(getattr(m, "tool_call_id", None), None)
+                    if i is not None:
+                        self.think_done(i, answer=c[:1500])
 
     # ---- helpers
     def _decide(self, tool_name: str, reason: str, args: dict, result: str) -> str:
@@ -290,6 +307,7 @@ class DirectorJob(SimJob):
         self.director.append({"t": datetime.now().strftime("%H:%M:%S"), "tool": tool_name, "reason": reason,
                               "args": {k: v for k, v in args.items() if k != "reason"}, "result": result[:400]})
         self.log("decision", f"{tool_name}: {reason}")
+        self.think("decision", tool_name.replace("_", " "), reason, status="done", result=result[:400])
         return f"{result}\nBudget left: {json.dumps(self.b.left())}"
 
     def _backend(self):

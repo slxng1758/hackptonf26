@@ -5,15 +5,19 @@ import { C, PANEL } from "./theme";
 import { SiteMap, ThoughtStream, outcome } from "./SiteMap";
 import { Timeline } from "./Timeline";
 import { Lens } from "./Lens";
+import { PersonaEditor, blankPersona } from "./PersonaEditor";
+import { CastingLive, ThinkingFeed, type ThinkEvent } from "./CastingLive";
 import { Accuracy, Learned, WordOfMouth } from "./Extras";
 import type { SimExtras } from "./sim-extras";
 
-export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number }; model?: string; memory?: string; inherited?: boolean; kind?: "agent"; played_by?: string; model_note?: string }
+export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number }; model?: string; memory?: string; inherited?: boolean; kind?: "agent"; played_by?: string; model_note?: string; instructions?: string; custom?: boolean; why?: string }
 interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; thought: string; feeling: Feeling; action: string; target: string }
 interface Decision { decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string }
 export interface Sim extends Partial<SimExtras> {
-  id: string; input: { url: string; name: string; category: string; context: string; world: string; customers: string };
-  status: "casting" | "awaiting_approval" | "browsing" | "talking" | "analyzing" | "done" | "error"; error: string | null;
+  id: string; input: { url: string; name: string; category: string; context: string; world: string; customers: string; director?: boolean };
+  thinking?: ThinkEvent[];
+  status: "casting" | "awaiting_approval" | "browsing" | "talking" | "analyzing" | "done" | "error"
+    | "briefing" | "resuming" | "approved" | "base_models" | "scoring" | "evolving" | "social" | "summarizing"; error: string | null;  // second row: director statuses
   personas: Persona[]; live: Record<string, SimStep[]>; decisions: Record<string, Decision>;
   summary: { agents?: { persona: string; model: string; bought: boolean; decision: string; missing: string; quote: string }[]; buy_rate: number; by_model?: Record<string, { bought: number; of: number }>; rating: number; decisions: Record<string, number>; missing: { persona: string; text: string }[] } | null;
   report: string; steps: { t: string; kind: string; note: string }[]; memory: Record<string, string>; round?: number; parent?: string | null;
@@ -85,6 +89,15 @@ const host = (u: string) => u.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 export function SimView({ id }: { id: string }) {
   const [sim, setSim] = useState<Sim | null>(null);
   const [cast, setCast] = useState<Persona[] | null>(null);
+  const [editing, setEditing] = useState<{ p: Persona; isNew: boolean } | null>(null);
+  const [showWhy, setShowWhy] = useState(false);
+  useEffect(() => { if (sim?.status === "awaiting_approval") window.scrollTo({ top: 0, behavior: "smooth" }); }, [sim?.status]);  // the live feed scrolled down
+  const [models, setModels] = useState<string[]>([]);
+  useEffect(() => { fetch("/api/models").then((r) => r.json()).then(setModels).catch(() => {}); }, []);
+  const saveEdit = (p: Persona) => {
+    setCast((c) => (c ?? []).some((x) => x.id === p.id) ? (c ?? []).map((x) => (x.id === p.id ? p : x)) : [...(c ?? []), p]);
+    setEditing(null);
+  };
   const [open, setOpen] = useState<Persona | null>(null);
   const openPersona = (p: Persona) => { location.hash = `#sim=${id}&p=${p.id}`; };
   const [fix, setFix] = useState("");
@@ -100,7 +113,8 @@ export function SimView({ id }: { id: string }) {
     let alive = true;
     const tick = () => fetch(`/api/sims/${id}`).then((r) => r.json()).then((s: Sim) => { if (alive) { setSim(s); if (s.status === "awaiting_approval" && !cast) setCast(s.personas); } }).catch(() => {});
     tick();
-    const t = setInterval(() => { if (!sim || !["done", "error"].includes(sim.status)) tick(); }, 1500);
+    const building = !sim || ["casting", "briefing", "resuming"].includes(sim.status);  // stream the agent's reasoning smoothly
+    const t = setInterval(() => { if (!sim || !["done", "error"].includes(sim.status)) tick(); }, building ? 600 : 1500);
     return () => { alive = false; clearInterval(t); };
   }, [id, sim?.status]); // eslint-disable-line
 
@@ -146,7 +160,7 @@ export function SimView({ id }: { id: string }) {
       <div className="pt-6 text-center">
         <div className="font-mono text-[12px] text-white/40">{sim.round ? <span className="mr-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.brain }}>round {sim.round + 1} · they remember round {sim.round}</span> : null}{host(sim.input.url)}{sim.input.context ? ` · ${sim.input.context}` : ""}{sim.input.world ? ` · ${sim.input.world}` : ""}</div>
         <h1 className="mt-2 font-serif text-[40px] leading-tight">
-          {sim.status === "casting" && <>Reading {name}<span className="animate-pulse">…</span></>}
+          {["casting", "briefing"].includes(sim.status) && <>Casting customers for {name}<span className="animate-pulse">…</span></>}
           {sim.status === "awaiting_approval" && <>Review your test panel</>}
           {sim.status === "browsing" && <>{decided + botsDone} of {sim.personas.length} have decided<span className="animate-pulse">…</span></>}
           {sim.status === "talking" && <><span style={{ color: buyers ? C.win : C.loss }}>{buyers} of {decided}</span> would buy · <span className="text-white/50">now they're posting about it<span className="animate-pulse">…</span></span></>}
@@ -169,26 +183,51 @@ export function SimView({ id }: { id: string }) {
         <Timeline url={sim.input.url} current={sim.id} />
       </div>
 
-      {sim.status === "casting" && (
-        <div className="mt-12 flex justify-center gap-5">
-          {[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-20 w-20 animate-pulse rounded-full bg-white/[0.06]" style={{ animationDelay: `${i * 0.15}s` }} />)}
-        </div>
+      {(["casting", "briefing"].includes(sim.status) || (sim.status === "resuming" && !sim.steps.some((x) => x.kind === "approved"))) && (
+        <CastingLive events={sim.thinking ?? []} personas={sim.personas} director={!!sim.input.director} />
       )}
 
       {sim.status === "awaiting_approval" && cast && (
         <div className="mt-10 text-center">
+          {!!sim.thinking?.length && (
+            <div className="mx-auto mb-8 max-w-3xl text-left">
+              <button onClick={() => setShowWhy(!showWhy)} className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[14px] transition hover:border-white/25">
+                <span><span className="font-semibold">How these customers were chosen</span><span className="ml-2 text-white/45">the agent's reasoning, step by step</span></span>
+                <span className="font-mono text-[12px] text-white/50">{showWhy ? "hide" : "show"}</span>
+              </button>
+              {showWhy && <div className="rise mt-5"><ThinkingFeed events={sim.thinking} personas={sim.personas} follow={false} /></div>}
+            </div>
+          )}
           <div className="flex flex-wrap justify-center gap-6">
             {cast.filter((p) => p.kind !== "agent").map((p, i) => (
-              <div key={p.id} className="rise group relative w-[150px]" style={{ animationDelay: `${i * 0.08}s` }}>
-                <button onClick={() => setCast(cast.filter((x) => x.id !== p.id))} className="absolute right-3 top-0 z-10 hidden h-6 w-6 place-items-center rounded-full bg-white/15 text-white/70 hover:bg-[#ff3355] hover:text-white group-hover:grid" aria-label={`remove ${p.name}`}>×</button>
-                <div className="mx-auto w-fit rounded-full" style={{ boxShadow: `0 0 0 3px ${SHIRT[p.archetype]}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={96} /></div>
-                <div className="mt-3 text-[15px] font-semibold">{p.name}, {p.age}</div>
-                <div className="font-mono text-[11px]" style={{ color: SHIRT[p.archetype] }}>{p.archetype}</div>
-                {p.model && <div className="mt-1 inline-block rounded-full border border-white/15 px-2 py-0.5 font-mono text-[10px] text-white/60">played by {p.model}</div>}
-                {p.inherited && <div title={p.memory} className="mt-1 cursor-help rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.brain }}>prior memory</div>}
-                <p className="mt-1 text-[12px] leading-snug text-white/50">{p.goal}</p>
+              <div key={p.id} className="rise group relative w-[164px]" style={{ animationDelay: `${i * 0.06}s` }}>
+                <div className="absolute right-2 top-0 z-10 hidden gap-1 group-hover:flex">
+                  <button onClick={() => setEditing({ p, isNew: false })} aria-label={`edit ${p.name}`} title="Edit"
+                    className="grid h-7 w-7 place-items-center rounded-full border border-white/15 bg-[var(--card)] text-[12px] text-white/70 shadow transition hover:text-white">✎</button>
+                  <button onClick={() => setCast(cast.filter((x) => x.id !== p.id))} aria-label={`remove ${p.name}`} title="Remove"
+                    className="grid h-7 w-7 place-items-center rounded-full border border-white/15 bg-[var(--card)] text-[14px] text-white/70 shadow transition hover:border-[#ff3355] hover:bg-[#ff3355] hover:text-white">×</button>
+                </div>
+                <button onClick={() => setEditing({ p, isNew: false })} className="block w-full rounded-2xl px-2 pb-3 pt-1 transition hover:bg-white/[0.04]">
+                  <div className="mx-auto w-fit rounded-full transition group-hover:scale-[1.03]" style={{ boxShadow: `0 0 0 3px ${SHIRT[p.archetype] ?? "#8a93b8"}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={96} /></div>
+                  <div className="mt-3 text-[15px] font-semibold">{p.name}, {p.age}</div>
+                  <div className="font-mono text-[11px]" style={{ color: SHIRT[p.archetype] }}>{p.archetype} · {Math.round(p.share * 100)}%</div>
+                  <div className="mt-1 flex flex-wrap justify-center gap-1">
+                    {p.model && <span className="rounded-full border border-white/15 px-2 py-0.5 font-mono text-[10px] text-white/60">played by {p.model}</span>}
+                    {p.custom && <span className="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold" style={{ background: `${C.win}22`, color: C.win }}>{p.instructions ? "custom prompt" : "edited"}</span>}
+                  </div>
+                  {p.inherited && <div title={p.memory} className="mt-1 inline-block cursor-help rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.brain }}>prior memory</div>}
+                  <p className="mt-1 line-clamp-3 text-[12px] leading-snug text-white/50">{p.goal}</p>
+                </button>
               </div>
             ))}
+            <div className="rise w-[164px]" style={{ animationDelay: `${cast.length * 0.06}s` }}>
+              <button onClick={() => setEditing({ p: blankPersona(), isNew: true })}
+                className="group block w-full rounded-2xl px-2 pb-3 pt-1 transition hover:bg-white/[0.04]">
+                <div className="mx-auto grid h-[96px] w-[96px] place-items-center rounded-full border-2 border-dashed border-white/20 text-[34px] font-light text-white/40 transition group-hover:border-[#3ff0d4] group-hover:text-[#3ff0d4]">+</div>
+                <div className="mt-3 text-[15px] font-semibold text-white/80">Add customer</div>
+                <div className="font-mono text-[11px] text-white/40">your own persona</div>
+              </button>
+            </div>
           </div>
           {cast.some((p) => p.kind === "agent") && (
             <div className="mx-auto mt-10 max-w-3xl">
@@ -206,12 +245,17 @@ export function SimView({ id }: { id: string }) {
             </div>
           )}
           <button disabled={!cast.length} onClick={approve} className="mt-10 rounded-2xl px-10 py-4 text-[17px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 40px ${C.win}66` }}>Start the test →</button>
-          <p className="mt-3 text-[12px] text-white/35">hover anyone to remove them</p>
+          <p className="mt-3 text-[12px] text-white/35">click anyone to edit their profile, model or persona prompt · shares rebalance to 100% when the test starts</p>
           <form onSubmit={(e) => { e.preventDefault(); if (fix.trim().length > 1) recast(); }} className="mx-auto mt-6 flex max-w-xl gap-2">
             <input value={fix} onChange={(e) => setFix(e.target.value)} placeholder="Anything off? e.g. my customers are older than that"
               className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#3ff0d4]" />
             <button className="rounded-xl border border-white/20 px-4 text-[14px] hover:border-white/50">Recast</button>
           </form>
+          {editing && (
+            <PersonaEditor key={editing.p.id} initial={editing.p} isNew={editing.isNew} models={models} simId={id}
+              onSave={saveEdit} onClose={() => setEditing(null)}
+              onRemove={() => { setCast(cast.filter((x) => x.id !== editing.p.id)); setEditing(null); }} />
+          )}
         </div>
       )}
 

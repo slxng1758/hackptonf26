@@ -98,7 +98,8 @@ def run(personas: list[dict], decisions: dict[str, dict], product: str, rounds: 
 
     def ctx(p):
         d = decisions[p["id"]]
-        return dict(name=p["name"], age=p["age"], occupation=p["occupation"], archetype=p["archetype"], voice=p["voice"],
+        from .session import instructions
+        return dict(name=p["name"], age=p["age"], occupation=p["occupation"], archetype=p["archetype"], voice=p["voice"] + instructions(p),
                     product=product, decision=d["decision"], rating=d["rating"], quote=d["quote"], reasons="; ".join(d.get("reasons") or []))
 
     posts: list[dict] = []

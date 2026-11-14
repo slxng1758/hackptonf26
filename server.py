@@ -123,16 +123,26 @@ def _name_from(description: str) -> str:
 
 @app.post("/api/sims")
 def sim_start(body: SimIn):
+    import re
     d = body.model_dump()
-    if len(d["description"].strip()) >= 10:
+    desc, url = d["description"].strip(), d["url"].strip()
+    if len(url) < 4 and (m := re.search(r"https?://[^\s)>\]]+", desc)):
+        # a link pasted into the description is the product's website
+        url, desc = m.group(0).rstrip(".,;"), (desc[:m.start()] + desc[m.end():]).strip()
+    if len(url) >= 4:
+        # a real website: customers browse it. A description (if any) is context for casting and the report.
+        if not url.startswith("http"):
+            url = ("http://" if url.startswith(("localhost", "127.0.0.1")) else "https://") + url
+        d["url"], d["description"] = url, desc
+        if len(desc) >= 10:
+            d["name"] = d["name"] or _name_from(desc)
+            d["offer"] = (desc + (f" Price: {d['price']}." if d["price"] else ""))[:2000]
+    elif len(desc) >= 10:
         # description mode: render the owner's own words as a product page (b2a/product_page.py); customers browse that
         from b2a import product_page
-        d["name"] = d["name"] or _name_from(d["description"])
-        page = product_page.create(product_page.Product(name=d["name"], description=d["description"], price=d["price"], changes=d["context"]))
-        d["url"], d["product_id"], d["offer"] = page["url"], page["id"], d["description"][:2000]
-    elif len(d["url"].strip()) >= 4:
-        if not d["url"].startswith("http"):
-            d["url"] = ("http://" if d["url"].startswith(("localhost", "127.0.0.1")) else "https://") + d["url"]
+        d["name"] = d["name"] or _name_from(desc)
+        page = product_page.create(product_page.Product(name=d["name"], description=desc, price=d["price"], changes=d["context"]))
+        d["url"], d["product_id"], d["offer"] = page["url"], page["id"], desc[:2000]
     else:
         raise HTTPException(422, "Describe your product (or give a website).")
     # "localhost" can reach a different server over IPv6 on this machine; our own pages live on 127.0.0.1
@@ -159,9 +169,30 @@ class Approve(BaseModel):
 
 @app.post("/api/sims/{sim_id}/approve")
 def sim_approve(sim_id: str, body: Approve):
-    if not sim.approve(sim_id, body.personas):
+    from b2a.persona_edit import normalize_cast
+    personas = normalize_cast(body.personas) if body.personas else body.personas  # edited/added customers: safe to run
+    if not sim.approve(sim_id, personas):
         raise HTTPException(409, "This simulation isn't waiting for approval.")
     return {"ok": True}
+
+
+class DraftIn(BaseModel):
+    text: str = Field(min_length=3, max_length=500, description="the customer in the owner's words")
+    sim_id: str = Field("", max_length=60)
+
+
+@app.post("/api/personas/draft")
+def persona_draft(body: DraftIn):
+    """One sentence -> a full customer persona the owner can tweak in the editor."""
+    from b2a.persona_edit import draft
+    product = ""
+    if body.sim_id and (v := sim.get(body.sim_id)):
+        i = v.get("input") or {}
+        product = " · ".join(x for x in (i.get("name"), i.get("category"), (i.get("offer") or "")[:200]) if x)
+    try:
+        return draft(body.text, product)
+    except Exception as e:
+        raise HTTPException(502, f"Couldn't draft that customer ({type(e).__name__}). Fill the fields in by hand.")
 
 
 class Recast(BaseModel):
@@ -276,7 +307,7 @@ def sim_persona(sim_id: str, pid: str):
     read = lambda f: (d / f).read_text() if (d / f).exists() else ""
     sess = _json.loads(read(f"sessions/{pid}.json") or "{}")
     i = view["input"]
-    filled = {**p, "memory": p.get("memory") or "nothing yet"}
+    filled = {**p, "memory": p.get("memory") or "nothing yet", "instructions": _s.instructions(p)}
     cast_prompt = _s.CAST.format(name=i.get("name", ""), category=i.get("category", ""), context=i.get("context") or "none",
                                  world=i.get("world") or "today, normal times", customers=i.get("customers", ""), offer=i.get("offer") or "see the website")
     rebuilt = not sess.get("prompts")

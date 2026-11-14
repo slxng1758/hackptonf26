@@ -34,6 +34,7 @@ class Persona(BaseModel):
     goal: str = Field(description="what they came to the product for, in their words, one sentence")
     budget: str = Field(description="what they are willing to spend, concretely")
     voice: str = Field(description="how they talk and think, one sentence")
+    why: str = Field(default="", description="one sentence: why this customer belongs in the test panel (which segment or risk they cover)")
 
 
 class Cast(BaseModel):
@@ -90,7 +91,7 @@ class Decision(BaseModel):
 
 
 STEP = """You are {name}, {age}, {occupation}. You are a {archetype} customer. {voice}
-Your goal: {goal}. Your budget: {budget}.
+Your goal: {goal}. Your budget: {budget}.{instructions}
 What you learned from past visits to sites like this: {memory}
 The world right now: {world}
 What the business says changed: {context}
@@ -104,7 +105,7 @@ go back, or decide. Shop like a real person with limited patience: use search, f
 If you find something that fits, pick it (size/option) and click "Add to cart" or the buy button, then decide. Don't enter
 payment details. If the site clearly isn't for you, decide early. Stay in character."""
 
-DECIDE = """You are {name}, {age}, {occupation}, a {archetype} customer. {voice} Goal: {goal}. Budget: {budget}. World: {world}.
+DECIDE = """You are {name}, {age}, {occupation}, a {archetype} customer. {voice} Goal: {goal}. Budget: {budget}. World: {world}.{instructions}
 What you learned from past visits: {memory}
 You browsed {product}. Here is everything you saw and thought:
 {history}
@@ -115,6 +116,12 @@ Choose "not buy" if it doesn't fit you, "would complain" if something went wrong
 have seen that block: do not penalize the business for it; judge only what you actually saw.
 Then write as yourself: your first impression, an honest review, what you liked and disliked, what you'd really pay, and
 1-3 suggestions you'd actually want. Every suggestion names the page it applies to (a URL or page title from what you saw)."""
+
+
+def instructions(p: dict) -> str:
+    """The owner's own words for this customer (set in the persona editor), added to every prompt that plays them."""
+    t = " ".join(str(p.get("instructions") or "").split())[:1000]
+    return f"\nHow you think and behave (stay true to this): {t}" if t else ""
 
 
 # Never more than this many real browsers at once (sites block bursts, laptops run out of memory).
@@ -229,6 +236,38 @@ def agent_shoppers(name: str, offer: str, families: list[str]) -> list[dict]:
              "layer": 1, "avatar": {"seed": 900 + i}} for i, fam in enumerate(families)]  # layer 1 for b2a/evals + compare
 
 
+THINK = """You are a market researcher about to cast AI customers to test a product. Think out loud, briefly, so the
+business owner can follow your reasoning.
+
+Product: {name}. {category}
+What it sells and for how much: {offer}
+Who the customers are: {customers}
+What changed: {context}
+The world they live in: {world}
+{feedback}
+Cover, in plain sentences (no headings, no bullet symbols, no markdown, under 160 words):
+who realistically buys this and the rough share of each group; which of these customer types fit and which don't, and why:
+price-sensitive, quality-first, brand-loyal, function-first, first-time user, skeptic, enthusiast; and how many personas
+(4 to 7) the panel needs and why."""
+
+
+def think_about_customers(name: str, category: str, offer: str, customers: str, context: str, world: str,
+                          feedback: str = "", on_text=None) -> str:
+    """The casting reasoning, streamed as it's written (on_text gets each new piece). Its result drives cast()."""
+    prompt = THINK.format(name=name, category=category, offer=offer or "see the website", customers=customers or "unknown",
+                          context=context or "none", world=world or "today, normal times",
+                          feedback=f"The owner corrected an earlier cast: {feedback}\n" if feedback else "")
+    out = []
+    for chunk in fast().stream(prompt):
+        c = chunk.content
+        piece = c if isinstance(c, str) else "".join(b.get("text", "") for b in c if isinstance(b, dict))
+        if piece:
+            out.append(piece)
+            if on_text:
+                on_text(piece)
+    return "".join(out).strip()
+
+
 def cast(name: str, category: str, context: str, world: str, customers: str, offer: str = "",
          n: int | None = None, archetypes: list[str] | None = None, models: list[str] | None = None,
          start: int = 1, segments: str = "") -> list[dict]:
@@ -332,7 +371,7 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                 continue
             page = dict(world=world or "today, normal times", context=context or "none", url=pg.url, n=n, max_steps=max_steps,
                         links=", ".join(links) or "(none)", text=text, history=" → ".join(history) or "just arrived")
-            prompt = STEP.format(**{**persona, "memory": persona.get("memory") or "nothing yet"}, **page)
+            prompt = STEP.format(**{**persona, "memory": persona.get("memory") or "nothing yet", "instructions": instructions(persona)}, **page)
             prompts.append({"n": n, "prompt": prompt, "with_screenshot": bool(jpg)})  # the exact prompt, for the persona page
             try:
                 s: Step = ask(Step, [_img_msg(prompt, jpg)] if jpg else prompt)
@@ -376,7 +415,7 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
             except Exception:
                 history.append(f"(tried to {s.action} '{s.target}' but it didn't work)")
         b.close()
-    q = DECIDE.format(**{**persona, "memory": persona.get("memory") or "nothing yet"}, world=world or "today, normal times", product=url, history="\n".join(history))
+    q = DECIDE.format(**{**persona, "memory": persona.get("memory") or "nothing yet", "instructions": instructions(persona)}, world=world or "today, normal times", product=url, history="\n".join(history))
     try:
         d: Decision = ask(Decision, q)
     except Exception:
