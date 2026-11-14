@@ -1,11 +1,11 @@
 <h1 align="center">Agent-ready</h1>
 
 <p align="center"><b>Watch your customers try your website before you launch.</b><br>
-AI customers open your real site, click around, think out loud, decide whether to buy, tell each other about it, and learn from real people.</p>
+AI customers open your real site, click around, think out loud, decide whether to buy, and learn from real people.</p>
 
 <p align="center">
   Built at <b>HackPrinceton Fall 2026</b> &nbsp;·&nbsp; Track: <b>Business &amp; Enterprise</b> &nbsp;·&nbsp;
-  Challenges: <b>LangChain Deep Agents</b>, <b>Amazon Best Practical AI</b>, <b>Peri</b>, <b>Arlequin</b>, <b>MLH Gemini</b>
+  Challenges: <b>LangChain Deep Agents</b>, <b>Amazon Best Practical AI</b>, <b>Peri</b>, <b>MLH Gemini</b>
 </p>
 
 <p align="center">
