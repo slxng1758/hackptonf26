@@ -13,7 +13,7 @@ export interface Sim extends Partial<SimExtras> {
   status: "casting" | "awaiting_approval" | "browsing" | "analyzing" | "done" | "error"; error: string | null;
   personas: Persona[]; live: Record<string, SimStep[]>; decisions: Record<string, Decision>;
   summary: { buy_rate: number; rating: number; decisions: Record<string, number>; missing: { persona: string; text: string }[] } | null;
-  report: string; steps: { t: string; kind: string; note: string }[]; memory: Record<string, string>;
+  report: string; steps: { t: string; kind: string; note: string }[]; memory: Record<string, string>; round?: number; parent?: string | null;
 }
 
 const DEC_COLOR: Record<string, string> = { buy: C.win, "would recommend": C.win, "maybe later": C.mid, "not buy": C.loss, "would complain": C.loss };
@@ -82,6 +82,7 @@ export function SimView({ id }: { id: string }) {
   const [cast, setCast] = useState<Persona[] | null>(null);
   const [open, setOpen] = useState<Persona | null>(null);
   const [report, setReport] = useState(false);
+  const [fix, setFix] = useState("");
   const [demo, setDemo] = useState<SimExtras | null>(null);
   useEffect(() => { if (location.hash.includes("demo")) fetch("/api/fixtures/extras").then((r) => r.json()).then(setDemo).catch(() => {}); }, []);
 
@@ -94,6 +95,15 @@ export function SimView({ id }: { id: string }) {
   }, [id, sim?.status]); // eslint-disable-line
 
   if (!sim) return <div className="grid h-[60vh] place-items-center font-mono text-white/40">loading…</div>;
+
+  async function recast() {
+    await fetch(`/api/sims/${id}/recast`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ feedback: fix.trim() }) });
+    setFix(""); setCast(null); setSim({ ...sim!, status: "casting" });
+  }
+  async function rerun() {
+    const r = await fetch(`/api/sims/${id}/rerun`, { method: "POST" });
+    if (r.ok) location.hash = `#sim=${(await r.json()).id}`;
+  }
 
   async function approve() {
     await fetch(`/api/sims/${id}/approve`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ personas: cast }) });
@@ -110,7 +120,7 @@ export function SimView({ id }: { id: string }) {
     <div className="mx-auto max-w-[1400px] px-6 pb-16">
       {/* one headline that always says what is happening */}
       <div className="pt-6 text-center">
-        <div className="font-mono text-[12px] text-white/40">{host(sim.input.url)}{sim.input.context ? ` · ${sim.input.context}` : ""}{sim.input.world ? ` · ${sim.input.world}` : ""}</div>
+        <div className="font-mono text-[12px] text-white/40">{sim.round ? <span className="mr-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.brain }}>round {sim.round + 1} · they remember round {sim.round}</span> : null}{host(sim.input.url)}{sim.input.context ? ` · ${sim.input.context}` : ""}{sim.input.world ? ` · ${sim.input.world}` : ""}</div>
         <h1 className="mt-2 font-serif text-[40px] leading-tight">
           {sim.status === "casting" && <>Reading {name}<span className="animate-pulse">…</span></>}
           {sim.status === "awaiting_approval" && <>Meet your customers</>}
@@ -143,6 +153,11 @@ export function SimView({ id }: { id: string }) {
           </div>
           <button disabled={!cast.length} onClick={approve} className="mt-10 rounded-2xl px-10 py-4 text-[17px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 40px ${C.win}66` }}>Let them in →</button>
           <p className="mt-3 text-[12px] text-white/35">hover anyone to remove them</p>
+          <form onSubmit={(e) => { e.preventDefault(); if (fix.trim().length > 1) recast(); }} className="mx-auto mt-6 flex max-w-xl gap-2">
+            <input value={fix} onChange={(e) => setFix(e.target.value)} placeholder="Anything off? e.g. my customers are older than that"
+              className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#3ff0d4]" />
+            <button className="rounded-xl border border-white/20 px-4 text-[14px] hover:border-white/50">Recast</button>
+          </form>
         </div>
       )}
 
@@ -169,6 +184,13 @@ export function SimView({ id }: { id: string }) {
                 ))}
               </div>
             </section>
+          )}
+
+          {sim.status === "done" && (
+            <div className="mt-12 text-center">
+              <button onClick={rerun} className="rounded-2xl px-8 py-4 text-[16px] font-semibold text-black" style={{ background: C.brain, boxShadow: `0 0 40px ${C.brain}66` }}>Run again with what they learned →</button>
+              <p className="mt-2 text-[12px] text-white/40">same customers, now carrying their memory into round {(sim.round ?? 0) + 2}</p>
+            </div>
           )}
 
           {sim.report && (

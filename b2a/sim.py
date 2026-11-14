@@ -36,8 +36,10 @@ Do this, keeping your todo list updated:
    what made them leave, and whether the business's claimed change was actually visible to them.
 2. Ask the evolver sub-agent to update every persona file with a "## Memory" section: 1-3 concrete things this persona learned
    about this kind of product, so the next simulation starts smarter.
-3. Write /report.md for the business owner: the weighted result, the 3 changes that would win the most customers (each tied to
-   a persona and a page they saw), and where the simulation might be wrong.
+3. Write /report.md for the business owner, short, with these sections: the weighted buy rate and rating, broken down by
+   customer type (archetype and share); where people got stuck (which page); what convinced the buyers; the top 3 fixes
+   (each tied to a persona and a page they saw); which complaint is most likely to spread by word of mouth and why; and
+   where the simulation might be wrong.
 Reply with one sentence."""
 
 ANALYST_SUB = ("You read customer browsing sessions (JSON) and persona files. Report in at most 180 words: where each persona got stuck "
@@ -48,7 +50,8 @@ EVOLVER_SUB = ("You update persona files. For every file in /personas, append or
 
 def persona_md(p: dict) -> str:
     return (f"# {p['name']} ({p['id']})\n\n- Age: {p['age']}\n- Occupation: {p['occupation']}\n- Archetype: {p['archetype']}\n"
-            f"- Segment: {p['segment']} ({round(p['share'] * 100)}% of customers)\n- Goal: {p['goal']}\n- Budget: {p['budget']}\n- Voice: {p['voice']}\n")
+            f"- Segment: {p['segment']} ({round(p['share'] * 100)}% of customers)\n- Goal: {p['goal']}\n- Budget: {p['budget']}\n- Voice: {p['voice']}\n"
+            + (f"\n## Memory\n{p['memory']}\n" if p.get("memory") else ""))
 
 
 class SimJob:
@@ -63,6 +66,9 @@ class SimJob:
         self.summary: dict | None = None
         self.report = ""
         self.steps: list[dict] = []
+        self.round = inp.get("round", 0)
+        self.parent = inp.get("parent")
+        self.persona_changes: list[dict] = []
         self.dir = SIMS / self.id
         for d in ("personas", "sessions", "shots"):
             (self.dir / d).mkdir(parents=True, exist_ok=True)
@@ -80,16 +86,20 @@ class SimJob:
                 evolved[p["id"]] = f.read_text().split("## Memory", 1)[1].strip()
         return {"id": self.id, "input": self.inp, "status": self.status, "error": self.error, "personas": self.personas,
                 "live": self.live, "decisions": self.decisions, "summary": self.summary, "report": self.report,
-                "steps": self.steps, "memory": evolved}
+                "steps": self.steps, "memory": evolved, "round": self.round, "parent": self.parent,
+                "persona_changes": self.persona_changes}
 
     def save(self):
         with self._lock:
             (self.dir / "sim.json").write_text(json.dumps(self.view(), indent=2))
 
     # ---- phase 1: cast, then pause for the owner
-    def cast(self):
+    def cast(self, feedback: str = ""):
         try:
             i = self.inp
+            if feedback:
+                i["customers"] = (i.get("customers") or "") + f"\nThe owner corrected the cast: {feedback}"
+                self.log("owner", f"correction: {feedback}")
             if not i.get("name") or not i.get("customers") or not i.get("offer"):
                 site = session.read_site(i["url"])
                 for k in ("name", "category", "customers", "offer"):
@@ -135,7 +145,9 @@ class SimJob:
             self.summary = self._summarize()
             self.status = "analyzing"
             self.save()
+            before = {p["id"]: (p.get("memory") or "").strip() for p in self.personas}
             self._analyze()
+            self._record_changes(before)
             self.status = "done"
         except Exception as e:
             self.status, self.error = "error", f"{type(e).__name__}: {e}"[:300]
@@ -155,6 +167,18 @@ class SimJob:
             counts[d["decision"]] = counts.get(d["decision"], 0) + 1
         return {"buy_rate": round(buy, 3), "clicked_buy": sorted(carted), "rating": round(rating, 2), "decisions": counts,
                 "missing": [{"persona": pid, "text": d["missing"]} for pid, d in got.items()]}
+
+    def _record_changes(self, before: dict):
+        """What each persona learned this round: its memory before and after the evolver ran."""
+        for p in self.personas:
+            f = self.dir / "personas" / f"{p['id']}.md"
+            after = f.read_text().split("## Memory", 1)[1].strip() if f.exists() and "## Memory" in f.read_text() else ""
+            if after and after != before.get(p["id"], ""):
+                new = [l.strip("-• ").strip() for l in after.splitlines() if l.strip() and l.strip() not in before.get(p["id"], "")]
+                self.persona_changes.append({"persona_id": p["id"], "iteration": self.round + 1, "lesson": (new or [after])[0][:240],
+                                             "before": before.get(p["id"], ""), "after": after})
+                p["memory"] = after
+        self.save()
 
     def _analyze(self):
         i = self.inp
@@ -209,6 +233,32 @@ def approve(sim_id: str, personas: list[dict] | None) -> bool:
         return False
     job.approve(personas)
     return True
+
+
+def recast(sim_id: str, feedback: str) -> bool:
+    """Owner says the personas are off ("my customers are older"): cast again with that correction."""
+    job = SIMS_LIVE.get(sim_id)
+    if not job or job.status != "awaiting_approval":
+        return False
+    job.status = "casting"
+    job.save()
+    threading.Thread(target=job.cast, args=(feedback,), daemon=True).start()
+    return True
+
+
+def rerun(sim_id: str) -> SimJob | None:
+    """Next round: the same customers, now carrying what they learned, visit again."""
+    src = get(sim_id)
+    if not src or src.get("status") != "done":
+        return None
+    inp = {**src["input"], "round": src.get("round", 0) + 1, "parent": sim_id}
+    job = SimJob(inp)
+    SIMS_LIVE[job.id] = job
+    mem = src.get("memory") or {}
+    job.personas = [{**p, "memory": mem.get(p["id"], p.get("memory", ""))} for p in src["personas"]]
+    job.log("round", f"round {job.round}: same {len(job.personas)} customers, carrying what they learned")
+    job.approve(None)
+    return job
 
 
 def list_sims():

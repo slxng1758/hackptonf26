@@ -74,6 +74,7 @@ class Decision(BaseModel):
 
 STEP = """You are {name}, {age}, {occupation}. You are a {archetype} customer. {voice}
 Your goal: {goal}. Your budget: {budget}.
+What you learned from past visits to sites like this: {memory}
 The world right now: {world}
 What the business says changed: {context}
 
@@ -87,6 +88,7 @@ If you find something that fits, pick it (size/option) and click "Add to cart" o
 payment details. If the site clearly isn't for you, decide early. Stay in character."""
 
 DECIDE = """You are {name}, {age}, {occupation}, a {archetype} customer. {voice} Goal: {goal}. Budget: {budget}. World: {world}.
+What you learned from past visits: {memory}
 You browsed {product}. Here is everything you saw and thought:
 {history}
 Make your decision like a real shopper on this visit, not a reviewer. Real people buy without perfect information:
@@ -253,7 +255,7 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                 except Exception:
                     pass
                 continue
-            prompt = STEP.format(**persona, world=world or "today, normal times", context=context or "none", url=pg.url, n=n, max_steps=max_steps,
+            prompt = STEP.format(**{**persona, "memory": persona.get("memory") or "nothing yet"}, world=world or "today, normal times", context=context or "none", url=pg.url, n=n, max_steps=max_steps,
                                  links=", ".join(links) or "(none)", text=text, history=" → ".join(history) or "just arrived")
             try:
                 s: Step = model.with_structured_output(Step).invoke([_img_msg(prompt, jpg)] if jpg else prompt)
@@ -297,7 +299,7 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
             except Exception:
                 history.append(f"(tried to {s.action} '{s.target}' but it didn't work)")
         b.close()
-    ask = DECIDE.format(**persona, world=world or "today, normal times", product=url, history="\n".join(history))
+    ask = DECIDE.format(**{**persona, "memory": persona.get("memory") or "nothing yet"}, world=world or "today, normal times", product=url, history="\n".join(history))
     try:
         d: Decision = model.with_structured_output(Decision).invoke(ask)
     except Exception:

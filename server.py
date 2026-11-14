@@ -120,6 +120,25 @@ def sim_approve(sim_id: str, body: Approve):
     return {"ok": True}
 
 
+class Recast(BaseModel):
+    feedback: str = Field(min_length=2, max_length=500)
+
+
+@app.post("/api/sims/{sim_id}/recast")
+def sim_recast(sim_id: str, body: Recast):
+    if not sim.recast(sim_id, body.feedback):
+        raise HTTPException(409, "This simulation isn't waiting for approval.")
+    return {"ok": True}
+
+
+@app.post("/api/sims/{sim_id}/rerun")
+def sim_rerun(sim_id: str):
+    job = sim.rerun(sim_id)
+    if not job:
+        raise HTTPException(409, "Only a finished simulation can run again.")
+    return {"id": job.id}
+
+
 @app.get("/api/fixtures/extras")
 def extras_fixture():
     """Sarah's example data for evals / persona_changes / social, so the UI can be built before the backend exists."""
