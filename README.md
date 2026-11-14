@@ -1,11 +1,11 @@
 <h1 align="center">Agent-ready</h1>
 
 <p align="center"><b>Watch your customers try your website before you launch.</b><br>
-AI customers open your real site, click around, think out loud, decide whether to buy, and learn from real people.</p>
+AI customers open your real site, click around, think out loud, decide whether to buy, post about it, and learn from real people.</p>
 
 <p align="center">
   Built at <b>HackPrinceton Fall 2026</b> &nbsp;·&nbsp; Track: <b>Business &amp; Enterprise</b> &nbsp;·&nbsp;
-  Challenges: <b>LangChain Deep Agents</b>, <b>Amazon Best Practical AI</b>, <b>Peri</b>, <b>MLH Gemini</b>
+  Challenges: <b>LangChain Deep Agents</b>, <b>Amazon Best Practical AI</b>, <b>Peri</b>, <b>Arlequin</b>, <b>MLH Gemini</b>
 </p>
 
 <p align="center">
@@ -34,6 +34,7 @@ Big retailers run user research before they ship a change. A café, a studio or 
 - **They use the real product.** Each persona opens your actual site in its own browser, looks at every screenshot, and narrates what it thinks and feels. It clicks real links, filters and product cards, picks a size, and clicks "Add to cart" or "Download" if it wants it.
 - **Watch it as a map.** Every page they reach becomes a card with its real screenshot. Avatars walk between pages, their faces change with their mood, and they leave through one of three exits: **Bought**, **Maybe later** or **Left**. Click anyone to replay their whole visit, step by step.
 - **Different AI, different taste.** Customers are played by different model families (Gemini, Claude and GPT), and the result is broken down by model, so one lab's taste doesn't decide for everyone.
+- **Then they talk about it.** Every customer posts about their visit in their own voice. Then they read each other's posts and reply, repost or scroll past, for two rounds. The result is a feed and a who-reacted-to-whom network. PageRank over replies and reposts finds whose opinion spreads furthest, so you know which complaint to fix first. On melomed.io, a post about the free journal app spread furthest because another customer challenged it about encryption, and the shared worry that travelled was that "free" never says what happens after.
 - **What would win them over.** Each customer who didn't buy says what would have changed their mind, and an analyst agent writes a report: buy rate by customer type, where people got stuck, what convinced the buyers, the top 3 fixes and which complaint is most likely to spread.
 - **Teach them what real customers do.** Type what actually happens ("most of our buyers are college students who journal at night, nobody reads the Science page"). Each persona the account applies to rewrites its memory, and the change is tagged **from real people**.
 - **Change something and test again.** Run the same customers again, carrying their memory, so before and after is a fair comparison. Every test of your site is on a timeline, for example **3/7** bought, then **5/7** after they learned.
@@ -67,6 +68,7 @@ On a JavaScript-heavy site the first version saw a blank page, and personas came
 | Piece | What we used it for |
 |---|---|
 | **LangChain Deep Agents** | The orchestrator plans the analysis with a todo list and hands work to two sub-agents: the **analyst** (reads every session, finds where people got stuck) and the **evolver** (rewrites each persona's memory). They work on real files: `personas/*.md`, `sessions/*.json`, `report.md`. A `CompositeBackend` routes `/memories/` to a LangGraph store, so customer memory outlives the run and is shared across businesses. |
+| **Word of mouth** (`b2a/social.py`) | Posts, then two rounds of replies and reposts, each customer deciding in its own voice. PageRank (power iteration, damping 0.85) over the reaction network. The analyst reads `social.json` when it writes "which complaint will spread". |
 | **Playwright** | One real Chromium browser per customer. Screenshots of every step, real clicks. |
 | **Gemini** | Plays customers: it looks at each screenshot and decides what to do next. |
 | **Claude** (Sonnet, Haiku) | Runs the orchestrator and analyst, reads the site, casts the personas, plays customers. |
@@ -91,7 +93,8 @@ flowchart LR
     V --> D[Decision, rating, quote]
   end
 
-  B --> DA[Deep Agents orchestrator]
+  B --> SO[Word of mouth<br/>posts, replies, reposts, PageRank]
+  SO --> DA[Deep Agents orchestrator]
   DA --> AN[analyst sub-agent]
   DA --> EV[evolver sub-agent]
   AN --> REP[report.md]
@@ -107,6 +110,7 @@ flowchart LR
 |---|---|
 | Reading the site, casting, the browsing loop | `b2a/session.py` |
 | Simulation job, Deep Agents orchestrator, teach / rerun / recast | `b2a/sim.py` |
+| Word of mouth and PageRank | `b2a/social.py` |
 | Long-term memory (CompositeBackend + store) | `b2a/memory.py` |
 | Model families | `b2a/models.py` |
 | Data contract for evals, persona changes and social | `b2a/contract.py`, `docs/CONTRACT.md` |
@@ -125,6 +129,12 @@ $$ \text{bought}_i = \mathbb{1}\left[\text{clicked buy}_i \;\lor\; d_i \in \{\te
 $$ \text{buy rate} = \frac{\sum_i s_i \, b_i}{\sum_i s_i}, \qquad b_i = \begin{cases} 1 & \text{bought}_i \\ 0.3 & d_i = \text{maybe later} \\ 0 & \text{otherwise} \end{cases} $$
 
 The headline ("3 of 7 would buy") is the unweighted count of $\text{bought}_i$. The share-weighted rate is in the report.
+
+**Who spreads furthest.** If customer $a$ replies to or reposts $b$, influence flows from $a$ to $b$ with weight $w_{ab}$ (how many times). PageRank over $n$ customers, damping $d = 0.85$:
+
+$$ \text{PR}(b) = \frac{1-d}{n} + d \sum_{a \to b} \frac{w_{ab}}{\sum_{c} w_{ac}} \, \text{PR}(a) $$
+
+with customers who reacted to no one spreading their share evenly. The top of that list is the opinion most likely to travel by word of mouth.
 
 **Accuracy against real customers** (one score per round, `b2a/contract.py`), on a product whose real reviews the personas never see:
 
