@@ -22,6 +22,7 @@ interface Detail {
   sim: { id: string; url: string; name: string | null; status: string };
 }
 
+const q = (t?: string) => (t ?? "").trim().replace(/^["“”']+|["“”']+$/g, "");
 const OUT: Record<string, [string, string]> = { buy: ["Bought", C.win], "would recommend": ["Bought + would recommend", C.win], "maybe later": ["Maybe later", C.mid], "not buy": ["Left", C.loss], "would complain": ["Would complain", C.loss] };
 const sev = (s: number) => (s >= 2.5 ? C.loss : s >= 1.5 ? C.mid : C.brain);
 
@@ -98,10 +99,10 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
 
           {tab === "decision" && dec && (
             <div className="mt-5 space-y-4">
-              {dec.first_impression && <div className={`${PANEL} p-5`}><div className="text-[12px] font-semibold text-white/50">First impression</div><p className="mt-1 text-[16px]">“{dec.first_impression}”</p></div>}
+              {dec.first_impression && <div className={`${PANEL} p-5`}><div className="text-[12px] font-semibold text-white/50">First impression</div><p className="mt-1 text-[16px]">“{q(dec.first_impression)}”</p></div>}
               <div className={`${PANEL} p-5`}>
                 <div className="text-[12px] font-semibold text-white/50">What they'd tell a friend</div>
-                <p className="mt-1 font-serif text-[20px] leading-snug">“{dec.quote}”</p>
+                <p className="mt-1 font-serif text-[20px] leading-snug">“{q(dec.quote)}”</p>
                 {dec.review && <p className="mt-3 text-[14px] leading-relaxed text-white/75">{dec.review}</p>}
               </div>
               <div className="grid gap-4 md:grid-cols-2">
@@ -144,8 +145,8 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
                       {s.cart && <span className="rounded-full px-2 font-semibold text-black" style={{ background: C.win }}>buy action</span>}
                     </div>
                     <div className="mt-2 flex items-start gap-2">
-                      <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={36} feeling={s.feeling} />
-                      <p className="rounded-xl rounded-tl-none bg-white/[0.06] px-3 py-2 text-[14.5px] leading-snug">“{s.thought}”</p>
+                      <div className="shrink-0"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={36} feeling={s.feeling} /></div>
+                      <p className="rounded-xl rounded-tl-none bg-white/[0.06] px-3 py-2 text-[14.5px] leading-snug">“{q(s.thought)}”</p>
                     </div>
                     <div className="mt-2 text-[13px]"><span className="font-semibold" style={{ color: C.brain }}>→ {s.action === "click" ? `clicked “${s.target}”` : s.action === "decide" ? "ready to decide" : s.action}</span> <span className="text-white/45">· felt {s.feeling}</span></div>
                     {boxes.map((b, k) => <div key={k} className="mt-2 rounded-lg border-l-4 bg-white/[0.03] px-3 py-1.5 text-[12.5px]" style={{ borderColor: sev(b.severity) }}><b>{b.label}:</b> {b.issue} <span className="text-white/60">Fix: {b.fix}</span></div>)}
@@ -188,7 +189,7 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
             <div className="mt-5 space-y-3">
               {d.posts.map((x) => (
                 <div key={x.id} className={`${PANEL} flex gap-3 p-4`}>
-                  <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={36} feeling={x.sentiment > 0.15 ? "interested" : x.sentiment < -0.15 ? "annoyed" : "neutral"} />
+                  <div className="shrink-0"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={36} feeling={x.sentiment > 0.15 ? "interested" : x.sentiment < -0.15 ? "annoyed" : "neutral"} /></div>
                   <div><div className="font-mono text-[11px] text-white/45">round {x.round} · {x.kind}{x.target ? ` → ${x.target}` : ""}</div><p className="text-[14.5px]">{x.text}</p></div>
                 </div>
               ))}
