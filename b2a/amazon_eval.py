@@ -131,7 +131,10 @@ def score(sim: dict, held: list[dict], real: list[dict], iteration: int, notes: 
     people = [p for p in sim["personas"] if p.get("kind") != "agent" and p["id"] in sim["decisions"]]
     share = {p["id"]: p["share"] for p in people}
     w = sum(share.values()) or 1
-    pred = sum(share[p["id"]] * sim["decisions"][p["id"]]["rating"] for p in people) / w
+    # reviewers rate after buying and using it, so compare with the customers' "after a few weeks of use" stars,
+    # not their pre-purchase impression of the page (that's the "rating" field)
+    star = lambda p: sim["decisions"][p["id"]].get("stars_after_use") or sim["decisions"][p["id"]]["rating"]
+    pred = sum(share[p["id"]] * star(p) for p in people) / w
     actual = sum(r["rating"] for r in held) / len(held)
     said = "\n".join(f"- {sim['decisions'][p['id']]['quote']} | reasons: {'; '.join(sim['decisions'][p['id']].get('reasons') or [])} | "
                      f"missing: {sim['decisions'][p['id']].get('missing', '')}" for p in people)
@@ -144,7 +147,7 @@ def score(sim: dict, held: list[dict], real: list[dict], iteration: int, notes: 
     # star distributions: share-weighted predicted vs held-out real, total variation distance
     pd = Counter()
     for p in people:
-        pd[sim["decisions"][p["id"]]["rating"]] += share[p["id"]] / w
+        pd[star(p)] += share[p["id"]] / w
     rd = Counter(round(r["rating"]) for r in held)
     dist = 0.5 * sum(abs(pd.get(k, 0) - rd.get(k, 0) / len(held)) for k in range(1, 6))
     bought = [p for p in people if any(x.get("cart") for x in sim["live"].get(p["id"], [])) or sim["decisions"][p["id"]]["decision"] in ("buy", "would recommend")]

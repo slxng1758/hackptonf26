@@ -70,6 +70,7 @@ class Decision(BaseModel):
     quote: str = Field(description="what you'd tell a friend about it, first person, max 35 words")
     reasons: list[str] = Field(default_factory=list, description="2-4 concrete reasons, each tied to something you saw")
     missing: str = Field(default="", description="what would have changed your mind, one sentence")
+    stars_after_use: int | None = Field(default=None, ge=1, le=5, description="imagine you bought it and used it for a few weeks: the star rating you'd leave in a review (answer even if you didn't buy)")
 
 
 STEP = """You are {name}, {age}, {occupation}. You are a {archetype} customer. {voice}
