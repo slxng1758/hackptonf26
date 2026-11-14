@@ -5,9 +5,7 @@ AI shopping agents and AI customers open your real site, click around, decide wh
 
 <p align="center">
   Built at <b>HackPrinceton Fall 2026</b> &nbsp;·&nbsp; 
-  Track: <b>Business &amp; Enterprise</b> &nbsp;·&nbsp;
-
-</p>
+  Track: <b>Business &amp; Enterprise</b> &nbsp;
 
 <p align="center">
   <img src="docs/media/map.png" alt="The site map: each page customers visited is a card with a real screenshot, avatars stand on the pages they reached, and three exits on the right count who bought, who said maybe later and who left" width="100%">
