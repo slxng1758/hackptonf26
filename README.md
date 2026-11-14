@@ -22,7 +22,8 @@ The customer segments are a simulation, a cheap first pass before testing with p
 ```bash
 # backend (Python 3.12)
 uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python deepagents langchain-anthropic langchain-openai langchain-google-genai fastapi uvicorn python-dotenv
+uv pip install --python .venv/bin/python -r requirements.txt
+.venv/bin/playwright install chromium
 cp .env.example .env        # ANTHROPIC_API_KEY, OPENAI_API_KEY, optional GOOGLE_API_KEY
 .venv/bin/uvicorn server:app --port 4620
 

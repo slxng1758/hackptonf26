@@ -67,6 +67,14 @@ def persona_models() -> dict:
     if os.getenv("OPENAI_API_KEY"):
         from langchain_openai import ChatOpenAI
         out["GPT"] = ChatOpenAI(model=os.getenv("GPT_SHOPPER", "gpt-5.4-mini"), timeout=60, max_retries=2)
+    if os.getenv("AWS_ACCESS_KEY_ID") or os.getenv("AWS_PROFILE"):
+        # Amazon Bedrock: Amazon's own Nova (the model family behind Amazon's shopping assistant) and Meta's Llama.
+        from langchain_aws import ChatBedrockConverse
+        region = os.getenv("AWS_REGION", "us-east-1")
+        if os.getenv("NOVA_MODEL_ID"):
+            out["Amazon Nova"] = ChatBedrockConverse(model=os.environ["NOVA_MODEL_ID"], region_name=region, max_tokens=1500)
+        if os.getenv("LLAMA_BEDROCK_MODEL_ID"):
+            out["Llama"] = ChatBedrockConverse(model=os.environ["LLAMA_BEDROCK_MODEL_ID"], region_name=region, max_tokens=1500)
     if os.getenv("XAI_API_KEY") and os.getenv("XAI_MODEL"):
         from langchain_openai import ChatOpenAI
         out["Grok"] = ChatOpenAI(model=os.environ["XAI_MODEL"], base_url="https://api.x.ai/v1", api_key=os.environ["XAI_API_KEY"], timeout=60, max_retries=2)
