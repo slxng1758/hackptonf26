@@ -110,3 +110,38 @@ def lab_get(job_id: str):
     if not d:
         raise HTTPException(404, "no such job")
     return d
+
+
+# ---------- B2A: will an AI shopping agent pick you? ----------
+from sim import b2a as _b2a
+
+
+class B2AStart(BaseModel):
+    ours: str | None = Field(None, max_length=1200)
+    competitors: list[str] | None = None
+    tasks: list[str] | None = None
+    name: str | None = None
+
+
+@app.get("/api/b2a/demo")
+def b2a_demo():
+    return _b2a.DEMO
+
+
+@app.post("/api/b2a")
+def b2a_start(body: B2AStart):
+    market = {k: v for k, v in {"competitors": body.competitors, "tasks": body.tasks, "name": body.name}.items() if v}
+    return {"id": _b2a.start(body.ours, market).id}
+
+
+@app.get("/api/b2a")
+def b2a_list():
+    return _b2a.list_jobs()
+
+
+@app.get("/api/b2a/{job_id}")
+def b2a_get(job_id: str):
+    d = _b2a.get(job_id)
+    if not d:
+        raise HTTPException(404, "no such job")
+    return d

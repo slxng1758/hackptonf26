@@ -7,9 +7,11 @@ import { Village } from "./Village";
 import { Petri } from "./Petri";
 import { Paper } from "./Paper";
 import { Lab } from "./Lab";
+import { B2A } from "./B2A";
 
 const VIEWS = [
-  { hash: "#/", label: "Lab", el: <Lab /> },
+  { hash: "#/", label: "B2A", el: <B2A /> },
+  { hash: "#/lab", label: "Message lab", el: <Lab /> },
   { hash: "#/network", label: "Network", el: <Infodemic /> },
   { hash: "#/village", label: "Village", el: <Village /> },
   { hash: "#/petri", label: "Petri dish", el: <Petri /> },
