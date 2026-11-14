@@ -113,9 +113,11 @@ def sim_start(body: SimIn):
         d["url"], d["product_id"], d["offer"] = page["url"], page["id"], d["description"][:2000]
     elif len(d["url"].strip()) >= 4:
         if not d["url"].startswith("http"):
-            d["url"] = "https://" + d["url"]
+            d["url"] = ("http://" if d["url"].startswith(("localhost", "127.0.0.1")) else "https://") + d["url"]
     else:
         raise HTTPException(422, "Describe your product (or give a website).")
+    # "localhost" can reach a different server over IPv6 on this machine; our own pages live on 127.0.0.1
+    d["url"] = d["url"].replace("://localhost:", "://127.0.0.1:")
     return {"id": sim.start(d).id}
 
 

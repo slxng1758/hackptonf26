@@ -100,7 +100,7 @@ def teach_text(reviews: list[dict], title: str) -> str:
     text = "\n".join(f"- {r['rating']:.0f}★ {r['title']}: {r['text'][:300]}" for r in sample)
     return fast().invoke(f"Real Amazon reviews of '{title}':\n{text}\n\nIn 4-6 short sentences, tell a group of shoppers what real buyers "
                          f"of this product actually did and felt: who bought it, what pleased them, what disappointed them, and "
-                         f"roughly how satisfied they were overall. No star numbers.").content
+                         f"roughly how satisfied they were overall. No star numbers. Under 900 characters.").content[:1900]
 
 
 class Match(BaseModel):
@@ -151,7 +151,7 @@ def score(sim: dict, held: list[dict], real: list[dict], iteration: int, notes: 
             "real_themes": real, "matched_themes": matched, "missed_themes": [t["theme"] for t in real if t["theme"] not in matched], "notes": notes}
 
 
-def main(rounds: int = 2):
+def main(rounds: int = 2, resume: str | None = None):
     PAGES.mkdir(parents=True, exist_ok=True)
     m, reviews = pick_product()
     asin = m["parent_asin"]
@@ -159,6 +159,9 @@ def main(rounds: int = 2):
     teach, held = reviews[:half], reviews[half:]
     (PAGES / f"{asin}.html").write_text(page(m))
     print(f"product: {m['title'][:80]} ({asin}), ${m['price']}, {len(reviews)} reviews → teach {len(teach)}, held out {len(held)}")
+    if resume:  # round 0 already scored: reuse its themes so every round is judged against the same answer key
+        real = api(f"/api/sims/{resume}")["evals"][0]["real_themes"]
+        return later_rounds(resume, m, teach, held, real, rounds)
     real = themes_of(held, m["title"])
     print("held-out themes:", [t["theme"] for t in real])
     url = f"{API}/api/product/{asin}.html"
@@ -172,6 +175,10 @@ def main(rounds: int = 2):
     sc = score(sim, held, real, 0, "Cold start: customers saw only the store page.")
     api(f"/api/sims/{sid}/evals", sc)
     print(f"  predicted {sc['predicted_rating']} vs real {sc['actual_rating']} (error {sc['rating_error']}), themes caught {sc['theme_recall']:.0%}")
+    later_rounds(sid, m, teach, held, real, rounds)
+
+
+def later_rounds(sid: str, m: dict, teach: list[dict], held: list[dict], real: list[dict], rounds: int):
     lesson = teach_text(teach, m["title"])
     for it in range(1, rounds + 1):
         api(f"/api/sims/{sid}/teach", {"truth": lesson})
@@ -185,4 +192,5 @@ def main(rounds: int = 2):
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(resume=sys.argv[1] if len(sys.argv) > 1 else None)
