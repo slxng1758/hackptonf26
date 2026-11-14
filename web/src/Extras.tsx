@@ -17,7 +17,7 @@ function who(personas: Persona[], id: string, label = id) {
 export function WordOfMouth({ social, personas }: { social: Social; personas: Persona[] }) {
   const byId = Object.fromEntries(social.posts.map((p) => [p.id, p]));
   const top = social.top_influencers[0];
-  const R = 150, CX = 200, CY = 185;
+  const R = 128, CX = 200, CY = 172;
   const pos = Object.fromEntries(social.nodes.map((n, i) => {
     const a = (i / social.nodes.length) * Math.PI * 2 - Math.PI / 2;
     return [n.id, { x: CX + R * Math.cos(a), y: CY + R * Math.sin(a) }];
@@ -27,7 +27,7 @@ export function WordOfMouth({ social, personas }: { social: Social; personas: Pe
   return (
     <section className="mx-auto mt-14 max-w-5xl">
       <h2 className="text-center font-serif text-[30px]">Then they talked about it</h2>
-      <p className="mx-auto mt-2 max-w-2xl text-center text-[15px] text-white/60">{social.summary}</p>
+      <p className="mx-auto mt-2 max-w-2xl text-center text-[15px] text-white/60">{social.summary.replace(/\*\*/g, "")}</p>
       <div className="mt-6 grid gap-5 md:grid-cols-[1fr_400px]">
         <div className={`${PANEL} max-h-[420px] space-y-3 overflow-y-auto p-4`}>
           {social.posts.map((post) => {
@@ -52,12 +52,12 @@ export function WordOfMouth({ social, personas }: { social: Social; personas: Pe
         </div>
         <div className={`${PANEL} relative`}>
           <svg viewBox="0 0 400 370" className="w-full">
-            <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="rgba(255,255,255,0.4)" /></marker></defs>
+            <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" style={{ fill: "var(--ink)" }} opacity=".5" /></marker></defs>
             {social.edges.map((e, i) => {
               const a = pos[e.source], b = pos[e.target]; if (!a || !b) return null;
               const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1, r = 34;
               return <line key={i} x1={a.x + (dx / L) * r} y1={a.y + (dy / L) * r} x2={b.x - (dx / L) * r} y2={b.y - (dy / L) * r}
-                stroke={e.kind === "repost" ? C.mid : "rgba(255,255,255,0.35)"} strokeWidth={1 + e.weight} strokeDasharray={e.kind === "repost" ? "0" : "5 4"} markerEnd="url(#arr)" className={e.kind === "reply" ? "flow" : ""} />;
+                stroke={e.kind === "repost" ? C.mid : "var(--ink)"} strokeOpacity={e.kind === "repost" ? 1 : 0.4} strokeWidth={1 + e.weight} strokeDasharray={e.kind === "repost" ? "0" : "5 4"} markerEnd="url(#arr)" className={e.kind === "reply" ? "flow" : ""} />;
             })}
           </svg>
           {social.nodes.map((n) => {

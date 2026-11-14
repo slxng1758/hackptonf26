@@ -34,7 +34,7 @@ export function Avatar({ seed, feeling = "neutral", archetype = "", age = 30, si
     <svg width={size} height={size} viewBox="0 0 100 100" className={busy ? "avatar-bob" : ""} aria-hidden>
       <defs><clipPath id={`c${seed}`}><circle cx="50" cy="50" r="50" /></clipPath></defs>
       <g clipPath={`url(#c${seed})`}>
-        <rect width="100" height="100" fill="#141623" />
+        <rect width="100" height="100" style={{ fill: "var(--avatar-bg)" }} />
         <path d="M14 100 Q16 78 50 76 Q84 78 86 100 Z" fill={shirt} />
         <rect x="43" y="66" width="14" height="12" rx="4" fill={skin} />
         {style === 2 && <path d="M24 52 Q22 86 34 92 L66 92 Q78 86 76 52 Z" fill={hair} />}

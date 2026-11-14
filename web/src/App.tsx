@@ -3,6 +3,7 @@ import type { Job } from "./types";
 import { Start, type StartInput } from "./Start";
 import { Dashboard } from "./Dashboard";
 import { SimView } from "./Simulate";
+import { THEME, THEME_LIST, setTheme } from "./theme";
 
 type View = { kind: "start" } | { kind: "job"; id: string } | { kind: "sim"; id: string };
 
@@ -38,7 +39,17 @@ export function App() {
     <div className="min-h-screen">
       <header className="flex h-16 items-center justify-between px-6">
         <button onClick={() => setView({ kind: "start" })} className="font-serif text-[22px]">Agent-ready</button>
-        {view.kind !== "start" && <button onClick={() => setView({ kind: "start" })} className="rounded-full border border-white/20 px-4 py-1.5 text-[13px] hover:border-white/50">Try another site</button>}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 rounded-full border border-white/15 p-1" title="Theme">
+            {THEME_LIST.map((t) => (
+              <button key={t.id} onClick={() => t.id !== THEME && setTheme(t.id)} title={t.label}
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] ${t.id === THEME ? "bg-white/10 font-semibold" : "text-white/50 hover:text-white"}`}>
+                <span className="flex -space-x-1">{t.swatch.map((c) => <span key={c} className="h-3 w-3 rounded-full ring-1 ring-black/20" style={{ background: c }} />)}</span>{t.label}
+              </button>
+            ))}
+          </div>
+          {view.kind !== "start" && <button onClick={() => setView({ kind: "start" })} className="rounded-full border border-white/20 px-4 py-1.5 text-[13px] hover:border-white/50">Try another site</button>}
+        </div>
       </header>
       {err && <div className="mx-auto mt-4 max-w-2xl rounded-xl border border-[#ff3355]/40 bg-[#ff3355]/10 px-4 py-2 text-center text-[13px] text-[#ff8099]">{err}</div>}
       {view.kind === "start" && <Start onGo={go} onOpen={(id) => setView({ kind: "sim", id })} />}

@@ -92,12 +92,12 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
 
         {[...nodes.values()].map((n) => { const here = crowd.get(n.key) ?? 0; const heat = Math.min(n.visits / maxVisits, 1); return (
           <div key={n.key} onMouseEnter={() => setHover(n.key)} onMouseLeave={() => setHover(null)}
-            className={`absolute overflow-hidden rounded-2xl border bg-[#11131c] transition-all duration-700 hover:z-20 hover:scale-[1.6] ${here ? "heat" : ""}`}
+            className={`absolute overflow-hidden rounded-2xl border bg-[var(--card)] transition-all duration-700 hover:z-20 hover:scale-[1.6] ${here ? "heat" : ""}`}
             style={{ left: n.x, top: n.y, width: NODE_W, height: NODE_H, transformOrigin: "top left",
               borderColor: n.blocked ? "rgba(255,255,255,0.15)" : hover === n.key || here ? C.win : `rgba(63,240,212,${0.12 + heat * 0.4})`,
               boxShadow: here ? `0 0 ${18 + here * 16}px ${C.win}${here > 2 ? "aa" : "66"}, inset 0 0 30px ${C.win}22` : `0 10px 30px rgba(0,0,0,.5), 0 0 ${heat * 24}px ${C.win}33` }}>
             {n.shot ? <img src={`/api/shots/${sim.id}/shots/${n.shot}`} alt="" className="h-full w-full object-cover object-top opacity-60" /> : <div className="h-full w-full bg-white/[0.03]" />}
-            <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/90 to-transparent px-2.5 pb-4 pt-1.5">
+            <div className="absolute inset-x-0 top-0 flex items-center justify-between px-2.5 pb-4 pt-1.5" style={{ background: "linear-gradient(var(--card) 55%, transparent)" }}>
               <span className="truncate text-[12px] font-semibold">{n.label}</span>
               {n.blocked ? <span className="font-mono text-[9px] text-white/50">bot check</span> : here > 0 ? <span className="rounded-full px-1.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.win }}>{here} here</span> : n.visits > 0 && <span className="font-mono text-[10px] text-white/50">{n.visits}×</span>}
             </div>
@@ -161,7 +161,7 @@ function Ticker({ sim }: { sim: Sim }) {
   ));
   return (
     <div className="relative overflow-hidden border-t border-white/10 bg-black/40 py-2">
-      <div className="absolute left-0 top-0 z-10 flex h-full items-center gap-1.5 bg-gradient-to-r from-[#08080d] via-[#08080d] to-transparent pl-3 pr-8 font-mono text-[10px] font-semibold tracking-widest" style={{ color: sim.status === "browsing" ? C.loss : "rgba(255,255,255,0.4)" }}>
+      <div className="absolute left-0 top-0 z-10 flex h-full items-center gap-1.5 bg-gradient-to-r from-[var(--bg)] via-[var(--bg)] to-transparent pl-3 pr-8 font-mono text-[10px] font-semibold tracking-widest" style={{ color: sim.status === "browsing" ? C.loss : "rgba(255,255,255,0.4)" }}>
         {sim.status === "browsing" && <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: C.loss }} />}{sim.status === "browsing" ? "LIVE" : "HEARD"}
       </div>
       <div className="ticker whitespace-nowrap" style={{ animationDuration: `${Math.max(30, items.length * 9)}s` }}>{row}{row}</div>

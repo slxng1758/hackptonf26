@@ -30,18 +30,18 @@ function Scene() {
   return (
     <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1440 860" preserveAspectRatio="xMidYMid slice" aria-hidden
       style={{ maskImage: "radial-gradient(ellipse 38% 46% at 50% 50%, transparent 55%, black 100%)", WebkitMaskImage: "radial-gradient(ellipse 38% 46% at 50% 50%, transparent 55%, black 100%)" }}>
-      <defs><linearGradient id="trail" x1="0" x2="1"><stop offset="0" stopColor="#3ff0d4" /><stop offset="1" stopColor="#d16bff" /></linearGradient></defs>
+      <defs><linearGradient id="trail" x1="0" x2="1"><stop offset="0" stopColor={C.win} /><stop offset="1" stopColor={C.brain} /></linearGradient></defs>
       {ROUTES.map((r, i) => <path key={i} d={r.path} fill="none" stroke="url(#trail)" strokeOpacity=".35" strokeWidth="1.5" strokeDasharray="6 7" className="flow" />)}
       {PAGES.map((p) => (
         <g key={p.label} transform={`translate(${p.x} ${p.y})`} opacity=".55">
-          <rect width="230" height="140" rx="14" fill="#10121b" stroke="#3ff0d4" strokeOpacity=".25" />
-          <rect x="0" y="0" width="230" height="26" rx="14" fill="#ffffff" fillOpacity=".04" />
+          <rect width="230" height="140" rx="14" style={{ fill: "var(--card)", stroke: C.win }} strokeOpacity=".35" />
+          <rect x="0" y="0" width="230" height="26" rx="14" style={{ fill: "var(--ink)" }} fillOpacity=".05" />
           <circle cx="14" cy="13" r="3" fill="#ff3355" opacity=".6" /><circle cx="26" cy="13" r="3" fill="#ffb547" opacity=".6" /><circle cx="38" cy="13" r="3" fill="#3ff0d4" opacity=".6" />
-          <text x="54" y="17" fontSize="11" fill="#f2efe8" opacity=".6" fontFamily="JetBrains Mono, monospace">{p.label.toLowerCase()}</text>
-          <rect x="16" y="42" width="120" height="10" rx="5" fill="#f2efe8" opacity=".14" />
-          <rect x="16" y="62" width="190" height="7" rx="3.5" fill="#f2efe8" opacity=".08" />
-          <rect x="16" y="76" width="160" height="7" rx="3.5" fill="#f2efe8" opacity=".08" />
-          <rect x="16" y="100" width="70" height="22" rx="11" fill="#3ff0d4" opacity=".25" />
+          <text x="54" y="17" fontSize="11" style={{ fill: "var(--ink)" }} opacity=".6" fontFamily="JetBrains Mono, monospace">{p.label.toLowerCase()}</text>
+          <rect x="16" y="42" width="120" height="10" rx="5" style={{ fill: "var(--ink)" }} opacity=".14" />
+          <rect x="16" y="62" width="190" height="7" rx="3.5" style={{ fill: "var(--ink)" }} opacity=".08" />
+          <rect x="16" y="76" width="160" height="7" rx="3.5" style={{ fill: "var(--ink)" }} opacity=".08" />
+          <rect x="16" y="100" width="70" height="22" rx="11" style={{ fill: C.win }} opacity=".3" />
         </g>
       ))}
       {ROUTES.map((r, i) => (
@@ -51,7 +51,7 @@ function Scene() {
             <Avatar seed={r.seed} archetype={r.a} age={r.age} feeling={r.f} size={40} />
           </g>
           <g transform="translate(-6 -58)">
-            <rect width={r.say.length * 7.2 + 18} height="26" rx="13" fill="#fff" />
+            <rect width={r.say.length * 7.2 + 18} height="26" rx="13" fill="#fff" stroke="#111" strokeOpacity=".7" strokeWidth="1.5" />
             <text x="9" y="17" fontSize="12" fill="#000" fontFamily="Inter, system-ui, sans-serif">{r.say}</text>
             <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.35;0.45;0.8;1" dur={`${r.dur}s`} repeatCount="indefinite" />
           </g>
@@ -88,7 +88,7 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
     <Scene />
     <div className="relative mx-auto flex min-h-[calc(100vh-64px)] max-w-2xl flex-col items-center justify-center px-6 text-center">
       <div className="flex -space-x-3">
-        {CROWD.map((c, i) => <div key={i} className="rounded-full ring-4 ring-[#08080d]" style={{ animationDelay: `${i * 0.2}s` }}><Avatar seed={c.seed} archetype={c.a} age={c.age} feeling={c.f} size={64} busy /></div>)}
+        {CROWD.map((c, i) => <div key={i} className="rounded-full ring-4 ring-[var(--bg)]" style={{ animationDelay: `${i * 0.2}s` }}><Avatar seed={c.seed} archetype={c.a} age={c.age} feeling={c.f} size={64} busy /></div>)}
       </div>
       <h1 className="mt-8 font-serif text-[56px] leading-[1.02]">Watch your customers<br /><span className="shimmer">try your product.</span></h1>
       <p className="mt-3 text-[16px] text-white/55">Describe it. AI customers look it over, think out loud, and decide if they'd buy.</p>

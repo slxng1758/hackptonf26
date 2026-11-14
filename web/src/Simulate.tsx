@@ -11,7 +11,7 @@ interface SimStep { n: number; url: string; title: string; shot: string | null; 
 interface Decision { decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string }
 export interface Sim extends Partial<SimExtras> {
   id: string; input: { url: string; name: string; category: string; context: string; world: string; customers: string };
-  status: "casting" | "awaiting_approval" | "browsing" | "analyzing" | "done" | "error"; error: string | null;
+  status: "casting" | "awaiting_approval" | "browsing" | "talking" | "analyzing" | "done" | "error"; error: string | null;
   personas: Persona[]; live: Record<string, SimStep[]>; decisions: Record<string, Decision>;
   summary: { buy_rate: number; by_model?: Record<string, { bought: number; of: number }>; rating: number; decisions: Record<string, number>; missing: { persona: string; text: string }[] } | null;
   report: string; steps: { t: string; kind: string; note: string }[]; memory: Record<string, string>; round?: number; parent?: string | null;
@@ -44,7 +44,7 @@ function Replay({ sim, p, onClose }: { sim: Sim; p: Persona; onClose: () => void
   const d = sim.decisions[p.id];
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 p-6 backdrop-blur" onClick={onClose}>
-      <div className={`${PANEL} mx-auto max-w-5xl bg-[#0d0e15] p-6`} onClick={(e) => e.stopPropagation()}>
+      <div className={`${PANEL} mx-auto max-w-5xl bg-[var(--card)] p-6`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4"><Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={64} feeling={d?.feeling ?? "neutral"} />
             <div><div className="font-serif text-[26px]">{p.name}'s session</div><div className="text-[13px] text-white/50">{p.age} · {p.occupation} · {p.archetype}{p.model ? ` · played by ${p.model}` : ""} · wants: {p.goal}</div></div></div>
@@ -127,7 +127,7 @@ export function SimView({ id }: { id: string }) {
   const name = sim.input.name || host(sim.input.url);
   const decided = Object.keys(sim.decisions).length;
   const buyers = sim.personas.filter((p) => outcome(sim, p.id) === "bought").length;
-  const live = ["browsing", "analyzing", "done"].includes(sim.status);
+  const live = ["browsing", "talking", "analyzing", "done"].includes(sim.status);
   const unconvinced = sim.personas.filter((p) => sim.decisions[p.id] && outcome(sim, p.id) !== "bought" && sim.decisions[p.id].missing);
 
   return (
@@ -139,6 +139,7 @@ export function SimView({ id }: { id: string }) {
           {sim.status === "casting" && <>Reading {name}<span className="animate-pulse">…</span></>}
           {sim.status === "awaiting_approval" && <>Meet your customers</>}
           {sim.status === "browsing" && <>{decided} of {sim.personas.length} have decided<span className="animate-pulse">…</span></>}
+          {sim.status === "talking" && <><span style={{ color: buyers ? C.win : C.loss }}>{buyers} of {decided}</span> would buy · <span className="text-white/50">now they're posting about it<span className="animate-pulse">…</span></span></>}
           {sim.status === "analyzing" && <><span style={{ color: buyers ? C.win : C.loss }}>{buyers} of {decided}</span> would buy · <span className="text-white/50">writing up why<span className="animate-pulse">…</span></span></>}
           {sim.status === "done" && <><span style={{ color: buyers / Math.max(decided, 1) >= 0.5 ? C.win : buyers ? C.mid : C.loss }}>{buyers} of {decided}</span> customers would buy from {name}</>}
           {sim.status === "error" && <span style={{ color: C.loss }}>Something broke</span>}

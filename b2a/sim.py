@@ -29,7 +29,8 @@ BUYS = {"buy": 1.0, "would recommend": 1.0, "maybe later": 0.3, "not buy": 0.0, 
 
 ANALYST = """You analyze a customer simulation for a small business.
 Product: {name} ({url}). What the business says changed: {context}. World: {world}.
-Personas are in /personas/*.md, their real browsing sessions (every page, thought, feeling, click) in /sessions/*.json.
+Personas are in /personas/*.md, their real browsing sessions (every page, thought, feeling, click) in /sessions/*.json,
+and what they posted about it afterwards (posts, replies, reposts, who influenced whom) in /social.json if it exists.
 
 Do this, keeping your todo list updated:
 1. Ask the analyst sub-agent to read every session and find: where people got stuck (which page, which step), what made them buy,
@@ -40,7 +41,7 @@ Do this, keeping your todo list updated:
    that will help on ANY business's site, not just this one. That memory outlives this run.
 3. Write /report.md for the business owner, short, with these sections: the weighted buy rate and rating, broken down by
    customer type (archetype and share); where people got stuck (which page); what convinced the buyers; the top 3 fixes
-   (each tied to a persona and a page they saw); which complaint is most likely to spread by word of mouth and why; and
+   (each tied to a persona and a page they saw); which complaint is most likely to spread by word of mouth and why (use /social.json: who replied to or reposted whom); and
    where the simulation might be wrong.
 Reply with one sentence."""
 
@@ -153,6 +154,17 @@ class SimJob:
 
             session.run_all(self.personas, i["url"], i.get("world", ""), i.get("context", ""), self.dir / "shots", on_step, on_done)
             self.summary = self._summarize()
+            self.status = "talking"
+            self.save()
+            try:  # word of mouth: they post, read each other, reply or repost
+                from . import social
+                self.social = social.run(self.personas, self.decisions, i.get("name") or i["url"])
+                if self.social:
+                    (self.dir / "social.json").write_text(json.dumps(self.social, indent=2))
+                    self.log("social", f"{len(self.social['posts'])} posts · spreads furthest: "
+                             + ", ".join(next(p['name'] for p in self.personas if p['id'] == t) for t in self.social["top_influencers"][:2]))
+            except Exception as e:
+                self.log("error", f"social: {type(e).__name__}: {e}"[:200])
             self.status = "analyzing"
             self.save()
             before = {p["id"]: (p.get("memory") or "").strip() for p in self.personas}
