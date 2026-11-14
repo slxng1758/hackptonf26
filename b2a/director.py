@@ -381,6 +381,7 @@ class DirectorJob(SimJob):
                 (job.dir / "personas" / f"{p['id']}.md").write_text(persona_md(p))
             job.personas += new
             job.b.personas += len(new)
+            _normalize_shares(job.personas)  # extra personas take their share from the rest: shares always sum to 1
             job.save()
             out = "; ".join(f"{p['id']} {p['name']} ({p['archetype']}, {round(p['share'] * 100)}%, {p['model']}"
                             f"{', memory v' + str(p['memory_version']) if p['memory_version'] else ''}"
@@ -598,6 +599,13 @@ class DirectorJob(SimJob):
             checkpointer=checkpointer(),  # survives restarts: a paused director resumes from here
         )
         return self._agent
+
+
+def _normalize_shares(personas: list[dict]):
+    people = [p for p in personas if p.get("kind") != "agent"]
+    tot = sum(p.get("share") or 0 for p in people)
+    for p in people:
+        p["share"] = round((p.get("share") or 0) / tot, 3) if tot else round(1 / len(people), 3)
 
 
 def _resummarize(job: DirectorJob):
