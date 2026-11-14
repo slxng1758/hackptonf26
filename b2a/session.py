@@ -334,6 +334,9 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
 
     `persona` is an agent: a customer persona (layer 2, with its injected `memory`) or an AI shopping agent on an errand
     (layer 1, session.agent_shoppers)."""
+    if os.getenv("CUSTOMER_AGENT") == "1":  # the customer as an agent with its own tools (b2a/customer.py)
+        from . import customer
+        return customer.run_standalone(persona, url, world, context, out_dir, on_step, max_steps, shot_prefix)
     from playwright.sync_api import sync_playwright
 
     out_dir.mkdir(parents=True, exist_ok=True)
