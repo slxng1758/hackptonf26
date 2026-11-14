@@ -259,6 +259,45 @@ def sim_report_pdf(sim_id: str):
     return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="customer-test-{sim_id}.pdf"'})
 
 
+@app.get("/api/sims/{sim_id}/persona/{pid}")
+def sim_persona(sim_id: str, pid: str):
+    """Everything behind one customer: how it was created, every step it took and the prompt behind it, its decision,
+    suggestions, what it posted, what it learned, and where Gemini boxed its friction."""
+    import json as _json
+    from pathlib import Path as _P
+    from b2a import session as _s
+    view = sim.get(sim_id)
+    if not view:
+        raise HTTPException(404, "no such simulation")
+    p = next((x for x in view["personas"] if x["id"] == pid), None)
+    if not p:
+        raise HTTPException(404, "no such persona")
+    d = sim.SIMS / _P(sim_id).name
+    read = lambda f: (d / f).read_text() if (d / f).exists() else ""
+    sess = _json.loads(read(f"sessions/{pid}.json") or "{}")
+    i = view["input"]
+    filled = {**p, "memory": p.get("memory") or "nothing yet"}
+    cast_prompt = _s.CAST.format(name=i.get("name", ""), category=i.get("category", ""), context=i.get("context") or "none",
+                                 world=i.get("world") or "today, normal times", customers=i.get("customers", ""), offer=i.get("offer") or "see the website")
+    rebuilt = not sess.get("prompts")
+    persona_prompt = (sess["prompts"][0]["prompt"] if sess.get("prompts") else
+                      _s.STEP.split("\nYou are looking at")[0].format(**filled, world=i.get("world") or "today, normal times", context=i.get("context") or "none")) if p.get("kind") != "agent" or True else ""
+    decide_prompt = sess.get("decide_prompt") or ""
+    if not decide_prompt and sess.get("steps"):
+        hist = "\n".join(f"[{x['url']}] thought: {x['thought']} ({x['feeling']}) → {x['action']} {x['target']}" for x in sess["steps"])
+        decide_prompt = _s.DECIDE.format(**filled, world=i.get("world") or "today, normal times", product=i["url"], history=hist)
+    lens = _json.loads(read("lens.json") or "{}")
+    social = view.get("social") or {}
+    return {"persona": p, "persona_file": read(f"personas/{pid}.md"), "cast_prompt": cast_prompt, "prompts_rebuilt": rebuilt,
+            "persona_prompt": persona_prompt, "step_prompts": sess.get("prompts") or [], "decide_prompt": decide_prompt,
+            "steps": sess.get("steps") or (view.get("live") or {}).get(pid, []), "decision": sess.get("decision") or (view.get("decisions") or {}).get(pid),
+            "fallbacks": sess.get("fallbacks", 0), "fallback_reason": sess.get("fallback_reason", ""),
+            "posts": [x for x in social.get("posts", []) if x.get("author") == pid],
+            "changes": [c for c in view.get("persona_changes") or [] if c.get("persona_id") == pid],
+            "lens": [x for x in lens.get("shots", []) if x.get("persona_id") == pid],
+            "sim": {"id": view["id"], "url": i["url"], "name": i.get("name"), "status": view["status"]}}
+
+
 @app.get("/api/memory")
 def long_term_memory():
     """What each type of customer has learned across every business tested."""

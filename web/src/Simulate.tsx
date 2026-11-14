@@ -86,6 +86,7 @@ export function SimView({ id }: { id: string }) {
   const [sim, setSim] = useState<Sim | null>(null);
   const [cast, setCast] = useState<Persona[] | null>(null);
   const [open, setOpen] = useState<Persona | null>(null);
+  const openPersona = (p: Persona) => { location.hash = `#sim=${id}&p=${p.id}`; };
   const [fix, setFix] = useState("");
   const [tab, setTab] = useState("map");
   const [truth, setTruth] = useState("");
@@ -232,8 +233,8 @@ export function SimView({ id }: { id: string }) {
           ]} />
           {tab === "map" && <>
             <ThoughtStream sim={sim} />
-            <SiteMap sim={sim} onOpen={setOpen} />
-            <p className="mt-3 text-center text-[12px] text-white/35">click anyone to replay their visit · hover a page to see it</p>
+            <SiteMap sim={sim} onOpen={openPersona} />
+            <p className="mt-3 text-center text-[12px] text-white/35">click anyone to open their full profile: every step, the prompts behind it, their decision and suggestions</p>
           </>}
           {tab === "fixes" && sim.actions && sim.actions.length > 0 && <DoThese actions={sim.actions} />}
           {tab === "agents" && sim.summary?.agents && sim.summary.agents.length > 0 && <AgentsPanel sim={sim} />}
@@ -250,7 +251,7 @@ export function SimView({ id }: { id: string }) {
               <h2 className="text-center font-serif text-[30px]">What would have converted them</h2>
               <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {unconvinced.map((p, i) => { const d = sim.decisions[p.id]; return (
-                  <div key={p.id} className={`${PANEL} rise relative p-5`} style={{ animationDelay: `${i * 0.06}s` }}>
+                  <div key={p.id} onClick={() => openPersona(p)} className={`${PANEL} rise relative cursor-pointer p-5 transition hover:-translate-y-0.5`} style={{ animationDelay: `${i * 0.06}s` }}>
                     <div className="flex items-center gap-3">
                       <div className="rounded-full" style={{ boxShadow: `0 0 0 3px ${SHIRT[p.archetype] ?? C.brain}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={56} feeling={d.feeling} /></div>
                       <div><div className="text-[16px] font-semibold">{p.name}{p.kind !== "agent" && `, ${p.age}`}</div>
@@ -338,7 +339,7 @@ function AgentsPanel({ sim }: { sim: Sim }) {
       <p className="mt-2 text-center text-[14px] text-white/55">Shoppers now send ChatGPT, Gemini and Claude to buy for them. Agents need facts: exact product, price, terms, a path to checkout.</p>
       <div className="mt-6 grid gap-3 md:grid-cols-3">
         {rows.map((r) => { const p = sim.personas.find((x) => x.id === r.persona)!; return (
-          <div key={r.persona} className={`${PANEL} p-4`}>
+          <div key={r.persona} onClick={() => { location.hash = `#sim=${sim.id}&p=${r.persona}`; }} className={`${PANEL} cursor-pointer p-4 transition hover:-translate-y-0.5`}>
             <div className="flex items-center gap-3">
               <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} size={48} feeling={sim.decisions[p.id]?.feeling ?? "neutral"} />
               <div><div className="text-[15px] font-semibold">{p.name}</div>

@@ -279,6 +279,7 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
     model, backup = persona_model(persona.get("model")), fast()
 
     fallbacks = {"n": 0, "why": ""}
+    prompts: list[dict] = []
 
     def ask(schema, msg):
         try:
@@ -332,6 +333,7 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
             page = dict(world=world or "today, normal times", context=context or "none", url=pg.url, n=n, max_steps=max_steps,
                         links=", ".join(links) or "(none)", text=text, history=" → ".join(history) or "just arrived")
             prompt = STEP.format(**{**persona, "memory": persona.get("memory") or "nothing yet"}, **page)
+            prompts.append({"n": n, "prompt": prompt, "with_screenshot": bool(jpg)})  # the exact prompt, for the persona page
             try:
                 s: Step = ask(Step, [_img_msg(prompt, jpg)] if jpg else prompt)
             except Exception as e:
@@ -380,7 +382,7 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
     except Exception:
         d = ask(Decision, q + "\nFill in every field.")
     return {"persona": persona["id"], **agent_tags(persona), "steps": steps, "decision": d.model_dump(),
-            "fallbacks": fallbacks["n"], "fallback_reason": fallbacks["why"]}
+            "fallbacks": fallbacks["n"], "fallback_reason": fallbacks["why"], "prompts": prompts, "decide_prompt": q}
 
 
 def agent_tags(a: dict) -> dict:
