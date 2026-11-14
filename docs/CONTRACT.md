@@ -1,12 +1,14 @@
 # Customer simulation API
 
+read from the 
+
 Backend: `http://localhost:4620` (`server.py`, engine in `b2a/sim.py` + `b2a/session.py`).
 
 ## Routes (live now)
 
 | Method | Route | Body | Returns |
 |---|---|---|---|
-| POST | `/api/sims` | `{ url, name?, category?, customers?, context?, world? }` | `{ id }` |
+| POST | `/api/sims` | `{ description, name?, price?, context?, world?, customers? }` (or `{ url, ... }` for a real website) | `{ id }`. A description of 10+ characters is turned into a product page (`/api/products/{id}/`) that the customers browse; `name` defaults to the description's first sentence. 422 if neither is given. |
 | GET | `/api/sims` | | `[{ id, name, status, buy_rate }]` |
 | GET | `/api/sims/{id}` | | the simulation (below). Poll while running |
 | POST | `/api/sims/{id}/approve` | `{ personas?: Persona[] }` | `{ ok: true }`, or 409 if not awaiting approval |
@@ -49,3 +51,14 @@ Types: [`b2a/contract.py`](../b2a/contract.py), TS mirror [`web/src/sim-extras.t
 | `social: Social \| null` | Personas posting about the product: `posts` (feed, by `round`), `nodes`/`edges` (who replied to or reposted whom), `top_influencers`, `summary` | Feed + network graph: node size = `centrality`, color = `sentiment`, edges by `kind` |
 
 All persona references use the same ids as `personas[]` (`p1`, `p2`, …).
+
+## Gemini: UX lens and researched world (`b2a/gemini.py`)
+
+| Method | Route | Body | Returns |
+|---|---|---|---|
+| POST | `/api/sims/{id}/lens` | | `Lens`. Runs Gemini on the screenshots where customers were confused, annoyed, skeptical, went back, or left without buying. 409 until the sim is `done`; 503 without `GOOGLE_API_KEY`. Takes ~10–30 s. |
+| GET | `/api/sims/{id}/lens` | | the saved `Lens`, or 404 |
+| POST | `/api/world` | `{ world, product? }` | `GroundedWorld` + `text`. Gemini + Google Search: what that world was really like, with sources. Put `text` in the sim's `world` field. |
+| POST | `/api/products` | `{ name, description, price?, changes?, features?, image_url? }` | `{ id, url }`: a browsable page for a product with no website. Use `url` as the sim's `url`. |
+
+**Lens in the UI:** for each `LensShot`, show the screenshot (`/api/shots/{id}/shots/{shot}`) with its `boxes` drawn on top (box_2d is `[ymin, xmin, ymax, xmax]` on a 0–1000 scale: `top = ymin/10 %`, `left = xmin/10 %`, `height = (ymax−ymin)/10 %`, `width = (xmax−xmin)/10 %`), plus the customer's `thought`. `hotspots` is the owner's list: the same problem found by several customers, with who hit it and which models played them. Types: `web/src/sim-extras.ts`.

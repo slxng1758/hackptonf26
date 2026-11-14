@@ -163,7 +163,7 @@ Every tool takes a required **`reason: str`** argument. The tool logs it as a `d
    - At the business: get the owner's real decision + past records (sales, reviews), and poll 5–10 real customers with those questions (with permission). Record the business name, the person consulted + role, and a photo/quote (required for Peri).
    - Store as `data/peri_<business>/` in the same format as the backtest, so the director can `score` against it.
 7. **Sponsors and shipping:**
-   - **Gemini:** make it visible beyond being one persona model, e.g. the vision model that reads screenshots or the BRIEFER.
+   - **Gemini (done, `b2a/gemini.py`):** UX lens (Gemini boxes the exact spot on each screenshot where customers got stuck, grouped into hotspots across customers and models) + grounded world (Gemini + Google Search researches the chosen world, with sources).
    - **MongoDB Atlas:** sims, sessions, posts, eval scores.
    - **Tiger Data (if time):** time series of `memory_version`, eval score per loop, sentiment per social round.
    - **Vultr** deploy, **GoDaddy** domain, README, pitch deck, **DEV** post after the event. **Solana** only if everything else is done.
