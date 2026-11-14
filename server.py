@@ -155,6 +155,24 @@ def sim_rerun(sim_id: str, body: Rerun | None = None):
     return {"id": job.id}
 
 
+@app.post("/api/sims/{sim_id}/evals")
+def sim_add_eval(sim_id: str, body: dict):
+    """Attach an accuracy score (b2a/contract.py EvalScore)."""
+    from b2a.contract import EvalScore
+    if not sim.add_eval(sim_id, EvalScore(**body).model_dump()):
+        raise HTTPException(404, "no such simulation")
+    return {"ok": True}
+
+
+@app.post("/api/sims/{sim_id}/social")
+def sim_set_social(sim_id: str, body: dict):
+    """Attach the social layer (b2a/contract.py Social)."""
+    from b2a.contract import Social
+    if not sim.set_social(sim_id, Social(**body).model_dump()):
+        raise HTTPException(404, "no such simulation")
+    return {"ok": True}
+
+
 @app.get("/api/fixtures/extras")
 def extras_fixture():
     """Sarah's example data for evals / persona_changes / social, so the UI can be built before the backend exists."""
