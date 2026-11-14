@@ -83,6 +83,9 @@ export function SimView({ id }: { id: string }) {
   const [open, setOpen] = useState<Persona | null>(null);
   const [report, setReport] = useState(false);
   const [fix, setFix] = useState("");
+  const [truth, setTruth] = useState("");
+  const [teaching, setTeaching] = useState(false);
+  const [taught, setTaught] = useState<number | null>(null);
   const [demo, setDemo] = useState<SimExtras | null>(null);
   useEffect(() => { if (location.hash.includes("demo")) fetch("/api/fixtures/extras").then((r) => r.json()).then(setDemo).catch(() => {}); }, []);
 
@@ -99,6 +102,15 @@ export function SimView({ id }: { id: string }) {
   async function recast() {
     await fetch(`/api/sims/${id}/recast`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ feedback: fix.trim() }) });
     setFix(""); setCast(null); setSim({ ...sim!, status: "casting" });
+  }
+  async function teach() {
+    setTeaching(true);
+    try {
+      const r = await fetch(`/api/sims/${id}/teach`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ truth: truth.trim() }) });
+      const { changes } = await r.json();
+      setTaught(changes.length); setTruth("");
+      setSim({ ...sim!, persona_changes: [...(sim!.persona_changes ?? []), ...changes] });
+    } finally { setTeaching(false); }
   }
   async function rerun() {
     const r = await fetch(`/api/sims/${id}/rerun`, { method: "POST" });
@@ -194,6 +206,16 @@ export function SimView({ id }: { id: string }) {
 
           {sim.status === "done" && (
             <div className="mt-12 text-center">
+              <div className={`${PANEL} mx-auto mb-8 max-w-2xl p-5 text-left`}>
+                <div className="font-serif text-[22px]">Teach them what real customers do</div>
+                <p className="mt-1 text-[13px] text-white/50">Real people beat our guesses. Tell them what actually happens and every persona it applies to updates its memory before the next round.</p>
+                <form onSubmit={(e) => { e.preventDefault(); teach(); }} className="mt-3 flex gap-2">
+                  <input value={truth} onChange={(e) => setTruth(e.target.value)} disabled={teaching} placeholder="e.g. most of our buyers are over 50 and call to order, nobody reads the science page"
+                    className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#d16bff]" />
+                  <button disabled={teaching || truth.trim().length < 3} className="rounded-xl px-4 text-[14px] font-semibold text-black disabled:opacity-40" style={{ background: C.brain }}>{teaching ? "Teaching…" : "Teach"}</button>
+                </form>
+                {taught != null && <p className="mt-2 text-[13px]" style={{ color: C.brain }}>{taught === 0 ? "That didn't change anyone's memory." : `${taught} persona${taught > 1 ? "s" : ""} updated their memory. See "What they learned" above.`}</p>}
+              </div>
               <button onClick={rerun} className="rounded-2xl px-8 py-4 text-[16px] font-semibold text-black" style={{ background: C.brain, boxShadow: `0 0 40px ${C.brain}66` }}>Run again with what they learned →</button>
               <p className="mt-2 text-[12px] text-white/40">same customers, now carrying their memory into round {(sim.round ?? 0) + 2}</p>
             </div>

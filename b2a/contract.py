@@ -46,6 +46,7 @@ class PersonaChange(BaseModel):
     lesson: str = Field(description="what changed and why, one sentence")
     before: str = Field(description="the persona's '## Memory' section before (empty if none)")
     after: str = Field(description="the '## Memory' section after")
+    source: Literal["simulation", "human"] = Field(default="simulation", description="human = the owner taught it what real customers do")
 
 
 # ---------- social media layer ----------

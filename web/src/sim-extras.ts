@@ -20,7 +20,7 @@ export interface EvalScore {
   notes: string
 }
 
-export interface PersonaChange { persona_id: string; iteration: number; lesson: string; before: string; after: string }
+export interface PersonaChange { persona_id: string; iteration: number; lesson: string; before: string; after: string; source?: "simulation" | "human" }
 
 export interface SocialPost {
   id: string

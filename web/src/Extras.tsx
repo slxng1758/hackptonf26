@@ -130,7 +130,7 @@ export function Learned({ changes, personas }: { changes: PersonaChange[]; perso
           <div key={i} className={`${PANEL} flex gap-4 p-4`}>
             <div className="h-fit self-start rounded-full" style={{ boxShadow: `0 0 0 2px ${SHIRT[p.archetype] ?? "#888"}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={44} feeling="interested" /></div>
             <div className="min-w-0 flex-1">
-              <div className="text-[14px]"><b>{p.name}</b> <span className="font-mono text-[11px] text-white/40">round {c.iteration}</span></div>
+              <div className="text-[14px]"><b>{p.name}</b> <span className="font-mono text-[11px] text-white/40">round {c.iteration}</span>{(c as PersonaChange & { source?: string }).source === "human" && <span className="ml-2 rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.brain }}>from real people</span>}</div>
               <p className="text-[14px] text-white/80">{c.lesson}</p>
               <div className="mt-2 grid gap-2 font-mono text-[11.5px] md:grid-cols-2">
                 <div className="rounded-lg bg-white/[0.03] p-2 text-white/45"><span className="text-white/30">before </span>{c.before || "(nothing yet)"}</div>

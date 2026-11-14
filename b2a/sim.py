@@ -182,7 +182,7 @@ class SimJob:
             if after and after != before.get(p["id"], ""):
                 new = [l.strip("-• ").strip() for l in after.splitlines() if l.strip() and l.strip() not in before.get(p["id"], "")]
                 self.persona_changes.append({"persona_id": p["id"], "iteration": self.round + 1, "lesson": (new or [after])[0][:240],
-                                             "before": before.get(p["id"], ""), "after": after})
+                                             "before": before.get(p["id"], ""), "after": after, "source": "simulation"})
                 p["memory"] = after
         self.save()
 
@@ -239,6 +239,58 @@ def approve(sim_id: str, personas: list[dict] | None) -> bool:
         return False
     job.approve(personas)
     return True
+
+
+TEACH = """You are updating a simulated customer's memory with what REAL people told the business owner.
+Persona: {persona}
+Its current memory: {memory}
+What happened in the simulation for this persona: {decision}
+What the owner says really happens with real customers: {truth}
+
+If the owner's account applies to this kind of customer, rewrite the memory: keep what still holds, correct what the real
+customers contradict, add at most 2 concrete lessons. If it doesn't apply to this persona, return the memory unchanged."""
+
+
+def teach(sim_id: str, truth: str) -> list[dict] | None:
+    """Human context in: the owner tells the personas what real customers actually did. Each persona's memory is
+    corrected, so the next round starts from people, not just from its own guesses."""
+    from pydantic import BaseModel, Field
+    from .models import fast
+
+    class Lesson(BaseModel):
+        applies: bool
+        memory: str = Field(description="the full updated memory, as 1-4 short bullet lines starting with '- '")
+        lesson: str = Field(description="what changed and why, one sentence; empty if nothing applies")
+
+    job = SIMS_LIVE.get(sim_id)
+    view = job.view() if job else get(sim_id)
+    if not view or view.get("status") != "done":
+        return None
+    changes = []
+    mem = view.get("memory") or {}
+    for p in view["personas"]:
+        before = mem.get(p["id"], p.get("memory", "")) or ""
+        info = {k: p[k] for k in ("name", "age", "occupation", "archetype", "segment", "goal", "budget")}
+        d = (view.get("decisions") or {}).get(p["id"], {})
+        r: Lesson = fast().with_structured_output(Lesson).invoke(TEACH.format(persona=info, memory=before or "(empty)", decision=d.get("quote", "no decision"), truth=truth))
+        if not r.applies or r.memory.strip() == before.strip():
+            continue
+        f = SIMS / sim_id / "personas" / f"{p['id']}.md"
+        body = f.read_text().split("## Memory", 1)[0].rstrip() if f.exists() else persona_md(p).rstrip()
+        f.write_text(body + "\n\n## Memory\n" + r.memory.strip() + "\n")
+        changes.append({"persona_id": p["id"], "iteration": view.get("round", 0) + 1, "lesson": "From the owner: " + r.lesson,
+                        "before": before, "after": r.memory.strip(), "source": "human"})
+    if job:
+        job.persona_changes.extend(changes)
+        job.log("owner", f"real-world context: {truth[:200]}")
+        job.save()
+    else:
+        sj = SIMS / sim_id / "sim.json"
+        d = json.loads(sj.read_text())
+        d["persona_changes"] = (d.get("persona_changes") or []) + changes
+        d["memory"] = {**(d.get("memory") or {}), **{c["persona_id"]: c["after"] for c in changes}}
+        sj.write_text(json.dumps(d, indent=2))
+    return changes
 
 
 def recast(sim_id: str, feedback: str) -> bool:

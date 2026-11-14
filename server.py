@@ -131,6 +131,18 @@ def sim_recast(sim_id: str, body: Recast):
     return {"ok": True}
 
 
+class Teach(BaseModel):
+    truth: str = Field(min_length=3, max_length=2000, description="what real customers actually did or said")
+
+
+@app.post("/api/sims/{sim_id}/teach")
+def sim_teach(sim_id: str, body: Teach):
+    out = sim.teach(sim_id, body.truth)
+    if out is None:
+        raise HTTPException(409, "Only a finished simulation can learn.")
+    return {"changes": out}
+
+
 @app.post("/api/sims/{sim_id}/rerun")
 def sim_rerun(sim_id: str):
     job = sim.rerun(sim_id)
