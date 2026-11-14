@@ -43,7 +43,7 @@ from langchain.agents.middleware import TodoListMiddleware
 from langchain_core.tools import tool
 from langgraph.types import Command, interrupt
 
-from . import memory, session
+from . import memory, outcome, session
 from .models import brain, persona_models
 from .sim import BUYS, RUNS, SIMS_LIVE, SimJob, _host, persona_md
 
@@ -658,9 +658,10 @@ def _run_digest(job: DirectorJob, run: dict) -> str:
     lines = []
     for aid, d in run["decisions"].items():
         p = by_id.get(aid, {})
-        bought = int(aid in run["clicked_buy"] or BUYS.get(d["decision"], 0) >= 1)
+        bought = int(outcome.bought(d, job.live.get(aid)))
         segs.setdefault(p.get("segment", "?"), []).append(bought)
-        lines.append(f"{aid} {p.get('name', '')} ({p.get('archetype', '')}, {d.get('model')}): {d['decision']} {d['rating']}/5, "
+        lines.append(f"{aid} {p.get('name', '')} ({p.get('archetype', '')}, {d.get('model')}): {outcome.of(d, job.live.get(aid))} "
+                     f"(said {d['decision']}) {d['rating']}/5, "
                      f"confidence {d.get('confidence', '?')}")
     split = [s for s, v in segs.items() if 0 < sum(v) < len(v)]
     s = job.summary or {}
@@ -701,6 +702,7 @@ def _stub_run(job: DirectorJob, agents: list[dict], layer: int) -> dict:
                                quote="stub quote", reasons=["stub"], liked=["clear prices"], disliked=["slow checkout"],
                                suggestions=[session.Suggestion(change="show shipping cost early", why="surprise fees", where=job.inp["url"], impact="would make me buy")]).model_dump()
         tags = session.agent_tags({**a, "layer": layer})
+        dec["outcome"] = outcome.decide(dec, [], can_order=False)
         run["decisions"][a["id"]] = job.decisions[a["id"]] = {**dec, **{k: v for k, v in tags.items() if k != "agent_id"}}
         job.live[a["id"]] = []
         (job.dir / "sessions" / f"{a['id']}.json").write_text(json.dumps({"persona": a["id"], **tags, "steps": [], "decision": dec}))

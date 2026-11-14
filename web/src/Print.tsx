@@ -21,7 +21,7 @@ export function PrintReport({ id }: { id: string }) {
   const steps = (pid: string) => sim.live[pid] ?? [];
   const explored = people.filter((p) => new Set(steps(p.id).map((x) => x.url)).size > 1).length;
   const acted = people.filter((p) => steps(p.id).some((x) => x.cart) || outcome(sim, p.id) === "bought").length;
-  const funnel = [["Landed on the site", people.length], ["Explored past the first page", explored], ["Reached a buy decision", acted], ["Converted", bought]] as const;
+  const funnel = [["Landed on the site", people.length], ["Explored past the first page", explored], ["Added to cart (or clicked buy)", acted], ["Converted", bought]] as const;
 
   return (
     <div id="print-ready" className="print-doc mx-auto max-w-[780px] bg-[#ffffff] px-10 py-10 text-[#101828]">

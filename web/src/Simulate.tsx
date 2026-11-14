@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { marked } from "marked";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, PANEL } from "./theme";
-import { SiteMap, ThoughtStream, outcome } from "./SiteMap";
+import { SiteMap, ThoughtStream, outcome, outcomeDetail, outcomeColor, OUTCOME_LABEL } from "./SiteMap";
 import { Timeline } from "./Timeline";
 import { Lens } from "./Lens";
 import { PersonaEditor, blankPersona } from "./PersonaEditor";
@@ -11,8 +11,16 @@ import { Accuracy, Learned, WordOfMouth } from "./Extras";
 import type { SimExtras } from "./sim-extras";
 
 export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number }; model?: string; memory?: string; inherited?: boolean; kind?: "agent"; played_by?: string; model_note?: string; instructions?: string; custom?: boolean; why?: string }
-interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; thought: string; feeling: Feeling; action: string; target: string }
-interface Decision { decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string }
+interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; ordered?: boolean; thought: string; feeling: Feeling; action: string; target: string }
+interface Suggestion { change: string; why: string; where: string; impact: "would make me buy" | "nice to have" }
+interface Decision {
+  decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string;
+  // newer fields (older sims don't have them)
+  confidence?: number; first_impression?: string; review?: string; liked?: string[]; disliked?: string[]; would_pay?: string;
+  suggestions?: Suggestion[]; stars_after_use?: number | null; memory_version?: number;
+  deciding_moment?: string; deciding_step?: number; reconsidered?: string;
+  outcome?: "bought" | "bought_unhappy" | "abandoned_cart" | "maybe" | "left"; ordered_step?: number; order_possible?: boolean;
+}
 export interface Sim extends Partial<SimExtras> {
   id: string; input: { url: string; name: string; category: string; context: string; world: string; customers: string; director?: boolean };
   thinking?: ThinkEvent[];
@@ -47,39 +55,162 @@ function PersonaCard({ p, onRemove }: { p: Persona; onRemove?: () => void }) {
   );
 }
 
+const MOOD: Record<string, number> = { delighted: 2, interested: 1, neutral: 0, confused: -1, skeptical: -1, annoyed: -2 };
+const H = "font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-white/45";
+
+// One persona, top to bottom: why they decided, what they came in with, every step, their review, what they learned.
 function Replay({ sim, p, onClose }: { sim: Sim; p: Persona; onClose: () => void }) {
   const steps = sim.live[p.id] ?? [];
   const d = sim.decisions[p.id];
+  const od = outcomeDetail(sim, p.id);
+  const color = outcomeColor(od);
+  const ordered = steps.find((s) => s.ordered);
+  const learned = (sim.persona_changes ?? []).filter((c) => c.persona_id === p.id);
+  const carted = steps.find((s) => s.cart);
+  const pages = new Set(steps.map((s) => s.url)).size;
+  // p.memory is replaced with the new lessons once the run ends, so what they started with is the first change's "before"
+  const startedWith = learned.length ? learned[0].before : p.memory;
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 p-6 backdrop-blur" onClick={onClose}>
       <div className={`${PANEL} mx-auto max-w-5xl bg-[var(--card)] p-6`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
+        {/* who */}
+        <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={64} feeling={d?.feeling ?? "neutral"} />
-            <div><div className="font-serif text-[26px]">{p.name}'s session</div><div className="text-[13px] text-white/50">{p.age} · {p.occupation} · {p.archetype}{p.model ? ` · played by ${p.played_by ? `${p.played_by} (${p.model} unavailable)` : p.model}` : ""} · wants: {p.goal}</div></div></div>
-          <button onClick={onClose} className="text-[22px] text-white/50 hover:text-white">×</button>
+            <div>
+              <div className="flex flex-wrap items-center gap-2"><span className="font-serif text-[26px]">{p.name}</span>
+                {od && <span className="rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold uppercase text-black" style={{ background: color }}>{OUTCOME_LABEL[od]}</span>}</div>
+              <div className="text-[13px] text-white/50">{p.kind === "agent" ? "AI shopping agent acting for a user" : `${p.age} · ${p.occupation} · ${p.archetype} · ${Math.round(p.share * 100)}% of customers`}
+                {p.model ? ` · played by ${p.played_by ? `${p.played_by} (${p.model} unavailable)` : p.model}` : ""}</div>
+            </div></div>
+          <button onClick={onClose} className="text-[22px] text-white/50 hover:text-white" aria-label="close">×</button>
         </div>
-        <ol className="mt-6 space-y-5">
-          {steps.map((s) => (
-            <li key={s.n} className="grid gap-4 md:grid-cols-[360px_1fr]">
-              {s.shot ? <img src={shot(sim.id, s.shot)} alt="" className="w-full rounded-lg border border-white/10" /> : <div className="rounded-lg bg-white/5" />}
-              <div>
-                <div className="font-mono text-[11px] text-white/40">step {s.n} · {s.url.replace(/^https?:\/\//, "")}{s.blocked && <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-white/60">blocked by a bot check · not a customer issue</span>}{s.cart && <span className="ml-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.win }}>buy action</span>}</div>
-                <div className="mt-2 flex items-start gap-3"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={40} feeling={s.feeling} /><p className="rounded-xl rounded-tl-none bg-white/[0.06] px-3 py-2 text-[14px] leading-snug">“{s.thought}”</p></div>
-                <div className="mt-2 font-mono text-[12px]" style={{ color: SHIRT[p.archetype] }}>→ {s.action === "click" ? `clicked “${s.target}”` : s.action === "decide" ? "ready to decide" : s.action}  <span className="text-white/40">· felt {s.feeling}</span></div>
-              </div>
-            </li>
-          ))}
-        </ol>
-        {d && (
-          <div className="mt-6 rounded-xl border p-5" style={{ borderColor: DEC_COLOR[d.decision] ?? C.mid }}>
-            <div className="flex items-baseline justify-between"><span className="font-mono text-[13px] font-semibold uppercase" style={{ color: DEC_COLOR[d.decision] }}>{d.decision} · {d.rating}/5 · {d.feeling}</span></div>
-            <p className="mt-2 font-serif text-[18px]">“{d.quote}”</p>
-            <ul className="mt-3 space-y-1 text-[13px] text-white/70">{d.reasons.map((r, i) => <li key={i}>· {r}</li>)}</ul>
-            <p className="mt-3 text-[13px]"><span className="text-white/45">Would have changed their mind:</span> {d.missing}</p>
-            {sim.memory[p.id] && <p className="mt-3 border-t border-white/10 pt-3 text-[13px] text-white/70"><span style={{ color: C.win }}>What {p.name} learned (kept for next time):</span> {sim.memory[p.id]}</p>}
-          </div>
+
+        {/* why */}
+        {d ? (
+          <section className="mt-6 rounded-xl border-2 p-5" style={{ borderColor: color }}>
+            <div className={H}>Why {p.name} {od === "bought" ? "bought" : od === "bought_unhappy" ? "bought but isn't happy" : od === "abandoned_cart" ? "left the cart" : od === "maybe" ? "said maybe later" : "didn't buy"}</div>
+            <p className="mt-2 font-serif text-[20px] leading-snug">“{d.quote}”</p>
+            {d.deciding_moment && (
+              <p className="mt-3 text-[14px]"><span className="font-semibold" style={{ color }}>What made up their mind{d.deciding_step ? ` (step ${d.deciding_step})` : ""}: </span>{d.deciding_moment}</p>
+            )}
+            <p className="mt-2 text-[13px] text-white/60">
+              {ordered ? `Placed the order at step ${ordered.n}${od === "bought_unhappy" ? `, then said “${d.decision}”` : ""}.`
+                : carted ? `Added to cart at step ${carted.n} but didn't place the order${d.order_possible ? " (checkout needed no payment)" : ""}. Said “${d.decision}”.`
+                : d.order_possible ? `Never added it to the cart. Said “${d.decision}”.` : `Said “${d.decision}”.`}
+            </p>
+            {d.reconsidered && (
+              <p className="mt-2 text-[12px] text-white/45">First answer didn't match the visit ({d.reconsidered}), so they reconsidered.</p>
+            )}
+            <div className="mt-4 grid gap-3 sm:grid-cols-4">
+              <Fact label="Rating" value={`${d.rating}/5`} sub={d.stars_after_use ? `${d.stars_after_use}/5 after using it` : `felt ${d.feeling}`} />
+              <Fact label="How sure" value={d.confidence != null ? `${Math.round(d.confidence * 100)}%` : "–"} sub={d.confidence != null ? (d.confidence < 0.5 ? "unsure" : d.confidence < 0.75 ? "fairly sure" : "sure") : ""} />
+              <Fact label="Would pay" value={d.would_pay || "–"} />
+              <Fact label="Journey" value={`${steps.length} steps`} sub={`${pages} page${pages === 1 ? "" : "s"}${ordered ? ` · ordered at step ${ordered.n}` : carted ? ` · cart at step ${carted.n}` : ""}`} />
+            </div>
+            {d.reasons.length > 0 && <div className="mt-4"><div className="text-[13px] text-white/45">Because</div>
+              <ul className="mt-1 space-y-1 text-[14px]">{d.reasons.map((r, i) => <li key={i}>· {r}</li>)}</ul></div>}
+            {d.missing && <p className="mt-4 rounded-lg bg-white/[0.05] p-3 text-[14px]"><span className="text-white/45">What would have changed their mind: </span>{d.missing}</p>}
+          </section>
+        ) : <p className="mt-6 rounded-xl bg-white/[0.05] p-4 text-[14px] text-white/60">{p.name} hasn't decided yet: still browsing.</p>}
+
+        {/* came in with */}
+        <section className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl bg-white/[0.04] p-4"><div className={H}>Came in wanting</div>
+            <p className="mt-2 text-[14px]">“{p.goal}”</p><p className="mt-1 font-mono text-[12px] text-white/45">budget: {p.budget}</p>
+            {d?.first_impression && <p className="mt-3 text-[14px]"><span className="text-white/45">First impression: </span>{d.first_impression}</p>}</div>
+          <div className="rounded-xl bg-white/[0.04] p-4"><div className={H}>Memory they started with{d?.memory_version ? ` · v${d.memory_version}` : ""}</div>
+            {startedWith ? <p className="mt-2 whitespace-pre-line text-[13px] text-white/75">{startedWith}</p> : <p className="mt-2 text-[13px] text-white/45">{p.kind === "agent" ? "None: AI agents start fresh every time." : "Nothing yet: first visit."}</p>}
+            {p.inherited && <p className="mt-2 font-mono text-[11px]" style={{ color: C.win }}>includes lessons from customers like them on other sites</p>}</div>
+        </section>
+
+        {/* journey */}
+        <section className="mt-8"><div className={H}>The journey, step by step</div>
+          <ol className="mt-4 space-y-5">
+            {steps.map((s, i) => {
+              const prev = steps[i - 1];
+              const turn = prev && Math.abs((MOOD[s.feeling] ?? 0) - (MOOD[prev.feeling] ?? 0)) >= 2;
+              const deciding = !!d?.deciding_step && d.deciding_step === s.n;
+              return (
+                <li key={s.n} className={`grid gap-4 md:grid-cols-[360px_1fr] ${deciding ? "-mx-3 rounded-xl p-3" : ""}`} style={deciding ? { outline: `2px solid ${color}` } : undefined}>
+                  {s.shot ? <img src={shot(sim.id, s.shot)} alt={`step ${s.n}`} className="w-full rounded-lg border border-white/10" /> : <div className="min-h-16 rounded-lg bg-white/5" />}
+                  <div>
+                    <div className="font-mono text-[11px] text-white/40">step {s.n} · {s.url.replace(/^https?:\/\//, "")}
+                      {s.blocked && <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-white/60">blocked by a bot check · not a customer issue</span>}
+                      {s.cart && <span className="ml-2 rounded-full px-2 py-0.5 font-semibold" style={{ background: `${C.win}33`, color: C.win }}>clicked “{s.target}”</span>}
+                      {s.ordered && <span className="ml-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.win }}>order placed</span>}
+                      {deciding && <span className="ml-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: color }}>made up their mind here</span>}
+                      {turn && <span className="ml-2 rounded-full px-2 py-0.5 font-semibold" style={{ background: `${(MOOD[s.feeling] ?? 0) < (MOOD[prev.feeling] ?? 0) ? C.loss : C.win}33`, color: (MOOD[s.feeling] ?? 0) < (MOOD[prev.feeling] ?? 0) ? C.loss : C.win }}>turning point: {prev.feeling} → {s.feeling}</span>}</div>
+                    <div className="mt-2 flex items-start gap-3"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={40} feeling={s.feeling} /><p className="rounded-xl rounded-tl-none bg-white/[0.06] px-3 py-2 text-[14px] leading-snug">“{s.thought}”</p></div>
+                    <div className="mt-2 font-mono text-[12px]" style={{ color: SHIRT[p.archetype] ?? C.brain }}>→ {s.action === "click" ? `clicked “${s.target}”` : s.action === "decide" ? "ready to decide" : s.action}  <span className="text-white/40">· felt {s.feeling}</span></div>
+                  </div>
+                </li>
+              );
+            })}
+            {!steps.length && <li className="text-[13px] text-white/45">No steps recorded yet.</li>}
+          </ol>
+        </section>
+
+        {/* review */}
+        {d && (d.review || d.liked?.length || d.disliked?.length) && (
+          <section className="mt-8"><div className={H}>{p.name}'s review</div>
+            {d.review && <p className="mt-2 text-[15px] leading-relaxed text-white/85">{d.review}</p>}
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <List title="Liked" items={d.liked} color={C.win} /><List title="Disliked" items={d.disliked} color={C.loss} />
+            </div>
+          </section>
+        )}
+
+        {/* suggestions */}
+        {d?.suggestions?.length ? (
+          <section className="mt-8"><div className={H}>What {p.name} would change</div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {d.suggestions.map((sg, i) => (
+                <div key={i} className="rounded-xl border border-white/10 p-4">
+                  <span className="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase" style={{ background: `${sg.impact === "would make me buy" ? C.win : C.mid}26`, color: sg.impact === "would make me buy" ? C.win : C.mid }}>{sg.impact}</span>
+                  <p className="mt-2 text-[14px] font-semibold">{sg.change}</p>
+                  <p className="mt-1 text-[13px] text-white/65">{sg.why}</p>
+                  {sg.where && <p className="mt-2 truncate font-mono text-[11px] text-white/40">on: {sg.where.replace(/^https?:\/\//, "")}</p>}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {/* learned */}
+        {(learned.length > 0 || sim.memory[p.id]) && (
+          <section className="mt-8 border-t border-white/10 pt-5"><div className={H} style={{ color: C.win }}>What {p.name} learned for next time</div>
+            {learned.length ? (
+              <ul className="mt-2 space-y-2 text-[14px]">{learned.map((c, i) => (
+                <li key={i}>· {c.lesson} <span className="font-mono text-[11px] text-white/40">({c.source === "human" ? "from the owner" : "from this visit"}{"memory_version" in c ? `, memory v${(c as { memory_version?: number }).memory_version}` : ""})</span></li>))}</ul>
+            ) : <p className="mt-2 whitespace-pre-line text-[14px] text-white/75">{sim.memory[p.id]}</p>}
+          </section>
         )}
       </div>
+    </div>
+  );
+}
+
+function Fact({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-lg bg-white/[0.05] p-3">
+      <div className="text-[11px] text-white/45">{label}</div>
+      <div className={`mt-0.5 font-semibold leading-tight ${value.length > 24 ? "text-[13px]" : "text-[18px]"}`}>{value}</div>
+      {sub && <div className="mt-0.5 text-[11px] text-white/45">{sub}</div>}
+    </div>
+  );
+}
+
+function List({ title, items, color }: { title: string; items?: string[]; color: string }) {
+  if (!items?.length) return null;
+  return (
+    <div className="rounded-xl bg-white/[0.04] p-4">
+      <div className="font-mono text-[11px] font-semibold uppercase" style={{ color }}>{title}</div>
+      <ul className="mt-2 space-y-1 text-[14px] text-white/80">{items.map((x, i) => <li key={i}>· {x}</li>)}</ul>
     </div>
   );
 }
@@ -276,7 +407,7 @@ export function SimView({ id }: { id: string }) {
             { id: "report", label: "Report", show: !!sim.report },
           ]} />
           {tab === "map" && <>
-            <ThoughtStream sim={sim} />
+            <ThoughtStream sim={sim} onOpen={openPersona} />
             <SiteMap sim={sim} onOpen={openPersona} />
             <p className="mt-3 text-center text-[12px] text-white/35">click anyone to open their full profile: every step, the prompts behind it, their decision and suggestions</p>
           </>}
@@ -437,11 +568,14 @@ function funnel(sim: Sim) {
   const explored = landed.filter((p) => new Set(steps(p.id).map((x) => x.url.split("#")[0])).size > 1);
   const bought = landed.filter((p) => outcome(sim, p.id) === "bought");
   const acted = landed.filter((p) => steps(p.id).some((x) => x.cart) || outcome(sim, p.id) === "bought");
+  const ordered = landed.filter((p) => steps(p.id).some((x) => x.ordered));
+  const canOrder = landed.some((p) => sim.decisions[p.id]?.order_possible);
   return [
     { label: "Landed on the site", n: landed.length },
     { label: "Explored past the first page", n: explored.length },
-    { label: "Reached a buy decision (cart, buy, download)", n: acted.length },
-    { label: "Converted", n: bought.length },
+    { label: "Added to cart (or clicked buy)", n: acted.length },
+    ...(canOrder ? [{ label: "Placed the order", n: ordered.length }] : []),
+    { label: canOrder ? "Converted (ordered and happy or not)" : "Converted (decided to buy)", n: bought.length },
   ];
 }
 

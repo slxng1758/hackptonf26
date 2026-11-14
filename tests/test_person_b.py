@@ -100,10 +100,13 @@ def test_improvement_rule(case):
     assert not evals.improvement(a, a)["keep_going"]
 
 
-def test_clicked_buy_counts_as_buying(case):
+def test_final_decision_counts_not_the_cart_click(case):
+    # a cart click is recorded, but the final decision (made after everything they saw) decides whether they bought
     v = made_up_view()
     v["summary"]["clicked_buy"] = ["p3"]
-    assert {a["id"]: a["bought"] for a in evals.agents(v, 2)}["p3"] is True
+    a = {a["id"]: a for a in evals.agents(v, 2)}["p3"]
+    assert a["clicked_buy"] is True
+    assert a["bought"] is (evals.BUYS.get(v["decisions"]["p3"]["decision"], 0) >= 1)
 
 
 # ---------------------------------------------------------------- compare
@@ -166,7 +169,12 @@ def test_product_page_routes(tmp_path, monkeypatch):
     page = c.get(f"/api/products/{r['id']}/").text
     assert "Add to cart" in page and "$5" in page and "Now with less sugar." in page and "&lt;b&gt;" in page
     assert c.get(f"/api/products/{r['id']}/details").status_code == 200
-    assert "Added to cart" in c.get(f"/api/products/{r['id']}/cart").text
+    base = f"/api/products/{r['id']}"
+    assert "Your cart is empty" in c.get(f"{base}/cart").text
+    added = c.get(f"{base}/cart?add=1").text  # Add to cart puts it in the cart (kept in a cookie)
+    assert "Your cart" in added and "Checkout" in added and "$5" in added
+    assert "Oat &lt;b&gt;Latte&lt;/b&gt;" in c.get(f"{base}/cart").text  # still there when they open Cart from the menu
+    assert "Place order" in c.get(f"{base}/checkout").text and "Order placed" in c.get(f"{base}/order").text
     assert c.get("/api/products/nope/").status_code == 404
 
 

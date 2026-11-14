@@ -9,12 +9,24 @@ const COL = 250, ROW = 170, NODE_W = 190, NODE_H = 120, EXIT_H = 165, PAD = 40;
 const BOUGHT = new Set(["buy", "would recommend"]);
 const MAYBE = new Set(["maybe later"]);
 
-// What they did, not what they said: clicking "Add to cart" / "Download" counts as buying.
-export function outcome(sim: Sim, pid: string): "bought" | "maybe" | "left" | null {
-  const d = sim.decisions[pid];
+// What each customer did (b2a/outcome.py): placing an order is buying. Stored per decision; older sims fall back to the decision.
+export type Outcome = "bought" | "bought_unhappy" | "abandoned_cart" | "maybe" | "left";
+export const OUTCOME_LABEL: Record<Outcome, string> = { bought: "bought", bought_unhappy: "bought, unhappy", abandoned_cart: "left the cart", maybe: "maybe later", left: "didn't buy" };
+export function outcomeDetail(sim: Sim, pid: string): Outcome | null {
+  const d = sim.decisions[pid] as (Sim["decisions"][string] & { outcome?: Outcome }) | undefined;
   if (!d) return null;
-  if (BOUGHT.has(d.decision) || (sim.live[pid] ?? []).some((x) => x.cart)) return "bought";
-  return MAYBE.has(d.decision) ? "maybe" : "left";
+  if (d.outcome) return d.outcome;
+  if (BOUGHT.has(d.decision)) return "bought";
+  if (MAYBE.has(d.decision)) return "maybe";
+  return (sim.live[pid] ?? []).some((x) => x.cart) ? "abandoned_cart" : "left";
+}
+export const outcomeColor = (o: Outcome | null) =>
+  o === "bought" ? C.win : o === "bought_unhappy" || o === "maybe" ? C.mid : o ? C.loss : C.brain;
+
+// The three-way view used for colors and counts: a sale (happy or not), maybe later, or lost.
+export function outcome(sim: Sim, pid: string): "bought" | "maybe" | "left" | null {
+  const o = outcomeDetail(sim, pid);
+  return o === null ? null : o === "bought" || o === "bought_unhappy" ? "bought" : o === "maybe" ? "maybe" : "left";
 }
 
 function keyOf(u: string, rootHost: string) {
@@ -124,7 +136,7 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
             <div className="rounded-full" style={{ boxShadow: `0 0 0 2.5px ${SHIRT[p.archetype]}, 0 6px 20px rgba(0,0,0,.6)` }}>
               <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={40} feeling={feeling} busy={moving} />
             </div>
-            {(sim.live[p.id] ?? []).some((x) => x.cart) && <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold text-black" style={{ background: C.win }}>✓</span>}
+            {outcome(sim, p.id) === "bought" && <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold text-black" style={{ background: C.win }}>✓</span>}
             <div className="mx-auto mt-0.5 w-[44px] truncate text-center font-mono text-[9px] text-white/70">{p.name}{p.model && <span className="block text-white/35" title={p.model_note}>{p.played_by ? `${p.model}→${p.played_by}` : p.model}</span>}</div>
             {thought && (
               <div key={thought} className={`bubble pointer-events-none absolute bottom-full left-1/2 mb-1 w-[200px] -translate-x-1/2 rounded-xl px-2.5 py-1.5 text-left text-[11px] leading-snug shadow-lg ${moving && first ? "block" : "hidden group-hover:block"}`}
@@ -155,27 +167,29 @@ function Fit({ width, height, children }: { width: number; height: number; child
 }
 
 // What everyone is thinking right now: big speech cards drifting past, above the map.
-export function ThoughtStream({ sim }: { sim: Sim }) {
+export function ThoughtStream({ sim, onOpen }: { sim: Sim; onOpen?: (p: Persona) => void }) {
   const items = sim.personas.flatMap((p) => {
     const d = sim.decisions[p.id], steps = sim.live[p.id] ?? [];
     const last = steps[steps.length - 1];
     const text = d ? d.quote : last?.thought;
     if (!text) return [];
-    const o = outcome(sim, p.id);
-    return [{ p, text, o, feeling: (d?.feeling ?? last?.feeling ?? "neutral") as Feeling }];
+    const o = outcome(sim, p.id), od = outcomeDetail(sim, p.id);
+    return [{ p, text, o, od, feeling: (d?.feeling ?? last?.feeling ?? "neutral") as Feeling }];
   });
   if (!items.length) return null;
   const live = sim.status === "browsing";
   const card = (it: (typeof items)[number], i: number) => (
-    <div key={i} className="mx-2 inline-flex w-[360px] shrink-0 items-start gap-3 whitespace-normal rounded-2xl border border-white/15 bg-[var(--card)] p-3 align-top shadow-lg panel"
-      style={{ borderLeft: `5px solid ${it.o === "bought" ? C.win : it.o === "maybe" ? C.mid : it.o === "left" ? C.loss : SHIRT[it.p.archetype] ?? C.brain}` }}>
+    <button key={i} type="button" onClick={() => onOpen?.(it.p)} title={`See why ${it.p.name} decided this, step by step`}
+      className="mx-2 inline-flex w-[360px] shrink-0 cursor-pointer items-start gap-3 whitespace-normal rounded-2xl border border-white/15 bg-[var(--card)] p-3 text-left align-top shadow-lg transition hover:-translate-y-0.5 hover:border-white/40 panel"
+      style={{ borderLeft: `5px solid ${it.od ? outcomeColor(it.od) : SHIRT[it.p.archetype] ?? C.brain}` }}>
       <div className="shrink-0"><Avatar seed={it.p.avatar.seed} archetype={it.p.archetype} model={it.p.model} age={it.p.age} size={44} feeling={it.feeling} /></div>
       <div className="min-w-0">
         <div className="text-[13px]"><b>{it.p.name}</b> <span className="text-white/45">· {it.p.kind === "agent" ? "AI agent" : it.p.archetype}</span>
-          {it.o && <span className="ml-1 font-mono text-[10px] font-semibold uppercase" style={{ color: it.o === "bought" ? C.win : it.o === "maybe" ? C.mid : C.loss }}>{it.o === "bought" ? "bought" : it.o === "maybe" ? "maybe later" : "left"}</span>}</div>
+          {it.od && <span className="ml-1 font-mono text-[10px] font-semibold uppercase" style={{ color: outcomeColor(it.od) }}>{OUTCOME_LABEL[it.od]}</span>}</div>
         <p className="mt-0.5 line-clamp-3 text-[14px] leading-snug text-white/85">“{it.text}”</p>
+        {onOpen && <span className="mt-1 inline-block font-mono text-[10px] uppercase tracking-wider text-white/35">see why →</span>}
       </div>
-    </div>
+    </button>
   );
   return (
     <section className="mt-6">

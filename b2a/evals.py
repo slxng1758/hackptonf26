@@ -158,11 +158,14 @@ def agents(view: dict, layer: int | None = None) -> list[dict]:
         lay = int(p.get("layer") or 2)
         if layer is not None and lay != layer:
             continue
-        bought = p["id"] in clicked or BUYS.get(d.get("decision", ""), 0) >= 1
+        from . import outcome
+        steps = (view.get("live") or {}).get(p["id"])
+        oc = outcome.of(d, steps)  # what they did: placing an order is buying (b2a/outcome.py)
+        bought = outcome.SCORE[oc] >= 1
         out.append({"id": p["id"], "name": p.get("name", p["id"]), "archetype": p.get("archetype", ""), "model": p.get("model", ""),
                     "layer": lay, "share": float(p.get("share") or 0), "memory_version": int(p.get("memory_version") or 0),
-                    "decision": d, "bought": bought,
-                    "buy_score": 1.0 if p["id"] in clicked else BUYS.get(d.get("decision", ""), 0.0)})
+                    "decision": d, "bought": bought, "outcome": oc, "clicked_buy": p["id"] in clicked,
+                    "buy_score": outcome.SCORE[oc]})
     return out
 
 
