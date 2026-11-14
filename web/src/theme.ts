@@ -7,6 +7,7 @@ const THEMES: Record<ThemeName, { bg: string; card: string; ink: string; win: st
   dark: { bg: "#08080d", card: "#11131c", ink: "#f2efe8", win: "#3ff0d4", loss: "#ff3355", mid: "#ffb547", brain: "#d16bff", avatarBg: "#141623" },
 };
 function read(): ThemeName {
+  if (typeof location !== "undefined" && location.hash.startsWith("#print=")) return "storefront"; // the PDF is always light
   try { const t = localStorage.getItem("theme"); if (t === "dark" || t === "storefront") return t; } catch { /* storage unavailable */ }
   return "dark";
 }

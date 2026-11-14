@@ -428,7 +428,10 @@ function Bento({ sim, buyers, decided, botsBought, botsDone, goto }: { sim: Sim;
     <div className="mx-auto mt-8 max-w-6xl">
       <div className="mb-3 flex items-center justify-between">
         <div className="text-[13px] font-semibold text-white/60">Summary</div>
-        <button onClick={() => downloadReport(sim)} className="rounded-lg border border-white/15 px-3 py-1.5 text-[13px] font-semibold hover:border-white/40">Download report (.md)</button>
+        <div className="flex gap-2">
+          <a href={`/api/sims/${sim.id}/report.pdf`} className="rounded-lg px-3 py-1.5 text-[13px] font-semibold text-[#ffffff]" style={{ background: C.brain }}>Download PDF report</a>
+          <button onClick={() => downloadReport(sim)} className="rounded-lg border border-white/15 px-3 py-1.5 text-[13px] font-semibold hover:border-white/40">Markdown</button>
+        </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Kpi label="Simulated conversion" value={pct(buyers, decided)} sub={`${buyers} of ${decided} panelists bought`} color={tone(buyers, decided)} onClick={() => goto("map")} />

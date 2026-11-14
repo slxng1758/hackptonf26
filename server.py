@@ -239,6 +239,26 @@ def memory_search(q: str):
     return memory.similar(q, k=5, min_score=0.0)
 
 
+@app.get("/api/sims/{sim_id}/report.pdf")
+def sim_report_pdf(sim_id: str):
+    """The report as a PDF: our own browser opens the print layout (web/src/Print.tsx) and saves it."""
+    import os
+    from fastapi.responses import Response
+    from playwright.sync_api import sync_playwright
+    if not sim.get(sim_id):
+        raise HTTPException(404, "no such simulation")
+    front = os.getenv("FRONTEND_URL", "http://localhost:4621")
+    with sync_playwright() as p:
+        b = p.chromium.launch(args=["--disable-gpu", "--use-gl=swiftshader", "--disable-dev-shm-usage"])
+        pg = b.new_page(viewport={"width": 900, "height": 1200})
+        pg.goto(f"{front}/#print={sim_id}", wait_until="networkidle", timeout=30000)
+        pg.wait_for_selector("#print-ready", timeout=20000)
+        pg.wait_for_timeout(500)
+        pdf = pg.pdf(format="Letter", print_background=True, margin={"top": "14mm", "bottom": "14mm", "left": "0", "right": "0"})
+        b.close()
+    return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="customer-test-{sim_id}.pdf"'})
+
+
 @app.get("/api/memory")
 def long_term_memory():
     """What each type of customer has learned across every business tested."""
