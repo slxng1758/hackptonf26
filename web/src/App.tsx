@@ -132,7 +132,7 @@ export function App() {
   return (
     <div className="min-h-screen">
       {/* ---------- the stage ---------- */}
-      <section className="relative flex min-h-screen flex-col bg-[#18120e] text-paper">
+      <section className="relative flex min-h-screen flex-col bg-[#08080d] text-paper">
         <header className="flex items-center justify-between gap-3 px-5 py-4 md:px-10">
           <div className="flex items-baseline gap-3">
             <h1 className="font-serif text-[22px] font-extrabold">Inheritance</h1>
@@ -214,13 +214,13 @@ export function App() {
       {run && g && (
         <section className="mx-auto max-w-5xl px-4 py-14 md:px-8">
           <h2 className="font-serif text-[26px] font-semibold">The records</h2>
-          <div className="mt-5 rounded-3xl bg-card p-5 shadow-sm ring-1 ring-ink/10">
+          <div className="mt-5 rounded-3xl bg-white/[0.04] p-5 shadow-sm ring-1 ring-white/10">
             <Chart gens={gens} total={run.generations_planned} selected={g.gen} onSelect={pick} />
           </div>
-          <div className="mt-6 rounded-3xl bg-card shadow-sm ring-1 ring-ink/10">
-            <div className="flex gap-1 border-b border-ink/10 px-4 pt-3">
+          <div className="mt-6 rounded-3xl bg-white/[0.04] shadow-sm ring-1 ring-white/10">
+            <div className="flex gap-1 border-b border-white/10 px-4 pt-3">
               {(["archive", "voices", "trace"] as const).map((t) => (
-                <button key={t} onClick={() => setTab(t)} className={`rounded-t-lg px-3 py-1.5 text-[13px] font-semibold ${tab === t ? "bg-paper2 text-ink" : "text-ink3 hover:text-ink2"}`}>
+                <button key={t} onClick={() => setTab(t)} className={`rounded-t-lg px-3 py-1.5 text-[13px] font-semibold ${tab === t ? "bg-white/10 text-white" : "text-white/40 hover:text-white/80"}`}>
                   {t === "archive" ? `What gen ${g.gen} kept` : t === "voices" ? "Who said what" : "Agent trace"}
                 </button>
               ))}
@@ -228,29 +228,29 @@ export function App() {
             <div className="max-h-[480px] overflow-y-auto p-6">
               {tab === "archive" && (Object.keys(g.archive).length ? Object.entries(g.archive).map(([name, body]) => (
                 <pre key={name} className="rule-line mb-6 whitespace-pre-wrap font-serif text-[15px] leading-[28px]">{body}</pre>
-              )) : <p className="text-ink3">Nothing was saved this generation.</p>)}
+              )) : <p className="text-white/40">Nothing was saved this generation.</p>)}
               {tab === "voices" && (Object.keys(g.drafts).length ? (
                 <div className="grid gap-4 md:grid-cols-2">
                   {Object.entries(g.drafts).map(([name, body]) => (
-                    <article key={name} className="rounded-2xl bg-paper p-4">
-                      <div className="text-[11px] font-bold uppercase tracking-widest text-practice">{name.replace(".md", "")}</div>
+                    <article key={name} className="rounded-2xl bg-white/[0.03] p-4">
+                      <div className="text-[11px] font-bold uppercase tracking-widest text-[#ffb547]">{name.replace(".md", "")}</div>
                       <pre className="mt-2 whitespace-pre-wrap font-serif text-[14px] leading-relaxed">{body}</pre>
                     </article>
                   ))}
                 </div>
-              ) : <p className="text-ink3">The origin. No one has retold it yet.</p>)}
+              ) : <p className="text-white/40">The origin. No one has retold it yet.</p>)}
               {tab === "trace" && (g.trace.length ? (
                 <ol className="space-y-1.5 font-mono text-[12px]">
                   {g.trace.map((s, i) => (
-                    <li key={i} className="flex gap-3"><span className="w-14 shrink-0 text-ink3">{s.tool}</span><span className="w-20 shrink-0 font-semibold">{s.who}</span><span className="truncate text-ink2">{s.note}</span></li>
+                    <li key={i} className="flex gap-3"><span className="w-14 shrink-0 text-white/40">{s.tool}</span><span className="w-20 shrink-0 font-semibold">{s.who}</span><span className="truncate text-white/60">{s.note}</span></li>
                   ))}
                 </ol>
-              ) : <p className="text-ink3">No agents ran for the origin.</p>)}
+              ) : <p className="text-white/40">No agents ran for the origin.</p>)}
             </div>
           </div>
-          <p className="mt-8 text-center font-mono text-[11px] text-ink3">
+          <p className="mt-8 text-center font-mono text-[11px] text-white/40">
             memory {run.limit} chars · villagers {run.models.villagers} · evaluator {run.models.evaluator}
-            {run.error && <span className="text-seal"> · stopped: {run.error}</span>}
+            {run.error && <span className="text-[#ff3355]"> · stopped: {run.error}</span>}
           </p>
         </section>
       )}

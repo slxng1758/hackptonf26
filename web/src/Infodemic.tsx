@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { C, KIND_COLOR } from "./theme";
 
 interface Person { id: number; village: number; role: string; x: number; y: number }
 interface Variant { id: number; parent: number | null; text: string; short: string; day: number; person: number; role: string; belief: number; practice: number; myth: number }
@@ -17,9 +18,9 @@ function kind(v?: Variant) {
   if (v.belief >= 0.55) return "truth";
   return "ritual";
 }
-const COLOR: Record<string, string> = { truth: "#3ff0d4", ritual: "#ffb547", myth: "#d16bff", unsafe: "#7b84a8", none: "#2b2f45" };
+const COLOR: Record<string, string> = KIND_COLOR;
 const LABEL: Record<string, string> = { truth: "knows why", ritual: "boils, forgot why", myth: "sacred myth", unsafe: "doesn't boil" };
-const SICK = "#ff3355";
+const SICK = C.sick;
 
 interface Sweep { seeds: number; scenarios: Record<string, { sick: number[]; mean: number; sd: number; population: number }> }
 const SC_LABEL: Record<string, string> = { baseline: "one healer", healers_everywhere: "healers everywhere", priests_everywhere: "priests everywhere" };
@@ -160,7 +161,7 @@ export function Infodemic() {
   }, [data]);
 
   if (!data) {
-    return <div className="grid min-h-screen place-items-center bg-[#07070c] font-mono text-[13px] text-white/40">{list.length ? "loading the outbreak…" : "no infodemic runs yet · python -m sim.epidemic"}</div>;
+    return <div className="grid min-h-screen place-items-center bg-[#08080d] font-mono text-[13px] text-white/40">{list.length ? "loading the outbreak…" : "no infodemic runs yet · python -m sim.epidemic"}</div>;
   }
 
   const f = data.frames[day];
@@ -175,7 +176,7 @@ export function Infodemic() {
   const maxSick = Math.max(1, ...sickSeries);
 
   return (
-    <div className="relative h-screen overflow-hidden bg-[#07070c] text-white">
+    <div className="relative h-screen overflow-hidden bg-[#08080d] text-white">
       <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
 
       {/* top: title + counters */}

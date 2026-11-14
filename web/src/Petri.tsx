@@ -1,14 +1,11 @@
 import { useEffect, useRef } from "react";
 import { Controls } from "./Controls";
 import { kind, useEpi, type Kind, type Variant } from "./epi";
+import { C, KIND_COLOR } from "./theme";
 
-const HUE: Record<Kind, number> = { truth: 172, ritual: 38, myth: 288, unsafe: 228, none: 40 };
 const LETTER: Record<Kind, string> = { truth: "T", ritual: "R", myth: "M", unsafe: "U", none: "?" };
 const strain = (v: Variant) => `${LETTER[kind(v)]}-${String(v.id).padStart(2, "0")}`;
-const colour = (v: Variant, a = 1) => {
-  const k = kind(v);
-  return `hsla(${HUE[k] + ((v.id * 17) % 24) - 12}, ${k === "unsafe" ? 25 : 70}%, ${k === "myth" ? 55 : 45}%, ${a})`;
-};
+const colour = (v: Variant, a = 1) => KIND_COLOR[kind(v)] + Math.round(a * 255).toString(16).padStart(2, "0");
 
 export function Petri() {
   const epi = useEpi(420);
@@ -28,25 +25,25 @@ export function Petri() {
       const dpr = Math.min(devicePixelRatio, 2), w = c.clientWidth, h = c.clientHeight;
       if (c.width !== w * dpr) { c.width = w * dpr; c.height = h * dpr; }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = "#0c0d0f"; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = C.bg; ctx.fillRect(0, 0, w, h);
       const R = Math.min(w, h) * 0.4, cx = w / 2, cy = h / 2;
       const f = data.frames[dayRef.current];
 
       // dish: glass rim and agar
       const agar = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, R * 0.1, cx, cy, R);
-      agar.addColorStop(0, "#f3e6b8"); agar.addColorStop(1, "#d9c27f");
+      agar.addColorStop(0, "#1a2230"); agar.addColorStop(1, "#0e121b");
       ctx.fillStyle = agar; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
       ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R - 2, 0, Math.PI * 2); ctx.clip();
 
       // colonies: blurred cells blend into blobs
       ctx.filter = "blur(5px)";
-      ctx.globalCompositeOperation = "multiply";
+      ctx.globalCompositeOperation = "lighter";
       data.people.forEach((p, i) => {
         const v = f.b[i];
         if (v === null) return;
         const x = cx + (p.x + jit[i][0]) * R * 0.92, y = cy + (p.y + jit[i][1]) * R * 0.92;
         const breathe = 1 + Math.sin(now / 900 + i) * 0.06;
-        ctx.fillStyle = colour(data.variants[v], 0.85);
+        ctx.fillStyle = colour(data.variants[v], 0.55);
         ctx.beginPath(); ctx.arc(x, y, 15 * breathe, 0, Math.PI * 2); ctx.fill();
       });
       ctx.filter = "none";
@@ -55,12 +52,12 @@ export function Petri() {
       data.people.forEach((p, i) => {
         const x = cx + (p.x + jit[i][0]) * R * 0.92, y = cy + (p.y + jit[i][1]) * R * 0.92;
         const v = f.b[i];
-        ctx.fillStyle = v === null ? "rgba(120,100,60,0.35)" : colour(data.variants[v], 1);
+        ctx.fillStyle = v === null ? "rgba(255,255,255,0.12)" : colour(data.variants[v], 1);
         ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
         if (f.h[i] === "I") {
           for (let k = 0; k < 5; k++) {
             const a = k * 1.3 + now / 600, r = 6 + (k % 2) * 3;
-            ctx.fillStyle = "rgba(200,20,40,0.85)"; ctx.beginPath(); ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, 1.6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = C.sick; ctx.beginPath(); ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, 1.6, 0, Math.PI * 2); ctx.fill();
           }
         }
       });
@@ -107,20 +104,20 @@ export function Petri() {
     return () => cancelAnimationFrame(raf);
   }, [data]);
 
-  if (!data) return <div className="grid h-screen place-items-center bg-[#0c0d0f] font-mono text-white/40">preparing specimen…</div>;
+  if (!data) return <div className="grid h-screen place-items-center bg-[#08080d] font-mono text-white/40">preparing specimen…</div>;
   const f = data.frames[day];
   const share = new Map<number, number>();
   f.b.forEach((v) => v !== null && share.set(v, (share.get(v) ?? 0) + 1));
   const live = [...share.entries()].sort((a, b) => b[1] - a[1]).map(([v, n]) => ({ v: data.variants[v], n }));
 
   return (
-    <div className="relative h-screen overflow-hidden bg-[#0c0d0f] font-mono text-white">
+    <div className="relative h-screen overflow-hidden bg-[#08080d] font-mono text-white">
       <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
       <div className="pointer-events-none absolute left-6 top-16 text-[11px] leading-relaxed text-white/60">
         <div className="text-[10px] tracking-[0.3em] text-white/35">SPECIMEN</div>
         <div className="text-[18px] font-semibold tracking-wide text-white">{((data as { message?: string }).message ? "MESSAGE TRIAL" : "VALLEY OUTBREAK")} · {data.villages.length} SITES</div>
         <div>DAY {String(day).padStart(2, "0")} / {data.days} · 37.0°C · n={data.population}</div>
-        <div className="mt-2 text-[#ff4060]">INFECTED (CUMULATIVE) {f.sick_total}</div>
+        <div className="mt-2 text-[#ff3355]">INFECTED (CUMULATIVE) {f.sick_total}</div>
         <div>LIVE STRAINS {live.length}</div>
       </div>
       <div className="absolute right-6 top-16 max-h-[65vh] w-[320px] overflow-y-auto rounded-lg border border-white/10 bg-black/50 p-3 backdrop-blur">

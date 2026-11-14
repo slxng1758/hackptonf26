@@ -18,12 +18,12 @@ export function Chart({ gens, total, selected, onSelect }: { gens: Gen[]; total:
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Belief, practice and myth across generations">
         {[0, 0.5, 1].map((v) => (
           <g key={v}>
-            <line x1={P.l} x2={W - P.r} y1={y(v)} y2={y(v)} stroke="rgb(43 33 24 / .1)" />
-            <text x={P.l - 8} y={y(v) + 4} textAnchor="end" className="fill-ink3 font-mono" fontSize="10">{v}</text>
+            <line x1={P.l} x2={W - P.r} y1={y(v)} y2={y(v)} stroke="rgba(255,255,255,.08)" />
+            <text x={P.l - 8} y={y(v) + 4} textAnchor="end" className="font-mono" fill="rgba(242,239,232,.4)" fontSize="10">{v}</text>
           </g>
         ))}
         {Array.from({ length: n + 1 }, (_, g) => (
-          <text key={g} x={x(g)} y={H - 8} textAnchor="middle" className="fill-ink3 font-mono" fontSize="10">{g}</text>
+          <text key={g} x={x(g)} y={H - 8} textAnchor="middle" className="font-mono" fill="rgba(242,239,232,.4)" fontSize="10">{g}</text>
         ))}
         <line x1={x(selected)} x2={x(selected)} y1={P.t} y2={H - P.b} stroke="var(--color-seal)" strokeWidth="1.5" strokeDasharray="3 3" />
         {SERIES.map((s) => {
@@ -35,7 +35,7 @@ export function Chart({ gens, total, selected, onSelect }: { gens: Gen[]; total:
               )}
               <polyline points={pts} fill="none" stroke={s.color} strokeWidth="2.5" strokeDasharray={"dash" in s ? s.dash : undefined} strokeLinejoin="round" />
               {scored.map((g) => (
-                <circle key={g.gen} cx={x(g.gen)} cy={y(g.score![s.key])} r={g.gen === selected ? 5 : 3.5} fill={s.color} stroke="var(--color-card)" strokeWidth="1.5" />
+                <circle key={g.gen} cx={x(g.gen)} cy={y(g.score![s.key])} r={g.gen === selected ? 5 : 3.5} fill={s.color} stroke="#08080d" strokeWidth="1.5" />
               ))}
             </g>
           );
@@ -44,7 +44,7 @@ export function Chart({ gens, total, selected, onSelect }: { gens: Gen[]; total:
           <rect key={g} x={x(g) - (W - P.l - P.r) / n / 2} y={0} width={(W - P.l - P.r) / n} height={H} fill="transparent" className="cursor-pointer" onClick={() => onSelect(g)} />
         ))}
       </svg>
-      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink2">
+      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-white/60">
         {SERIES.map((s) => (
           <span key={s.key} className="flex items-center gap-1.5">
             <span className="inline-block h-0.5 w-5" style={{ background: s.color }} /> {s.label}

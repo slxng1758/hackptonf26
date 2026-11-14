@@ -7,18 +7,18 @@
   --color-ink: #2b2118;
   --color-ink2: #6b5d4f;
   --color-ink3: #a39482;
-  --color-seal: #a33a2a;
-  --color-belief: #2f6f6a;
-  --color-practice: #b5852a;
-  --color-myth: #7a4a8c;
+  --color-seal: #ff3355;
+  --color-belief: #3ff0d4;
+  --color-practice: #ffb547;
+  --color-myth: #d16bff;
   --font-serif: Fraunces, Georgia, serif;
   --font-sans: Inter, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 html, body, #root { min-height: 100%; }
-body { margin: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); }
-.rule-line { background-image: linear-gradient(transparent 27px, rgb(43 33 24 / .06) 28px); background-size: 100% 28px; }
+body { margin: 0; background: #08080d; color: #f2efe8; font-family: var(--font-sans); }
+.rule-line { background-image: linear-gradient(transparent 27px, rgba(255,255,255,.06) 28px); background-size: 100% 28px; }
 input[type=range] { accent-color: var(--color-seal); }
 
 /* the saying assembles word by word; words that changed since last generation glow */

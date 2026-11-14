@@ -59,7 +59,7 @@ export function Lab() {
   const base = job?.trials[0];
 
   return (
-    <div className="min-h-screen bg-[#07070c] px-6 pb-16 pt-16 text-white">
+    <div className="min-h-screen bg-[#08080d] px-6 pb-16 pt-16 text-white">
       <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
         {/* input */}
         <aside className="space-y-4">

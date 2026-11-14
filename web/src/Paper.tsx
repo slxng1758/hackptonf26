@@ -6,7 +6,7 @@ const ROLE_NAME: Record<string, string> = { villager: "a villager", child: "a ch
 export function Paper() {
   const epi = useEpi(1600);
   const { data, day } = epi;
-  if (!data) return <div className="grid h-screen place-items-center bg-[#efe6cf] font-serif text-ink2">the press is warming up…</div>;
+  if (!data) return <div className="grid h-screen place-items-center bg-[#08080d] font-serif text-white/50">the press is warming up…</div>;
 
   const f = data.frames[day];
   const top = dominant(data, day);
@@ -28,7 +28,7 @@ export function Paper() {
       : `${f.sick_total - weekAgo} taken ill this past week`;
 
   return (
-    <div className="min-h-screen bg-[#2a2520] px-4 pb-32 pt-16">
+    <div className="min-h-screen bg-[#08080d] px-4 pb-32 pt-16">
       <article key={day} className="paper-in mx-auto max-w-5xl bg-[#f4ecd6] px-8 pb-10 pt-6 text-[#1d1a15] shadow-2xl" style={{ backgroundImage: "radial-gradient(rgba(120,90,40,.08) 1px, transparent 1px)", backgroundSize: "4px 4px" }}>
         <div className="flex items-end justify-between border-b border-[#1d1a15] pb-1 font-serif text-[12px] italic">
           <span>Vol. I · No. {day + 1}</span><span>Price, one copper</span><span>Day {day} of the sickness</span>
@@ -77,7 +77,7 @@ export function Paper() {
                   <g key={vi}>
                     <line x1={0} y1={0} x2={x} y2={y} stroke="#1d1a15" strokeWidth="0.012" strokeDasharray="0.04 0.03" />
                     <circle cx={x} cy={y} r={0.16} fill="none" stroke="#1d1a15" strokeWidth="0.015" />
-                    {bad && <path d={`M${x - 0.08} ${y - 0.08} L${x + 0.08} ${y + 0.08} M${x + 0.08} ${y - 0.08} L${x - 0.08} ${y + 0.08}`} stroke="#9b1c1c" strokeWidth="0.03" />}
+                    {bad && <path d={`M${x - 0.08} ${y - 0.08} L${x + 0.08} ${y + 0.08} M${x + 0.08} ${y - 0.08} L${x - 0.08} ${y + 0.08}`} stroke="#d6203f" strokeWidth="0.03" />}
                     <text x={x} y={y + (y > 0 ? 0.3 : -0.22)} textAnchor="middle" fontSize="0.13" fontFamily="Fraunces, serif" fontStyle="italic" fill="#1d1a15">{data.villages[vi].name}</text>
                   </g>
                 );

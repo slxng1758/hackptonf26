@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import { Controls } from "./Controls";
 import { kind, useEpi, villageCenters, LABEL, type Kind } from "./epi";
+import { C, KIND_COLOR } from "./theme";
 
-const SHIRT: Record<Kind, string> = { truth: "#1f9e8a", ritual: "#e09a2b", myth: "#9b4fd1", unsafe: "#6b7391", none: "#b9b2a3" };
+const SHIRT: Record<Kind, string> = { ...KIND_COLOR, none: "#5b6075" };
 interface Bubble { person: number; from: number; text: string; k: Kind; born: number }
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, max: number) {
@@ -59,20 +60,21 @@ export function Village() {
 
       // ground
       const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.7);
-      g.addColorStop(0, "#d9e8bd"); g.addColorStop(1, "#a9c98c");
+      g.addColorStop(0, "#161b26"); g.addColorStop(1, C.bg);
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
 
       // dirt roads from each village to the market
-      ctx.strokeStyle = "#d8c49a"; ctx.lineWidth = 14; ctx.lineCap = "round";
+      ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 14; ctx.lineCap = "round";
       centers.forEach(([x, y]) => { ctx.beginPath(); ctx.moveTo(X(x), Y(y)); ctx.lineTo(cx, cy); ctx.stroke(); });
 
       // market stalls
-      ["#e35d4f", "#f2b632", "#3f8fd2", "#58b26c"].forEach((col, i) => {
+      ["#3a3550", "#2f3a4a", "#3a3550", "#2f3a4a"].forEach((col, i) => {
         const a = (i / 4) * Math.PI * 2 + 0.4, x = cx + Math.cos(a) * 30, y = cy + Math.sin(a) * 30;
-        ctx.fillStyle = "#8a6a45"; ctx.fillRect(x - 11, y - 2, 22, 12);
+        ctx.fillStyle = "#1c2030"; ctx.fillRect(x - 11, y - 2, 22, 12);
+        ctx.fillStyle = "rgba(255,210,122,0.8)"; ctx.fillRect(x - 3, y + 2, 6, 4);
         ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x - 14, y); ctx.lineTo(x + 14, y); ctx.lineTo(x + 10, y - 10); ctx.lineTo(x - 10, y - 10); ctx.fill();
       });
-      ctx.font = "700 11px Inter, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#5b4a33"; ctx.fillText("MARKET", cx, cy + 48);
+      ctx.font = "600 10px 'JetBrains Mono', monospace"; ctx.textAlign = "center"; ctx.fillStyle = "rgba(242,239,232,0.4)"; ctx.fillText("MARKET", cx, cy + 48);
 
       // villages: houses around a well, a shrine if the myth has taken hold
       centers.forEach(([vx, vy], vi) => {
@@ -80,27 +82,27 @@ export function Village() {
         for (let k = 0; k < 9; k++) {
           const a = (k / 9) * Math.PI * 2 + vi, r = S * 0.2 + (k % 2) * 10;
           const hx = bx + Math.cos(a) * r, hy = by + Math.sin(a) * r;
-          ctx.fillStyle = "rgba(0,0,0,0.12)"; ctx.fillRect(hx - 9, hy - 3, 20, 12);
-          ctx.fillStyle = "#f4ead2"; ctx.fillRect(hx - 10, hy - 6, 20, 13);
-          ctx.fillStyle = ["#b5533c", "#8c5a3c", "#a8743f"][k % 3];
+          ctx.fillStyle = "#1b1f2c"; ctx.fillRect(hx - 10, hy - 6, 20, 13);
+          ctx.fillStyle = (k + vi) % 3 ? "rgba(255,210,122,0.85)" : "rgba(255,210,122,0.25)"; ctx.fillRect(hx - 6, hy - 3, 4, 4); ctx.fillRect(hx + 2, hy - 3, 4, 4);
+          ctx.fillStyle = "#2a2f42";
           ctx.beginPath(); ctx.moveTo(hx - 13, hy - 6); ctx.lineTo(hx, hy - 17); ctx.lineTo(hx + 13, hy - 6); ctx.fill();
         }
         const bad = data.contaminated[vi] !== undefined && dayRef.current >= data.contaminated[vi];
-        ctx.fillStyle = "#8d8a83"; ctx.beginPath(); ctx.arc(bx, by, 13, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = bad ? "#7d8a3a" : "#4aa3d8"; ctx.beginPath(); ctx.arc(bx, by, 8.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#2a2f42"; ctx.beginPath(); ctx.arc(bx, by, 13, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = bad ? C.sick : "#4aa3d8"; ctx.beginPath(); ctx.arc(bx, by, 8.5, 0, Math.PI * 2); ctx.fill();
         if (bad) {
-          ctx.fillStyle = "#c2332f"; ctx.font = "800 13px Inter"; ctx.fillText("!", bx, by + 4.5);
+          ctx.fillStyle = C.bg; ctx.font = "800 13px Inter"; ctx.fillText("!", bx, by + 4.5);
         }
         const members = data.people.filter((p) => p.village === vi).map((p) => p.id);
         const mythShare = members.filter((id) => f.b[id] !== null && kind(data.variants[f.b[id]!]) === "myth").length / members.length;
         if (mythShare >= 0.2) {
           const sx = bx + 30, sy = by - 26;
-          ctx.fillStyle = "#6e4b8f"; ctx.fillRect(sx - 9, sy - 2, 18, 14);
-          ctx.fillStyle = "#4a2f63"; ctx.beginPath(); ctx.moveTo(sx - 12, sy - 2); ctx.lineTo(sx, sy - 13); ctx.lineTo(sx + 12, sy - 2); ctx.fill();
+          ctx.fillStyle = "#3a2552"; ctx.fillRect(sx - 9, sy - 2, 18, 14);
+          ctx.fillStyle = C.myth; ctx.beginPath(); ctx.moveTo(sx - 12, sy - 2); ctx.lineTo(sx, sy - 13); ctx.lineTo(sx + 12, sy - 2); ctx.fill();
           const fl = 5 + Math.sin(now / 90) * 1.5;
           ctx.fillStyle = "#ff9d2e"; ctx.beginPath(); ctx.ellipse(sx, sy - 18, 3.5, fl, 0, 0, Math.PI * 2); ctx.fill();
         }
-        ctx.font = "800 12px Inter, sans-serif"; ctx.fillStyle = bad ? "#b3302b" : "#3f5a2c";
+        ctx.font = "600 11px 'JetBrains Mono', monospace"; ctx.fillStyle = bad ? C.sick : "rgba(242,239,232,0.55)";
         ctx.fillText(`${data.villages[vi].name}${bad ? ((data as { message?: string }).message ? " · exposed" : " · well gone bad") : ""}`, bx, by + (vy > 0 ? S * 0.3 : -S * 0.28));
       });
 
@@ -115,11 +117,12 @@ export function Village() {
         const k = kind(v === null ? undefined : data.variants[v]);
         const sick = f.h[i] === "I";
         const wob = sick ? Math.sin(now / 120 + i) * 1.2 : 0;
-        ctx.fillStyle = "rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.ellipse(x, y + 8, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = SHIRT[k] + "33"; ctx.beginPath(); ctx.arc(x, y + 2, 11, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = SHIRT[k]; ctx.beginPath(); ctx.roundRect(x - 4.5 + wob, y - 2, 9, 10, 3); ctx.fill();
-        ctx.fillStyle = sick ? "#9cc56b" : "#f1c7a0"; ctx.beginPath(); ctx.arc(x + wob, y - 6, 4.2, 0, Math.PI * 2); ctx.fill();
-        if (p.role === "priest") { ctx.fillStyle = "#4a2f63"; ctx.fillRect(x - 3, y - 12, 6, 2.5); }
-        if (p.role === "healer") { ctx.fillStyle = "#c2332f"; ctx.fillRect(x - 1, y + 0, 2, 6); ctx.fillRect(x - 3, y + 2, 6, 2); }
+        ctx.fillStyle = "#e8d5c0"; ctx.beginPath(); ctx.arc(x + wob, y - 6, 4.2, 0, Math.PI * 2); ctx.fill();
+        if (sick) { ctx.strokeStyle = C.sick; ctx.lineWidth = 2; ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 160 + i); ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
+        if (p.role === "priest") { ctx.fillStyle = C.myth; ctx.fillRect(x - 3, y - 12, 6, 2.5); }
+        if (p.role === "healer") { ctx.fillStyle = C.truth; ctx.fillRect(x - 1, y + 0, 2, 6); ctx.fillRect(x - 3, y + 2, 6, 2); }
       });
 
       // speech bubbles
@@ -132,16 +135,17 @@ export function Village() {
         ctx.globalAlpha = a * 0.6; ctx.setLineDash([3, 4]); ctx.strokeStyle = SHIRT[b.k]; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(fx, fy - 6); ctx.lineTo(x, y - 6); ctx.stroke(); ctx.setLineDash([]);
         ctx.globalAlpha = a;
-        ctx.font = "500 14px Fraunces, Georgia, serif";
+        ctx.font = "400 14px Fraunces, Georgia, serif";
         const lines = wrap(ctx, `“${b.text}”`, 210);
         const bw = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 22, bh = lines.length * 18 + 14;
         const lift = Math.min(1, age / 300) * 6;
         const bx = Math.min(Math.max(x - bw / 2, 8), w - bw - 8), by = y - 22 - bh - lift;
-        ctx.fillStyle = "rgba(0,0,0,0.12)"; ctx.beginPath(); ctx.roundRect(bx + 2, by + 3, bw, bh, 12); ctx.fill();
-        ctx.fillStyle = "#fffdf6"; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 12); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(x - 6, by + bh - 1); ctx.lineTo(x, by + bh + 8); ctx.lineTo(x + 6, by + bh - 1); ctx.fill();
-        ctx.fillStyle = SHIRT[b.k]; ctx.fillRect(bx, by + 8, 4, bh - 16);
-        ctx.fillStyle = "#2b2118"; ctx.textAlign = "left";
+        ctx.shadowColor = SHIRT[b.k]; ctx.shadowBlur = 24;
+        ctx.fillStyle = "rgba(14,15,24,0.94)"; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 12); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = SHIRT[b.k]; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 12); ctx.stroke();
+        ctx.fillStyle = "rgba(14,15,24,0.94)"; ctx.beginPath(); ctx.moveTo(x - 6, by + bh - 1); ctx.lineTo(x, by + bh + 8); ctx.lineTo(x + 6, by + bh - 1); ctx.fill();
+        ctx.fillStyle = C.text; ctx.textAlign = "left";
         lines.forEach((l, i) => ctx.fillText(l, bx + 12, by + 22 + i * 18));
         ctx.textAlign = "center";
       });
@@ -152,7 +156,7 @@ export function Village() {
     return () => cancelAnimationFrame(raf);
   }, [data]);
 
-  if (!data) return <div className="grid h-screen place-items-center bg-[#cfe3b4] font-mono text-ink2">loading the valley…</div>;
+  if (!data) return <div className="grid h-screen place-items-center bg-[#08080d] font-mono text-white/40">loading the valley…</div>;
   const f = data.frames[day];
   const counts: Record<Kind, number> = { truth: 0, ritual: 0, myth: 0, unsafe: 0, none: 0 };
   f.b.forEach((v) => counts[kind(v === null ? undefined : data.variants[v])]++);
@@ -161,21 +165,21 @@ export function Village() {
     <div className="relative h-screen overflow-hidden">
       <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
       <div className="pointer-events-none absolute left-6 top-16">
-        <div className="font-serif text-[30px] font-extrabold leading-none text-[#2e3b1f]">{(data as { message?: string }).message ? "The neighborhood" : "The valley"}, day {day}</div>
-        <div className="mt-2 font-mono text-[12px] text-[#3f5a2c]">{f.sick_total} have fallen sick · {data.population} people · {data.villages.length} groups</div>
+        <div className="font-serif text-[30px] leading-none text-white">{(data as { message?: string }).message ? "The neighborhood" : "The valley"}, day {day}</div>
+        <div className="mt-2 font-mono text-[12px] text-white/45">{f.sick_total} have fallen sick · {data.population} people · {data.villages.length} groups</div>
       </div>
-      <div className="pointer-events-none absolute right-6 top-16 rounded-2xl bg-[#fffdf6]/90 p-4 shadow-lg">
+      <div className="pointer-events-none absolute right-6 top-16 rounded-2xl border border-white/10 bg-white/[0.04] p-4 font-mono backdrop-blur">
         {(["truth", "ritual", "myth", "unsafe"] as const).map((k) => (
           <div key={k} className="flex items-center gap-3 py-0.5 text-[13px]">
-            <span className="h-3 w-3 rounded" style={{ background: SHIRT[k] }} />
-            <span className="w-32 text-ink2">{LABEL[k]}</span>
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: SHIRT[k], boxShadow: `0 0 8px ${SHIRT[k]}` }} />
+            <span className="w-36 text-[12px] text-white/65">{LABEL[k]}</span>
             <span className="font-mono font-semibold">{counts[k]}</span>
           </div>
         ))}
-        <div className="mt-2 flex items-center gap-3 border-t border-ink/10 pt-2 text-[13px] text-ink2"><span className="h-3 w-3 rounded-full bg-[#9cc56b]" /> green face = sick</div>
+        <div className="mt-2 flex items-center gap-3 border-t border-white/10 pt-2 text-[12px] text-white/65"><span className="h-2.5 w-2.5 rounded-full border-2 border-[#ff3355]" /> sick</div>
       </div>
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/25 to-transparent p-6">
-        <Controls {...epi} data={data} dark={false} />
+      <div className="absolute inset-x-0 bottom-0 p-6">
+        <Controls {...epi} data={data} />
       </div>
     </div>
   );
