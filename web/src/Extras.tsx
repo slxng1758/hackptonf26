@@ -151,7 +151,7 @@ export function Learned({ changes, personas }: { changes: PersonaChange[]; perso
 function Eyebrow({ n, label, color }: { n: string; label: string; color: string }) {
   return (
     <div className="mb-2 flex items-center justify-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color }}>
-      <span className="grid h-6 w-6 place-items-center rounded-full text-[10px] text-black" style={{ background: color }}>{n}</span>{label}
+      <span className="h-2 w-2 rounded-full" style={{ background: color }} data-n={n} />{label}
     </div>
   );
 }

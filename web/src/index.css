@@ -81,3 +81,5 @@ textarea, input, select { color-scheme: dark; }
 .report th, .report td { border-bottom: 1px solid color-mix(in oklab, var(--ink) 15%, transparent); padding: 7px 10px; text-align: left; }
 .report th { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; opacity: .6; }
 .report code { font-family: var(--font-mono); font-size: 13px; padding: 1px 5px; border-radius: 6px; background: color-mix(in oklab, var(--ink) 8%, transparent); }
+.ring-in { animation: ringin 1.1s cubic-bezier(.2,.8,.2,1); }
+@keyframes ringin { from { stroke-dasharray: 0 400; } }

@@ -84,8 +84,8 @@ export function SimView({ id }: { id: string }) {
   const [sim, setSim] = useState<Sim | null>(null);
   const [cast, setCast] = useState<Persona[] | null>(null);
   const [open, setOpen] = useState<Persona | null>(null);
-  const [report, setReport] = useState(false);
   const [fix, setFix] = useState("");
+  const [tab, setTab] = useState("map");
   const [truth, setTruth] = useState("");
   const [change, setChange] = useState("");
   const [teaching, setTeaching] = useState(false);
@@ -134,6 +134,7 @@ export function SimView({ id }: { id: string }) {
   const botsDone = bots.filter((p) => sim.decisions[p.id]).length;
   const botsBought = bots.filter((p) => outcome(sim, p.id) === "bought").length;
   const live = ["browsing", "talking", "analyzing", "done"].includes(sim.status);
+  const x = { ...demo, ...Object.fromEntries(Object.entries({ social: sim.social, evals: sim.evals, persona_changes: sim.persona_changes }).filter(([, v]) => v && (!Array.isArray(v) || v.length))) } as Partial<SimExtras>;
   const unconvinced = humans.filter((p) => sim.decisions[p.id] && outcome(sim, p.id) !== "bought" && sim.decisions[p.id].missing);
 
   return (
@@ -213,22 +214,32 @@ export function SimView({ id }: { id: string }) {
 
       {live && (
         <>
-          <div className="mt-10"><Eyebrow n="01" label="they shopped" color={C.win} /></div>
-          <ThoughtStream sim={sim} />
-          <SiteMap sim={sim} onOpen={setOpen} />
-          <p className="mt-3 text-center text-[12px] text-white/35">click anyone to replay their visit · hover a page to see it</p>
+          {sim.status === "done" && <Bento sim={sim} buyers={buyers} decided={decided} botsBought={botsBought} botsDone={botsDone} goto={setTab} />}
+          <Tabs tab={tab} setTab={setTab} items={[
+            { id: "map", label: "Shopping map", show: true },
+            { id: "fixes", label: "Do these first", show: !!sim.actions?.length },
+            { id: "agents", label: "AI agents", show: sim.status === "done" && !!sim.summary?.agents?.length },
+            { id: "talk", label: "Word of mouth", show: !!x.social },
+            { id: "voices", label: "In their words", show: sim.status === "done" && unconvinced.length > 0 },
+            { id: "learned", label: "What they learned", show: !!x.persona_changes?.length },
+            { id: "accuracy", label: "Accuracy", show: !!x.evals?.length },
+            { id: "next", label: "Next round", show: sim.status === "done" },
+            { id: "report", label: "Report", show: !!sim.report },
+          ]} />
+          {tab === "map" && <>
+            <ThoughtStream sim={sim} />
+            <SiteMap sim={sim} onOpen={setOpen} />
+            <p className="mt-3 text-center text-[12px] text-white/35">click anyone to replay their visit · hover a page to see it</p>
+          </>}
+          {tab === "fixes" && sim.actions && sim.actions.length > 0 && <DoThese actions={sim.actions} />}
+          {tab === "agents" && sim.summary?.agents && sim.summary.agents.length > 0 && <AgentsPanel sim={sim} />}
 
-          {sim.actions && sim.actions.length > 0 && <DoThese actions={sim.actions} />}
-          {sim.status === "done" && sim.summary?.agents && sim.summary.agents.length > 0 && <AgentsPanel sim={sim} />}
+          {tab === "talk" && x.social && <WordOfMouth social={x.social} personas={sim.personas} />}
+          {tab === "accuracy" && x.evals && x.evals.length > 0 && <Accuracy evals={x.evals} />}
+          {tab === "learned" && x.persona_changes && x.persona_changes.length > 0 && <Learned changes={x.persona_changes} personas={sim.personas} />}
 
-          {(() => { const x = { ...demo, ...Object.fromEntries(Object.entries({ social: sim.social, evals: sim.evals, persona_changes: sim.persona_changes }).filter(([, v]) => v && (!Array.isArray(v) || v.length))) } as Partial<SimExtras>; return <>
-            {x.social && <WordOfMouth social={x.social} personas={sim.personas} />}
-            {x.evals && x.evals.length > 0 && <Accuracy evals={x.evals} />}
-            {x.persona_changes && x.persona_changes.length > 0 && <Learned changes={x.persona_changes} personas={sim.personas} />}
-          </>; })()}
-
-          {sim.status === "done" && unconvinced.length > 0 && (
-            <section className="mx-auto mt-14 max-w-6xl">
+          {tab === "voices" && sim.status === "done" && unconvinced.length > 0 && (
+            <section className="mx-auto mt-10 max-w-6xl">
               <Eyebrow n="05" label="in their words" color={C.mid} />
               <h2 className="text-center font-serif text-[30px]">What would win the rest over</h2>
               <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -246,8 +257,8 @@ export function SimView({ id }: { id: string }) {
             </section>
           )}
 
-          {sim.status === "done" && (
-            <section className="relative mx-auto mt-16 max-w-6xl overflow-hidden rounded-[28px] p-8 text-left" style={{ background: `linear-gradient(135deg, ${C.brain}26, ${C.win}1f)`, border: `1px solid ${C.brain}55` }}>
+          {tab === "next" && sim.status === "done" && (
+            <section className="relative mx-auto mt-10 max-w-6xl overflow-hidden rounded-[28px] p-8 text-left" style={{ background: `linear-gradient(135deg, ${C.brain}26, ${C.win}1f)`, border: `1px solid ${C.brain}55` }}>
               <Eyebrow n="06" label="make them smarter" color={C.brain} />
               <h2 className="text-center font-serif text-[30px]">Next round</h2>
               <div className="mt-6 grid gap-5 md:grid-cols-2">
@@ -272,10 +283,9 @@ export function SimView({ id }: { id: string }) {
             </section>
           )}
 
-          {sim.report && (
+          {tab === "report" && sim.report && (
             <div className="mt-8 text-center">
-              <button onClick={() => setReport(!report)} className="rounded-full border border-white/20 px-5 py-2 text-[14px] font-semibold hover:border-white/50">{report ? "Hide" : "Read"} the analyst's full report</button>
-              {report && <article className={`${PANEL} report mx-auto mt-4 max-w-4xl p-8 text-left`} dangerouslySetInnerHTML={{ __html: marked.parse(sim.report, { async: false }) as string }} />}
+              {<article className={`${PANEL} report mx-auto mt-4 max-w-4xl p-8 text-left`} dangerouslySetInnerHTML={{ __html: marked.parse(sim.report, { async: false }) as string }} />}
             </div>
           )}
         </>
@@ -340,8 +350,72 @@ function AgentsPanel({ sim }: { sim: Sim }) {
 function Eyebrow({ n, label, color }: { n: string; label: string; color: string }) {
   return (
     <div className="mb-2 flex items-center justify-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color }}>
-      <span className="grid h-6 w-6 place-items-center rounded-full text-[10px] text-black" style={{ background: color }}>{n}</span>{label}
+      <span className="h-2 w-2 rounded-full" style={{ background: color }} data-n={n} />{label}
     </div>
   );
 }
 export { Eyebrow };
+
+// ---------- the one-screen summary ----------
+function Ring({ value, of, color, size = 132 }: { value: number; of: number; color: string; size?: number }) {
+  const r = 52, c = 2 * Math.PI * r, f = of ? value / of : 0;
+  return (
+    <svg width={size} height={size} viewBox="0 0 120 120" className="shrink-0">
+      <circle cx="60" cy="60" r={r} fill="none" stroke="currentColor" strokeOpacity=".1" strokeWidth="12" />
+      <circle cx="60" cy="60" r={r} fill="none" stroke={color} strokeWidth="12" strokeLinecap="round" strokeDasharray={`${c * f} ${c}`} transform="rotate(-90 60 60)" className="ring-in" />
+      <text x="60" y="58" textAnchor="middle" fontSize="30" fontWeight="800" fill={color} fontFamily="Inter, system-ui">{value}/{of}</text>
+      <text x="60" y="78" textAnchor="middle" fontSize="11" fill="currentColor" opacity=".55" fontFamily="JetBrains Mono, monospace">{Math.round(f * 100)}%</text>
+    </svg>
+  );
+}
+
+function Bento({ sim, buyers, decided, botsBought, botsDone, goto }: { sim: Sim; buyers: number; decided: number; botsBought: number; botsDone: number; goto: (t: string) => void }) {
+  const top = sim.social?.top_influencers?.[0];
+  const star = top ? sim.personas.find((p) => p.id === top) : undefined;
+  const spread = sim.social?.summary?.replace(/\*\*/g, "").split(/(?<=\.)\s/)[0];
+  const tone = (v: number, n: number) => (n && v / n >= 0.5 ? C.win : v ? C.mid : C.loss);
+  return (
+    <div className="mx-auto mt-8 grid max-w-6xl gap-4 lg:grid-cols-[1fr_1fr_1.35fr]">
+      <button onClick={() => goto("map")} className={`${PANEL} rise flex items-center gap-5 p-5 text-left transition hover:-translate-y-1`}>
+        <Ring value={buyers} of={decided} color={tone(buyers, decided)} />
+        <div><div className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/45">people</div>
+          <div className="mt-1 text-[20px] font-semibold leading-tight">would buy</div>
+          <div className="mt-2 flex -space-x-2">{sim.personas.filter((p) => p.kind !== "agent").map((p) => <div key={p.id} className="rounded-full ring-2 ring-[var(--card)]"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={28} feeling={sim.decisions[p.id]?.feeling ?? "neutral"} /></div>)}</div></div>
+      </button>
+      <button onClick={() => goto("agents")} className={`${PANEL} rise flex items-center gap-5 p-5 text-left transition hover:-translate-y-1`} style={{ animationDelay: ".08s" }}>
+        <Ring value={botsBought} of={botsDone} color={tone(botsBought, botsDone)} />
+        <div><div className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/45">AI shopping agents</div>
+          <div className="mt-1 text-[20px] font-semibold leading-tight">could buy for their user</div>
+          <div className="mt-2 flex -space-x-2">{sim.personas.filter((p) => p.kind === "agent").map((p) => <div key={p.id} className="rounded-full ring-2 ring-[var(--card)]"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} size={28} feeling={sim.decisions[p.id]?.feeling ?? "neutral"} /></div>)}</div></div>
+      </button>
+      <button onClick={() => goto("fixes")} className={`${PANEL} rise row-span-2 p-5 text-left transition hover:-translate-y-1`} style={{ animationDelay: ".16s", background: `linear-gradient(160deg, ${C.win}1f, transparent 60%)` }}>
+        <div className="font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: C.win }}>do these first</div>
+        <ol className="mt-3 space-y-3">
+          {(sim.actions ?? []).slice(0, 3).map((a, i) => (
+            <li key={i} className="flex gap-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full font-mono text-[13px] font-bold text-black" style={{ background: i === 0 ? C.win : i === 1 ? C.mid : C.brain }}>{i + 1}</span>
+              <span><span className="text-[15px] font-semibold leading-snug">{a.fix}</span><span className="ml-2 font-mono text-[10px] text-white/45">{a.audience === "AI agents" ? "for agents" : a.audience === "both" ? "for both" : "for people"}</span></span></li>
+          ))}
+          {!sim.actions?.length && <li className="text-[14px] text-white/50">Writing the fix list…</li>}
+        </ol>
+      </button>
+      {spread && star && (
+        <button onClick={() => goto("talk")} className={`${PANEL} rise flex items-center gap-4 p-5 text-left transition hover:-translate-y-1 lg:col-span-2`} style={{ animationDelay: ".24s", background: `linear-gradient(120deg, ${C.mid}22, transparent 70%)` }}>
+          <div className="relative shrink-0"><span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[18px]">👑</span><Avatar seed={star.avatar.seed} archetype={star.archetype} model={star.model} age={star.age} size={64} feeling={sim.decisions[star.id]?.feeling ?? "neutral"} /></div>
+          <div><div className="font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: C.mid }}>what's spreading</div>
+            <p className="mt-1 text-[15px] leading-snug">{spread}</p></div>
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Tabs({ tab, setTab, items }: { tab: string; setTab: (t: string) => void; items: { id: string; label: string; show: boolean }[] }) {
+  return (
+    <nav className="sticky top-2 z-30 mx-auto mt-8 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full border border-white/15 bg-[var(--card)] p-1 shadow-xl panel">
+      {items.filter((t) => t.show).map((t) => (
+        <button key={t.id} onClick={() => setTab(t.id)} className={`whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-semibold transition ${tab === t.id ? "text-black" : "text-white/60 hover:text-white"}`}
+          style={tab === t.id ? { background: C.win } : undefined}>{t.label}</button>
+      ))}
+    </nav>
+  );
+}
