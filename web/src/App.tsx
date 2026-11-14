@@ -12,6 +12,11 @@ export function App() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
+    const on = () => { const h = location.hash; if (h.startsWith("#sim=")) setView({ kind: "sim", id: h.slice(5) }); else if (h.startsWith("#job=")) setView({ kind: "job", id: h.slice(5) }); };
+    addEventListener("hashchange", on);
+    return () => removeEventListener("hashchange", on);
+  }, []);
+  useEffect(() => {
     if (view.kind === "job") history.replaceState(null, "", `#job=${view.id}`);
     else if (view.kind === "sim") history.replaceState(null, "", `#sim=${view.id}`);
     else history.replaceState(null, "", location.pathname);

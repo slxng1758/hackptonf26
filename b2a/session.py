@@ -152,13 +152,29 @@ class Site(BaseModel):
     offer: str = Field(description="what exactly it sells and the price range seen on the page, one or two sentences")
 
 
+def rendered_text(url: str, limit: int = 6000) -> str:
+    """The page as a person sees it (JavaScript run), plus where its main links go."""
+    from playwright.sync_api import sync_playwright
+    try:
+        with sync_playwright() as p:
+            b = p.chromium.launch(args=["--disable-gpu", "--use-gl=swiftshader", "--disable-dev-shm-usage"])
+            pg = b.new_page(viewport={"width": 1280, "height": 800})
+            pg.goto(url, timeout=30000, wait_until="domcontentloaded")
+            pg.wait_for_timeout(2500)
+            text = pg.inner_text("body", timeout=8000)
+            b.close()
+            return text[:limit]
+    except Exception:
+        from .scan import fetch_text
+        try:
+            return fetch_text(url, limit)
+        except Exception:
+            return ""
+
+
 def read_site(url: str) -> dict:
     """From just a URL: what the business is and who buys from it."""
-    from .scan import fetch_text
-    try:
-        text = fetch_text(url, 6000)
-    except Exception:
-        text = ""
+    text = rendered_text(url)
     s: Site = fast().with_structured_output(Site, method="json_schema").invoke(
         f"Website: {url}\nPage text:\n{text or '(could not load; infer from the address)'}\n\nWhat is this business and who are its customers?")
     return s.model_dump()

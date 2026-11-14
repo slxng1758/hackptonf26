@@ -146,12 +146,14 @@ class SimJob:
         share = {p["id"]: p["share"] for p in self.personas}
         got = {pid: d for pid, d in self.decisions.items()}
         w = sum(share[pid] for pid in got) or 1
-        buy = sum(share[pid] * BUYS.get(d["decision"], 0) for pid, d in got.items()) / w
+        carted = {pid for pid, steps in self.live.items() if any(x.get("cart") for x in steps)}
+        # what they did beats what they said: a buy/download click counts as buying
+        buy = sum(share[pid] * (1.0 if pid in carted else BUYS.get(d["decision"], 0)) for pid, d in got.items()) / w
         rating = sum(share[pid] * d["rating"] for pid, d in got.items()) / w
         counts: dict[str, int] = {}
         for d in got.values():
             counts[d["decision"]] = counts.get(d["decision"], 0) + 1
-        return {"buy_rate": round(buy, 3), "rating": round(rating, 2), "decisions": counts,
+        return {"buy_rate": round(buy, 3), "clicked_buy": sorted(carted), "rating": round(rating, 2), "decisions": counts,
                 "missing": [{"persona": pid, "text": d["missing"]} for pid, d in got.items()]}
 
     def _analyze(self):

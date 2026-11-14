@@ -9,12 +9,20 @@ const COL = 250, ROW = 170, NODE_W = 190, NODE_H = 120, PAD = 40;
 const BOUGHT = new Set(["buy", "would recommend"]);
 const MAYBE = new Set(["maybe later"]);
 
+// What they did, not what they said: clicking "Add to cart" / "Download" counts as buying.
+export function outcome(sim: Sim, pid: string): "bought" | "maybe" | "left" | null {
+  const d = sim.decisions[pid];
+  if (!d) return null;
+  if (BOUGHT.has(d.decision) || (sim.live[pid] ?? []).some((x) => x.cart)) return "bought";
+  return MAYBE.has(d.decision) ? "maybe" : "left";
+}
+
 function keyOf(u: string, rootHost: string) {
   try {
     const x = new URL(u);
     const path = x.pathname.replace(/\/+$/, "") || "/";
     const host = x.host.replace(/^www\./, "");
-    const label = host !== rootHost ? host : path === "/" ? "Home" : decodeURIComponent(path.split("/").filter(Boolean).pop() ?? "").replace(/[-_]+/g, " ").replace(/\.\w+$/, "");
+    const label = host !== rootHost ? host + (path === "/" ? "" : " · " + decodeURIComponent(path.split("/").filter(Boolean).pop() ?? "").replace(/[-_]+/g, " ")) : path === "/" ? "Home" : decodeURIComponent(path.split("/").filter(Boolean).pop() ?? "").replace(/[-_]+/g, " ").replace(/\.\w+$/, "");
     return { key: host + path, label: label.charAt(0).toUpperCase() + label.slice(1) };
   } catch { return { key: u, label: u }; }
 }
@@ -48,9 +56,9 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
   }, [sim, rootHost]);
 
   const exits = [
-    { id: "bought", label: "Bought", color: C.win, test: (d: string) => BOUGHT.has(d) },
-    { id: "maybe", label: "Maybe later", color: C.mid, test: (d: string) => MAYBE.has(d) },
-    { id: "left", label: "Left", color: C.loss, test: (d: string) => !BOUGHT.has(d) && !MAYBE.has(d) },
+    { id: "bought", label: "Bought", color: C.win },
+    { id: "maybe", label: "Maybe later", color: C.mid },
+    { id: "left", label: "Left", color: C.loss },
   ];
   const exitY = (i: number) => PAD + i * ((height - PAD * 2 - NODE_H) / 2);
 
@@ -61,7 +69,7 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
     const last = steps[steps.length - 1];
     const d = sim.decisions[p.id];
     let x: number, y: number, at: string;
-    if (d) { const i = exits.findIndex((e) => e.test(d.decision)); at = exits[i].id; x = exitX; y = exitY(i); }
+    if (d) { const i = exits.findIndex((e) => e.id === outcome(sim, p.id)); at = exits[i].id; x = exitX; y = exitY(i); }
     else { const n = nodes.get(keyOf(last?.url ?? `https://${rootHost}`, rootHost).key) ?? [...nodes.values()][0]; at = n.key; x = n.x; y = n.y; }
     const k = crowd.get(at) ?? 0; crowd.set(at, k + 1);
     const feeling: Feeling = d?.feeling ?? last?.feeling ?? "neutral";
@@ -94,7 +102,7 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
         ))}
 
         {exits.map((e, i) => {
-          const n = sim.personas.filter((p) => sim.decisions[p.id] && e.test(sim.decisions[p.id].decision)).length;
+          const n = sim.personas.filter((p) => outcome(sim, p.id) === e.id).length;
           return (
             <div key={e.id} className="absolute rounded-2xl border-2 border-dashed" style={{ left: exitX, top: exitY(i), width: NODE_W, height: NODE_H, borderColor: `${e.color}66`, background: `${e.color}0d` }}>
               <div className="flex items-center justify-between px-3 pt-2"><span className="text-[13px] font-semibold" style={{ color: e.color }}>{e.label}</span><span className="font-mono text-[18px] font-semibold" style={{ color: e.color }}>{n}</span></div>
@@ -111,7 +119,7 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
             <div className="mt-0.5 text-center font-mono text-[9px] text-white/70">{p.name}</div>
             {thought && (
               <div key={thought} className={`bubble pointer-events-none absolute bottom-full left-1/2 mb-1 w-[200px] -translate-x-1/2 rounded-xl px-2.5 py-1.5 text-left text-[11px] leading-snug shadow-lg ${moving && first ? "block" : "hidden group-hover:block"}`}
-                style={{ background: d ? (BOUGHT.has(d.decision) ? C.win : MAYBE.has(d.decision) ? C.mid : "#fff") : "#fff", color: "#000" }}>
+                style={{ background: d ? ({ bought: C.win, maybe: C.mid, left: "#fff" }[outcome(sim, p.id) ?? "left"]) : "#fff", color: "#000" }}>
                 {thought.length > 110 ? thought.slice(0, 110) + "…" : thought}
               </div>
             )}

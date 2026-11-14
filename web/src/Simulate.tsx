@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, PANEL } from "./theme";
-import { SiteMap } from "./SiteMap";
+import { SiteMap, outcome } from "./SiteMap";
 
 export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number } }
 interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; thought: string; feeling: Feeling; action: string; target: string }
@@ -73,7 +73,6 @@ function Replay({ sim, p, onClose }: { sim: Sim; p: Persona; onClose: () => void
   );
 }
 
-const BUY = new Set(["buy", "would recommend"]);
 const host = (u: string) => u.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
 export function SimView({ id }: { id: string }) {
@@ -99,9 +98,9 @@ export function SimView({ id }: { id: string }) {
 
   const name = sim.input.name || host(sim.input.url);
   const decided = Object.keys(sim.decisions).length;
-  const buyers = Object.values(sim.decisions).filter((d) => BUY.has(d.decision)).length;
+  const buyers = sim.personas.filter((p) => outcome(sim, p.id) === "bought").length;
   const live = ["browsing", "analyzing", "done"].includes(sim.status);
-  const unconvinced = sim.personas.filter((p) => sim.decisions[p.id] && !BUY.has(sim.decisions[p.id].decision) && sim.decisions[p.id].missing);
+  const unconvinced = sim.personas.filter((p) => sim.decisions[p.id] && outcome(sim, p.id) !== "bought" && sim.decisions[p.id].missing);
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 pb-16">
