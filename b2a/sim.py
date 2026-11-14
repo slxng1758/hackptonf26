@@ -165,7 +165,13 @@ class SimJob:
         counts: dict[str, int] = {}
         for d in got.values():
             counts[d["decision"]] = counts.get(d["decision"], 0) + 1
-        return {"buy_rate": round(buy, 3), "clicked_buy": sorted(carted), "rating": round(rating, 2), "decisions": counts,
+        by_model: dict[str, list[int]] = {}
+        for p in self.personas:
+            if p["id"] in got:
+                m = by_model.setdefault(p.get("model", "Claude"), [0, 0])
+                m[1] += 1
+                m[0] += int(p["id"] in carted or BUYS.get(got[p["id"]]["decision"], 0) >= 1)
+        return {"buy_rate": round(buy, 3), "clicked_buy": sorted(carted), "by_model": {k: {"bought": v[0], "of": v[1]} for k, v in by_model.items()}, "rating": round(rating, 2), "decisions": counts,
                 "missing": [{"persona": pid, "text": d["missing"]} for pid, d in got.items()]}
 
     def _record_changes(self, before: dict):

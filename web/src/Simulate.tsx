@@ -5,14 +5,14 @@ import { SiteMap, outcome } from "./SiteMap";
 import { Accuracy, Learned, WordOfMouth } from "./Extras";
 import type { SimExtras } from "./sim-extras";
 
-export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number } }
+export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number }; model?: string }
 interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; thought: string; feeling: Feeling; action: string; target: string }
 interface Decision { decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string }
 export interface Sim extends Partial<SimExtras> {
   id: string; input: { url: string; name: string; category: string; context: string; world: string; customers: string };
   status: "casting" | "awaiting_approval" | "browsing" | "analyzing" | "done" | "error"; error: string | null;
   personas: Persona[]; live: Record<string, SimStep[]>; decisions: Record<string, Decision>;
-  summary: { buy_rate: number; rating: number; decisions: Record<string, number>; missing: { persona: string; text: string }[] } | null;
+  summary: { buy_rate: number; by_model?: Record<string, { bought: number; of: number }>; rating: number; decisions: Record<string, number>; missing: { persona: string; text: string }[] } | null;
   report: string; steps: { t: string; kind: string; note: string }[]; memory: Record<string, string>; round?: number; parent?: string | null;
 }
 
@@ -46,7 +46,7 @@ function Replay({ sim, p, onClose }: { sim: Sim; p: Persona; onClose: () => void
       <div className={`${PANEL} mx-auto max-w-5xl bg-[#0d0e15] p-6`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4"><Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={64} feeling={d?.feeling ?? "neutral"} />
-            <div><div className="font-serif text-[26px]">{p.name}'s session</div><div className="text-[13px] text-white/50">{p.age} · {p.occupation} · {p.archetype} · wants: {p.goal}</div></div></div>
+            <div><div className="font-serif text-[26px]">{p.name}'s session</div><div className="text-[13px] text-white/50">{p.age} · {p.occupation} · {p.archetype}{p.model ? ` · played by ${p.model}` : ""} · wants: {p.goal}</div></div></div>
           <button onClick={onClose} className="text-[22px] text-white/50 hover:text-white">×</button>
         </div>
         <ol className="mt-6 space-y-5">
@@ -129,6 +129,11 @@ export function SimView({ id }: { id: string }) {
           {sim.status === "done" && <><span style={{ color: buyers / Math.max(decided, 1) >= 0.5 ? C.win : buyers ? C.mid : C.loss }}>{buyers} of {decided}</span> customers would buy from {name}</>}
           {sim.status === "error" && <span style={{ color: C.loss }}>Something broke</span>}
         </h1>
+        {sim.summary?.by_model && Object.keys(sim.summary.by_model).length > 1 && (
+          <div className="mt-3 flex justify-center gap-2 font-mono text-[12px]">
+            {Object.entries(sim.summary.by_model).map(([m, v]) => <span key={m} className="rounded-full border border-white/15 px-3 py-1 text-white/70">{m} customers: <b className="text-white">{v.bought}/{v.of}</b> bought</span>)}
+          </div>
+        )}
         {sim.error && <p className="mt-2 text-[13px]" style={{ color: C.loss }}>{sim.error}</p>}
       </div>
 
@@ -147,6 +152,7 @@ export function SimView({ id }: { id: string }) {
                 <div className="mx-auto w-fit rounded-full" style={{ boxShadow: `0 0 0 3px ${SHIRT[p.archetype]}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={96} /></div>
                 <div className="mt-3 text-[15px] font-semibold">{p.name}, {p.age}</div>
                 <div className="font-mono text-[11px]" style={{ color: SHIRT[p.archetype] }}>{p.archetype}</div>
+                {p.model && <div className="mt-1 inline-block rounded-full border border-white/15 px-2 py-0.5 font-mono text-[10px] text-white/60">played by {p.model}</div>}
                 <p className="mt-1 text-[12px] leading-snug text-white/50">{p.goal}</p>
               </div>
             ))}

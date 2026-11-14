@@ -17,7 +17,7 @@ from typing import Literal
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 
-from .models import fast
+from .models import fast, persona as persona_model
 
 ARCHETYPES = ["price-sensitive", "quality-first", "brand-loyal", "function-first", "first-time user", "skeptic", "enthusiast"]
 
@@ -193,12 +193,15 @@ def cast(name: str, category: str, context: str, world: str, customers: str, off
         c = fast().with_structured_output(Cast, method="json_schema").invoke(ask + "\nKeep every field short. Exactly 6 personas.")
     total = sum(p.share for p in c.personas) or 1
     rng = random.Random(name)
+    from .models import persona_models
+    families = list(persona_models())
     out = []
     for i, p in enumerate(c.personas):
         d = p.model_dump()
         d["id"] = f"p{i + 1}"
         d["share"] = round(p.share / total, 3)
         d["avatar"] = {"seed": rng.randint(0, 10_000)}
+        d["model"] = families[i % len(families)] if families else "Claude"
         out.append(d)
     return out
 
@@ -215,7 +218,14 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
     out_dir.mkdir(parents=True, exist_ok=True)
     steps: list[dict] = []
     history: list[str] = []
-    model = fast()
+    model, backup = persona_model(persona.get("model")), fast()
+
+    def ask(schema, msg):
+        try:
+            return model.with_structured_output(schema).invoke(msg)
+        except Exception:
+            return backup.with_structured_output(schema).invoke(msg)
+
     with sync_playwright() as p:
         b = p.chromium.launch(args=["--disable-gpu", "--use-gl=swiftshader", "--disable-dev-shm-usage"])
         ctx = b.new_context(viewport={"width": 1280, "height": 800})
@@ -258,7 +268,7 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
             prompt = STEP.format(**{**persona, "memory": persona.get("memory") or "nothing yet"}, world=world or "today, normal times", context=context or "none", url=pg.url, n=n, max_steps=max_steps,
                                  links=", ".join(links) or "(none)", text=text, history=" → ".join(history) or "just arrived")
             try:
-                s: Step = model.with_structured_output(Step).invoke([_img_msg(prompt, jpg)] if jpg else prompt)
+                s: Step = ask(Step, [_img_msg(prompt, jpg)] if jpg else prompt)
             except Exception as e:
                 s = Step(thought=f"(couldn't read the page: {type(e).__name__})", feeling="confused", action="decide")
             step = {"n": n, "url": pg.url, "title": pg.title() if pg else "", "shot": shot.name if jpg else None,
@@ -299,11 +309,11 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
             except Exception:
                 history.append(f"(tried to {s.action} '{s.target}' but it didn't work)")
         b.close()
-    ask = DECIDE.format(**{**persona, "memory": persona.get("memory") or "nothing yet"}, world=world or "today, normal times", product=url, history="\n".join(history))
+    q = DECIDE.format(**{**persona, "memory": persona.get("memory") or "nothing yet"}, world=world or "today, normal times", product=url, history="\n".join(history))
     try:
-        d: Decision = model.with_structured_output(Decision).invoke(ask)
+        d: Decision = ask(Decision, q)
     except Exception:
-        d = model.with_structured_output(Decision).invoke(ask + "\nFill in every field.")
+        d = ask(Decision, q + "\nFill in every field.")
     return {"persona": persona["id"], "steps": steps, "decision": d.model_dump()}
 
 

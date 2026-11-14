@@ -111,12 +111,12 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
         })}
 
         {spots.map(({ p, first, x, y, feeling, thought, d, moving }) => (
-          <button key={p.id} onClick={() => onOpen(p)} className="group absolute z-10 transition-all duration-[1200ms] ease-in-out" style={{ left: x, top: y }} title={`${p.name} · ${p.archetype}`}>
+          <button key={p.id} onClick={() => onOpen(p)} className="group absolute z-10 transition-all duration-[1200ms] ease-in-out" style={{ left: x, top: y }} title={`${p.name} · ${p.archetype}${p.model ? ` · ${p.model}` : ""}`}>
             <div className="rounded-full" style={{ boxShadow: `0 0 0 2.5px ${SHIRT[p.archetype]}, 0 6px 20px rgba(0,0,0,.6)` }}>
               <Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={40} feeling={feeling} busy={moving} />
             </div>
             {(sim.live[p.id] ?? []).some((x) => x.cart) && <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full text-[11px]" style={{ background: C.win }}>🛒</span>}
-            <div className="mt-0.5 text-center font-mono text-[9px] text-white/70">{p.name}</div>
+            <div className="mt-0.5 text-center font-mono text-[9px] text-white/70">{p.name}{p.model && <span className="block text-white/35">{p.model}</span>}</div>
             {thought && (
               <div key={thought} className={`bubble pointer-events-none absolute bottom-full left-1/2 mb-1 w-[200px] -translate-x-1/2 rounded-xl px-2.5 py-1.5 text-left text-[11px] leading-snug shadow-lg ${moving && first ? "block" : "hidden group-hover:block"}`}
                 style={{ background: d ? ({ bought: C.win, maybe: C.mid, left: "#fff" }[outcome(sim, p.id) ?? "left"]) : "#fff", color: "#000" }}>
