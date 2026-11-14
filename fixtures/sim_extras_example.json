@@ -1,0 +1,83 @@
+{
+  "evals": [
+    {
+      "iteration": 0,
+      "actual_rating": 4.1, "predicted_rating": 3.2, "rating_error": 0.9,
+      "actual_buy_rate": null, "predicted_buy_rate": 0.38,
+      "direction_correct": true,
+      "theme_recall": 0.4, "theme_precision": 0.6, "distribution_distance": 0.38,
+      "real_themes": [
+        {"theme": "nose wire stops glasses fogging", "kind": "like", "mentions": 212},
+        {"theme": "cheaper than disposables over time", "kind": "like", "mentions": 140},
+        {"theme": "ear loops hurt after hours", "kind": "complaint", "mentions": 188},
+        {"theme": "shrinks in the dryer", "kind": "complaint", "mentions": 95},
+        {"theme": "hard to breathe while exercising", "kind": "complaint", "mentions": 61}
+      ],
+      "matched_themes": ["nose wire stops glasses fogging", "shrinks in the dryer"],
+      "missed_themes": ["cheaper than disposables over time", "ear loops hurt after hours", "hard to breathe while exercising"],
+      "notes": "Personas were too harsh on price and never wore the mask for long."
+    },
+    {
+      "iteration": 1,
+      "actual_rating": 4.1, "predicted_rating": 3.6, "rating_error": 0.5,
+      "actual_buy_rate": null, "predicted_buy_rate": 0.49,
+      "direction_correct": true,
+      "theme_recall": 0.6, "theme_precision": 0.67, "distribution_distance": 0.27,
+      "real_themes": [],
+      "matched_themes": ["nose wire stops glasses fogging", "shrinks in the dryer", "cheaper than disposables over time"],
+      "missed_themes": ["ear loops hurt after hours", "hard to breathe while exercising"],
+      "notes": "Price-sensitive persona now does the cost-per-wear math."
+    },
+    {
+      "iteration": 2,
+      "actual_rating": 4.1, "predicted_rating": 3.8, "rating_error": 0.3,
+      "actual_buy_rate": null, "predicted_buy_rate": 0.54,
+      "direction_correct": true,
+      "theme_recall": 0.8, "theme_precision": 0.8, "distribution_distance": 0.19,
+      "real_themes": [],
+      "matched_themes": ["nose wire stops glasses fogging", "shrinks in the dryer", "cheaper than disposables over time", "ear loops hurt after hours"],
+      "missed_themes": ["hard to breathe while exercising"],
+      "notes": "Quality-first persona now checks comfort over a long day. No persona exercises in it."
+    }
+  ],
+  "persona_changes": [
+    {
+      "persona_id": "p1",
+      "iteration": 1,
+      "lesson": "Real budget buyers paid for reusables once they compared cost per wear; this persona now weighs durability, not just the sticker price.",
+      "before": "",
+      "after": "- For things I use every day, I compare cost per use, not just the price tag."
+    },
+    {
+      "persona_id": "p2",
+      "iteration": 2,
+      "lesson": "Real reviews complained about ear pain after long wear; this persona now thinks about comfort over a full day.",
+      "before": "- I check fit and seams first.",
+      "after": "- I check fit and seams first.\n- I picture wearing it for 8 hours: do the ear loops hurt?"
+    }
+  ],
+  "social": {
+    "posts": [
+      {"id": "s1", "round": 0, "author": "p1", "kind": "post", "target": null, "text": "Did the math: these reusable masks beat disposables after 2 weeks. And my glasses don't fog.", "sentiment": 0.6},
+      {"id": "s2", "round": 0, "author": "p4", "kind": "post", "target": null, "text": "PSA: ComfortWeave masks shrink in the dryer. Air dry them.", "sentiment": -0.5},
+      {"id": "s3", "round": 1, "author": "p2", "kind": "reply", "target": "s2", "text": "True of most cotton masks. Fit is solid and the nose wire is great.", "sentiment": 0.3},
+      {"id": "s4", "round": 1, "author": "p3", "kind": "repost", "target": "s2", "text": "Good to know before buying.", "sentiment": -0.2},
+      {"id": "s5", "round": 1, "author": "p4", "kind": "reply", "target": "s1", "text": "Only cheaper if they survive 50 washes. Mine lost a loop.", "sentiment": -0.4},
+      {"id": "s6", "round": 2, "author": "p1", "kind": "reply", "target": "s5", "text": "One loop stretched for me too. Still worth it.", "sentiment": 0.2}
+    ],
+    "nodes": [
+      {"id": "p1", "label": "Maya", "archetype": "price-sensitive", "sentiment": 0.4, "centrality": 0.27, "community": 0},
+      {"id": "p2", "label": "Daniel", "archetype": "quality-first", "sentiment": 0.3, "centrality": 0.12, "community": 1},
+      {"id": "p3", "label": "Priya", "archetype": "brand-loyal", "sentiment": -0.2, "centrality": 0.12, "community": 1},
+      {"id": "p4", "label": "Frank", "archetype": "skeptic", "sentiment": -0.45, "centrality": 0.49, "community": 1}
+    ],
+    "edges": [
+      {"source": "p2", "target": "p4", "kind": "reply", "weight": 1},
+      {"source": "p3", "target": "p4", "kind": "repost", "weight": 1},
+      {"source": "p4", "target": "p1", "kind": "reply", "weight": 1},
+      {"source": "p1", "target": "p4", "kind": "reply", "weight": 1}
+    ],
+    "top_influencers": ["p4", "p1"],
+    "summary": "The skeptic's dryer-shrink warning spread furthest: two other segments replied to or reposted it. The cost-per-wear argument stayed with the price-sensitive buyer."
+  }
+}
