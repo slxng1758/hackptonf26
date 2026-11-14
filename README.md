@@ -4,7 +4,8 @@
 AI shopping agents and AI customers open your real site, click around, decide whether to buy, talk about it, and tell you what to fix.</p>
 
 <p align="center">
-  Built at <b>HackPrinceton Fall 2026</b> &nbsp;·&nbsp; Track: <b>Business &amp; Enterprise</b> &nbsp;·&nbsp;
+  Built at <b>HackPrinceton Fall 2026</b> &nbsp;·&nbsp; 
+  Track: <b>Business &amp; Enterprise</b> &nbsp;·&nbsp;
   Challenges: <b>LangChain Deep Agents</b>, <b>Amazon Best Practical AI</b>, <b>Peri</b>, <b>Arlequin</b>, <b>MLH Gemini</b>
 </p>
 
