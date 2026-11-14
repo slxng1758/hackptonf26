@@ -131,7 +131,7 @@ def _img_msg(text: str, jpg: bytes) -> HumanMessage:
                                  {"type": "image", "source_type": "base64", "mime_type": "image/jpeg", "data": base64.b64encode(jpg).decode()}])
 
 
-def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_step, max_steps: int = 5) -> dict:
+def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_step, max_steps: int = 7) -> dict:
     """One persona, one real browser session. Returns the session with every step and the final decision."""
     from playwright.sync_api import sync_playwright
 
@@ -199,6 +199,8 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                     pg.mouse.wheel(0, 700)
                 elif s.action == "back":
                     pg.go_back(timeout=10000)
+                    if not pg.url.startswith("http"):  # went back past the landing page
+                        pg.goto(url, timeout=30000, wait_until="domcontentloaded")
             except Exception:
                 history.append(f"(tried to {s.action} '{s.target}' but it didn't work)")
         b.close()

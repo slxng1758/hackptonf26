@@ -58,7 +58,7 @@ function Tile({ sim, p, onOpen }: { sim: Sim; p: Persona; onOpen: () => void }) 
       </div>
       <div className="flex items-center justify-between px-3 py-2">
         <span className="text-[13px]"><b>{p.name}</b> <span className="text-white/45">· {p.archetype}</span></span>
-        <span className="flex gap-1">{Array.from({ length: 5 }, (_, k) => <span key={k} className="h-1.5 w-1.5 rounded-full" style={{ background: k < steps.length ? SHIRT[p.archetype] : "rgba(255,255,255,0.12)" }} />)}</span>
+        <span className="flex gap-1">{Array.from({ length: 7 }, (_, k) => <span key={k} className="h-1.5 w-1.5 rounded-full" style={{ background: k < steps.length ? SHIRT[p.archetype] : "rgba(255,255,255,0.12)" }} />)}</span>
       </div>
     </button>
   );
