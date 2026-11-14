@@ -19,7 +19,7 @@ from pathlib import Path
 from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 
-from . import memory, mongo, session
+from . import memory, mongo, outcome, session
 from .models import brain
 
 RUNS = Path(__file__).resolve().parent.parent / "runs"
@@ -316,26 +316,29 @@ class SimJob:
         got = {pid: d for pid, d in self.decisions.items() if pid not in agents}
         w = sum(share[pid] for pid in got) or 1
         carted = {pid for pid, steps in self.live.items() if any(x.get("cart") for x in steps)}
-        # what they did beats what they said: a buy/download click counts as buying
-        buy = sum(share[pid] * (1.0 if pid in carted else BUYS.get(d["decision"], 0)) for pid, d in got.items()) / w
+        # what they did (b2a/outcome.py): placing an order is buying; clicked_buy still records the funnel step
+        oc = {pid: outcome.of(d, self.live.get(pid)) for pid, d in self.decisions.items()}
+        buy = sum(share[pid] * outcome.SCORE[oc[pid]] for pid in got) / w
         rating = sum(share[pid] * d["rating"] for pid, d in got.items()) / w
         counts: dict[str, int] = {}
-        for d in got.values():
+        outcomes = {k: 0 for k in outcome.OUTCOMES}
+        for pid, d in got.items():
             counts[d["decision"]] = counts.get(d["decision"], 0) + 1
+            outcomes[oc[pid]] += 1
         by_model: dict[str, list[int]] = {}
         for p in self.personas:
             if p["id"] in got and p.get("kind") != "agent":
                 m = by_model.setdefault(p.get("played_by") or p.get("model", "Claude"), [0, 0])
                 m[1] += 1
-                m[0] += int(p["id"] in carted or BUYS.get(got[p["id"]]["decision"], 0) >= 1)
+                m[0] += int(outcome.SCORE[oc[p["id"]]] >= 1)
         agent_rows = []
         for p in self.personas:
             if p["id"] in agents and p["id"] in self.decisions:
                 d = self.decisions[p["id"]]
-                agent_rows.append({"persona": p["id"], "model": p.get("model"), "bought": p["id"] in carted or BUYS.get(d["decision"], 0) >= 1,
+                agent_rows.append({"persona": p["id"], "model": p.get("model"), "bought": outcome.SCORE[oc[p["id"]]] >= 1, "outcome": oc[p["id"]], "clicked_buy": p["id"] in carted,
                                    "decision": d["decision"], "missing": d.get("missing", ""), "quote": d.get("quote", "")})
         conf = [d.get("confidence") for d in got.values() if d.get("confidence") is not None]
-        return {"agents": agent_rows, "confidence": round(sum(conf) / len(conf), 2) if conf else None, "buy_rate": round(buy, 3), "clicked_buy": sorted(carted), "by_model": {k: {"bought": v[0], "of": v[1]} for k, v in by_model.items()}, "rating": round(rating, 2), "decisions": counts,
+        return {"agents": agent_rows, "confidence": round(sum(conf) / len(conf), 2) if conf else None, "buy_rate": round(buy, 3), "clicked_buy": sorted(carted), "by_model": {k: {"bought": v[0], "of": v[1]} for k, v in by_model.items()}, "rating": round(rating, 2), "decisions": counts, "outcomes": outcomes,
                 "missing": [{"persona": pid, "text": d["missing"]} for pid, d in got.items()]}
 
     def _actions(self):
@@ -580,8 +583,7 @@ def _row(d: dict) -> dict:
     agents = {p["id"] for p in d.get("personas") or [] if p.get("kind") == "agent"}
     bought = a_bought = people = 0
     for pid, dec in (d.get("decisions") or {}).items():
-        carted = any(x.get("cart") for x in (d.get("live") or {}).get(pid, []))
-        b = int(carted or BUYS.get(dec.get("decision"), 0) >= 1)
+        b = int(outcome.bought(dec, (d.get("live") or {}).get(pid)))  # what they did (b2a/outcome.py)
         if pid in agents:
             a_bought += b
         else:

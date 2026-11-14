@@ -30,6 +30,6 @@ def test_instructions_reach_the_prompts():
          "budget": "$30", "memory": "nothing yet", "instructions": "Never pays for a subscription."}
     step = session.STEP.format(**{**p, "instructions": session.instructions(p)}, world="today", context="none", url="u", n=1,
                                max_steps=7, links="", text="", history="")
-    decide = session.DECIDE.format(**{**p, "instructions": session.instructions(p)}, world="today", product="u", history="")
+    decide = session.DECIDE.format(**{**p, "instructions": session.instructions(p)}, world="today", product="u", history="", did="you did not click to buy anything.")
     assert "Never pays for a subscription." in step and "Never pays for a subscription." in decide
     assert session.instructions({"instructions": "  "}) == ""

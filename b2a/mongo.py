@@ -30,6 +30,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SIMS = ROOT / "runs" / "sims"
 EMBED_MODEL = os.getenv("EMBED_MODEL", "gemini-embedding-001")
 EMBED_DIMS = 768
+from . import outcome as _outcome
+
 BUYS = {"buy": 1.0, "would recommend": 1.0, "maybe later": 0.3, "not buy": 0.0, "would complain": 0.0}
 
 
@@ -102,7 +104,8 @@ def agents_of(view: dict) -> list[dict]:
         out.append({"persona_id": p["id"], "name": p.get("name", ""), "archetype": p.get("archetype", ""),
                     "model": p.get("model", ""), "layer": int(p.get("layer") or 2), "share": float(p.get("share") or 0),
                     "decision": d.get("decision", ""), "rating": d.get("rating"),
-                    "bought": p["id"] in clicked or BUYS.get(d.get("decision", ""), 0) >= 1,
+                    "bought": _outcome.bought(d, (view.get("live") or {}).get(p["id"])), "clicked_buy": p["id"] in clicked,
+                    "outcome": _outcome.of(d, (view.get("live") or {}).get(p["id"])),
                     "inherited_memory": bool(p.get("inherited"))})
     return out
 

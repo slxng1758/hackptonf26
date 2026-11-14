@@ -19,6 +19,7 @@ from typing import Literal
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 
+from . import outcome
 from .models import fast, persona as persona_model
 
 ARCHETYPES = ["price-sensitive", "quality-first", "brand-loyal", "function-first", "first-time user", "skeptic", "enthusiast"]
@@ -74,6 +75,9 @@ class Suggestion(BaseModel):
 
 
 class Decision(BaseModel):
+    # filled first, so the decision is read off the visit rather than off the persona description
+    deciding_moment: str = Field(default="", description="what happened on this visit that made up your mind, in your words, one sentence")
+    deciding_step: int = Field(default=0, ge=0, description="the step number where that happened (0 if it was the visit as a whole)")
     decision: Literal["buy", "not buy", "maybe later", "would complain", "would recommend"]
     rating: int = Field(ge=1, le=5)
     feeling: Literal["delighted", "interested", "neutral", "confused", "annoyed", "skeptical"]
@@ -102,13 +106,22 @@ What you've done so far: {history}
 
 Look at the screenshot like a real person would. Decide your next move: click one of the visible links or buttons, scroll,
 go back, or decide. Shop like a real person with limited patience: use search, filters or menus instead of scrolling long lists.
-If you find something that fits, pick it (size/option) and click "Add to cart" or the buy button, then decide. Don't enter
-payment details. If the site clearly isn't for you, decide early. Stay in character."""
+If you find something that fits and you want it, buy it like a real customer: pick the size/option, add it to the cart, go
+to checkout, and place the order if the site lets you without payment details. Never enter payment details: if the site
+asks for them, stop there and decide. If the site clearly isn't for you, decide early. Stay in character."""
 
 DECIDE = """You are {name}, {age}, {occupation}, a {archetype} customer. {voice} Goal: {goal}. Budget: {budget}. World: {world}.{instructions}
 What you learned from past visits: {memory}
-You browsed {product}. Here is everything you saw and thought:
+You browsed {product}. Here is your visit, step by step, with what you thought and felt at each step:
 {history}
+
+What you actually did: {did}
+
+First find the moment that settled it: the step where you made up your mind and what happened there. Your decision must
+follow from your own thoughts and feelings on THIS visit, especially the last steps, not from who you are in general.
+If you placed the order, you bought it: say "buy" (or "would complain" if something went wrong after). If you could have
+placed the order and didn't, you did not buy. Your rating and feeling must match how
+the visit actually ended.
 Make your decision like a real shopper on this visit, not a reviewer. Real people buy without perfect information:
 if you found something that fits your goal and budget well enough and nothing put you off, you buy. "Maybe later" means you
 leave now and most people who say it never come back, so only choose it if something specific stopped you today.
@@ -326,6 +339,8 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
     out_dir.mkdir(parents=True, exist_ok=True)
     steps: list[dict] = []
     history: list[str] = []
+    can_order = outcome.order_possible(url)  # our generated store: checkout needs no payment, so a real order is possible
+    ordered_at = 0
     model, backup = persona_model(persona.get("model")), fast()
 
     fallbacks = {"n": 0, "why": ""}
@@ -373,13 +388,17 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                         "thought": "(A security check blocked our test browser here. Real customers wouldn't see this, so it doesn't count.)",
                         "feeling": "neutral", "action": "back", "target": ""}
                 steps.append(step)
-                history.append(f"[{pg.url}] BLOCKED by an automated bot check that real customers would not see. Do not hold this against the business; judge only what you could see elsewhere.")
+                history.append(f"step {n} [{pg.url}] BLOCKED by an automated bot check that real customers would not see. Do not hold this against the business; judge only what you could see elsewhere.")
                 on_step(persona["id"], step)
                 try:
                     pg.go_back(timeout=10000)
                 except Exception:
                     pass
                 continue
+            just_ordered = not ordered_at and bool(outcome.ORDER_DONE.search(text[:2000]))
+            if just_ordered:
+                ordered_at = n
+                history.append(f"(step {n}: the confirmation page says your order went through. You placed the order: you bought it.)")
             page = dict(world=world or "today, normal times", context=context or "none", url=pg.url, n=n, max_steps=max_steps,
                         links=", ".join(links) or "(none)", text=text, history=" → ".join(history) or "just arrived")
             prompt = STEP.format(**{**persona, "memory": persona.get("memory") or "nothing yet", "instructions": instructions(persona)}, **page)
@@ -390,8 +409,10 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                 s = Step(thought=f"(couldn't read the page: {type(e).__name__})", feeling="confused", action="decide")
             step = {"n": n, "url": pg.url, "title": pg.title() if pg else "", "shot": shot_name if jpg else None,
                     "thought": s.thought, "feeling": s.feeling, "action": s.action, "target": s.target}
+            if just_ordered:
+                step["ordered"] = True
             steps.append(step)
-            history.append(f"[{pg.url}] thought: {s.thought} ({s.feeling}) → {s.action} {s.target}".strip())
+            history.append(f"step {n} [{pg.url}] thought: {s.thought} ({s.feeling}) → {s.action} {s.target}".strip())
             on_step(persona["id"], step)
             if s.action == "decide" or n == max_steps:
                 break
@@ -413,8 +434,11 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                     if CART.search(t):
                         step["cart"] = True
                         on_step(persona["id"], None)
-                        history.append(f"(You clicked '{t}': you chose to buy. Test browsers are often blocked at the cart, so if the cart "
-                                       "looks empty or an error shows after this, that is our test setup, not the business. Don't hold it against them.)")
+                        if can_order:
+                            history.append(f"(You clicked '{t}'. On this store checkout needs no payment: the purchase is done when you place the order.)")
+                        else:
+                            history.append(f"(You clicked '{t}': you chose to buy. Test browsers are often blocked at the cart, so if the cart "
+                                           "looks empty or an error shows after this, that is our test setup, not the business. Don't hold it against them.)")
                     elif pg.url == was and not href:
                         history.append(f"(clicked '{t}': the page stayed the same, maybe a menu opened)")
                 elif s.action == "scroll":
@@ -426,13 +450,53 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
             except Exception:
                 history.append(f"(tried to {s.action} '{s.target}' but it didn't work)")
         b.close()
-    q = DECIDE.format(**{**persona, "memory": persona.get("memory") or "nothing yet", "instructions": instructions(persona)}, world=world or "today, normal times", product=url, history="\n".join(history))
+    carted = next((x["n"] for x in steps if x.get("cart")), 0)
+    did = (f"you placed the order at step {ordered_at}." if ordered_at else
+           f"you could have placed the order here (no payment needed) but did not{f'; you added it to the cart at step {carted}' if carted else ''}." if can_order else
+           f"you clicked to buy at step {carted}; on this site our test browser can't pay, so that is as far as a purchase could go." if carted else
+           "you did not click to buy anything.")
+    q = DECIDE.format(**{**persona, "memory": persona.get("memory") or "nothing yet", "instructions": instructions(persona)}, world=world or "today, normal times", product=url,
+                      history="\n".join(history), did=did)
     try:
         d: Decision = ask(Decision, q)
     except Exception:
         d = ask(Decision, q + "\nFill in every field.")
-    return {"persona": persona["id"], **agent_tags(persona), "steps": steps, "decision": d.model_dump(),
+    why = contradiction(d, steps, can_order)
+    if why:
+        try:
+            d = ask(Decision, q + f"\n\nYour first answer contradicted your own visit: {why}. Read your thoughts above again and decide "
+                                  "what actually follows from them: change the decision, the rating, or both, so they are consistent.")
+        except Exception:
+            pass
+    out = d.model_dump()
+    out["outcome"] = outcome.decide(out, steps, can_order)  # what they did: read by the summary, evals, director and UI
+    out["ordered_step"], out["order_possible"] = ordered_at, can_order
+    if why:
+        out["reconsidered"] = why  # shown in the persona's trace, so a corrected decision is never hidden
+    return {"persona": persona["id"], **agent_tags(persona), "steps": steps, "decision": out,
             "fallbacks": fallbacks["n"], "fallback_reason": fallbacks["why"], "prompts": prompts, "decide_prompt": q}
+
+
+POSITIVE = outcome.POSITIVE
+
+
+def contradiction(d: Decision, steps: list[dict], can_order: bool = False) -> str:
+    """Why a decision doesn't follow from the visit (what they thought, felt and did), or '' if it does."""
+    seen = [s for s in steps if not s.get("blocked")]
+    last = seen[-1] if seen else None
+    carted = any(s.get("cart") for s in steps)
+    ordered = any(s.get("ordered") for s in steps)
+    if ordered and d.decision in ("not buy", "maybe later"):
+        return f"you placed the order, but chose '{d.decision}'"
+    if can_order and not ordered and d.decision in POSITIVE:
+        return f"you chose '{d.decision}' but never placed the order, which needed no payment on this store"
+    if d.decision in POSITIVE and d.rating <= 2:
+        return f"you chose '{d.decision}' but rated it {d.rating}/5"
+    if d.decision in POSITIVE and last and last["feeling"] == "annoyed":
+        return f"you chose '{d.decision}' but your last thought was annoyed: \"{last['thought'][:160]}\""
+    if d.decision not in POSITIVE and carted and d.rating >= 4 and last and last["feeling"] in ("delighted", "interested"):
+        return f"you clicked to buy, ended the visit {last['feeling']} and rated it {d.rating}/5, but chose '{d.decision}'"
+    return ""
 
 
 def agent_tags(a: dict) -> dict:

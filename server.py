@@ -317,13 +317,17 @@ def sim_persona(sim_id: str, pid: str):
                       _s.STEP.split("\nYou are looking at")[0].format(**filled, world=i.get("world") or "today, normal times", context=i.get("context") or "none")) if p.get("kind") != "agent" or True else ""
     decide_prompt = sess.get("decide_prompt") or ""
     if not decide_prompt and sess.get("steps"):
-        hist = "\n".join(f"[{x['url']}] thought: {x['thought']} ({x['feeling']}) → {x['action']} {x['target']}" for x in sess["steps"])
-        decide_prompt = _s.DECIDE.format(**filled, world=i.get("world") or "today, normal times", product=i["url"], history=hist)
+        hist = "\n".join(f"step {x['n']} [{x['url']}] thought: {x['thought']} ({x['feeling']}) → {x['action']} {x['target']}" for x in sess["steps"])
+        decide_prompt = _s.DECIDE.format(**filled, world=i.get("world") or "today, normal times", product=i["url"], history=hist,
+                                         did="(not recorded: this test ran before purchases were tracked)")
     lens = _json.loads(read("lens.json") or "{}")
     social = view.get("social") or {}
+    from b2a import outcome as _o
+    steps = sess.get("steps") or (view.get("live") or {}).get(pid, [])
+    decision = sess.get("decision") or (view.get("decisions") or {}).get(pid)
     return {"persona": p, "persona_file": read(f"personas/{pid}.md"), "cast_prompt": cast_prompt, "prompts_rebuilt": rebuilt,
             "persona_prompt": persona_prompt, "step_prompts": sess.get("prompts") or [], "decide_prompt": decide_prompt,
-            "steps": sess.get("steps") or (view.get("live") or {}).get(pid, []), "decision": sess.get("decision") or (view.get("decisions") or {}).get(pid),
+            "steps": steps, "decision": decision, "outcome": _o.of(decision, steps),  # what they did (b2a/outcome.py)
             "fallbacks": sess.get("fallbacks", 0), "fallback_reason": sess.get("fallback_reason", ""),
             "posts": [x for x in social.get("posts", []) if x.get("author") == pid],
             "changes": [c for c in view.get("persona_changes") or [] if c.get("persona_id") == pid],

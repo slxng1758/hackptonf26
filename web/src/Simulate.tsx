@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { marked } from "marked";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, PANEL } from "./theme";
-import { SiteMap, ThoughtStream, outcome } from "./SiteMap";
+import { SiteMap, ThoughtStream, outcome, outcomeDetail, outcomeColor, OUTCOME_LABEL } from "./SiteMap";
 import { Timeline } from "./Timeline";
 import { Lens } from "./Lens";
 import { PersonaEditor, blankPersona } from "./PersonaEditor";
@@ -11,8 +11,16 @@ import { Accuracy, Learned, WordOfMouth } from "./Extras";
 import type { SimExtras } from "./sim-extras";
 
 export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number }; model?: string; memory?: string; inherited?: boolean; kind?: "agent"; played_by?: string; model_note?: string; instructions?: string; custom?: boolean; why?: string }
-interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; thought: string; feeling: Feeling; action: string; target: string }
-interface Decision { decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string }
+interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; ordered?: boolean; thought: string; feeling: Feeling; action: string; target: string }
+interface Suggestion { change: string; why: string; where: string; impact: "would make me buy" | "nice to have" }
+interface Decision {
+  decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string;
+  // newer fields (older sims don't have them)
+  confidence?: number; first_impression?: string; review?: string; liked?: string[]; disliked?: string[]; would_pay?: string;
+  suggestions?: Suggestion[]; stars_after_use?: number | null; memory_version?: number;
+  deciding_moment?: string; deciding_step?: number; reconsidered?: string;
+  outcome?: "bought" | "bought_unhappy" | "abandoned_cart" | "maybe" | "left"; ordered_step?: number; order_possible?: boolean;
+}
 export interface Sim extends Partial<SimExtras> {
   id: string; input: { url: string; name: string; category: string; context: string; world: string; customers: string; director?: boolean };
   thinking?: ThinkEvent[];
@@ -47,43 +55,6 @@ function PersonaCard({ p, onRemove }: { p: Persona; onRemove?: () => void }) {
   );
 }
 
-function Replay({ sim, p, onClose }: { sim: Sim; p: Persona; onClose: () => void }) {
-  const steps = sim.live[p.id] ?? [];
-  const d = sim.decisions[p.id];
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 p-6 backdrop-blur" onClick={onClose}>
-      <div className={`${PANEL} mx-auto max-w-5xl bg-[var(--card)] p-6`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={64} feeling={d?.feeling ?? "neutral"} />
-            <div><div className="font-serif text-[26px]">{p.name}'s session</div><div className="text-[13px] text-white/50">{p.age} · {p.occupation} · {p.archetype}{p.model ? ` · played by ${p.played_by ? `${p.played_by} (${p.model} unavailable)` : p.model}` : ""} · wants: {p.goal}</div></div></div>
-          <button onClick={onClose} className="text-[22px] text-white/50 hover:text-white">×</button>
-        </div>
-        <ol className="mt-6 space-y-5">
-          {steps.map((s) => (
-            <li key={s.n} className="grid gap-4 md:grid-cols-[360px_1fr]">
-              {s.shot ? <img src={shot(sim.id, s.shot)} alt="" className="w-full rounded-lg border border-white/10" /> : <div className="rounded-lg bg-white/5" />}
-              <div>
-                <div className="font-mono text-[11px] text-white/40">step {s.n} · {s.url.replace(/^https?:\/\//, "")}{s.blocked && <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-white/60">blocked by a bot check · not a customer issue</span>}{s.cart && <span className="ml-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.win }}>buy action</span>}</div>
-                <div className="mt-2 flex items-start gap-3"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={40} feeling={s.feeling} /><p className="rounded-xl rounded-tl-none bg-white/[0.06] px-3 py-2 text-[14px] leading-snug">“{s.thought}”</p></div>
-                <div className="mt-2 font-mono text-[12px]" style={{ color: SHIRT[p.archetype] }}>→ {s.action === "click" ? `clicked “${s.target}”` : s.action === "decide" ? "ready to decide" : s.action}  <span className="text-white/40">· felt {s.feeling}</span></div>
-              </div>
-            </li>
-          ))}
-        </ol>
-        {d && (
-          <div className="mt-6 rounded-xl border p-5" style={{ borderColor: DEC_COLOR[d.decision] ?? C.mid }}>
-            <div className="flex items-baseline justify-between"><span className="font-mono text-[13px] font-semibold uppercase" style={{ color: DEC_COLOR[d.decision] }}>{d.decision} · {d.rating}/5 · {d.feeling}</span></div>
-            <p className="mt-2 font-serif text-[18px]">“{d.quote}”</p>
-            <ul className="mt-3 space-y-1 text-[13px] text-white/70">{d.reasons.map((r, i) => <li key={i}>· {r}</li>)}</ul>
-            <p className="mt-3 text-[13px]"><span className="text-white/45">Would have changed their mind:</span> {d.missing}</p>
-            {sim.memory[p.id] && <p className="mt-3 border-t border-white/10 pt-3 text-[13px] text-white/70"><span style={{ color: C.win }}>What {p.name} learned (kept for next time):</span> {sim.memory[p.id]}</p>}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 const host = (u: string) => u.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
 export function SimView({ id }: { id: string }) {
@@ -99,7 +70,6 @@ export function SimView({ id }: { id: string }) {
     setCast((c) => (c ?? []).some((x) => x.id === p.id) ? (c ?? []).map((x) => (x.id === p.id ? p : x)) : [...(c ?? []), p]);
     setEditing(null);
   };
-  const [open, setOpen] = useState<Persona | null>(null);
   const openPersona = (p: Persona) => { location.hash = `#sim=${id}&p=${p.id}`; };
   const [fix, setFix] = useState("");
   const [tab, setTab] = useState("map");
@@ -278,7 +248,7 @@ export function SimView({ id }: { id: string }) {
             { id: "report", label: "Report", show: !!sim.report },
           ]} />
           {tab === "map" && <>
-            <ThoughtStream sim={sim} />
+            <ThoughtStream sim={sim} onOpen={openPersona} />
             <SiteMap sim={sim} onOpen={openPersona} />
             <p className="mt-3 text-center text-[12px] text-white/35">click anyone to open their full profile: every step, the prompts behind it, their decision and suggestions</p>
           </>}
@@ -343,7 +313,6 @@ export function SimView({ id }: { id: string }) {
           )}
         </>
       )}
-      {open && <Replay sim={sim} p={open} onClose={() => setOpen(null)} />}
     </div>
   );
 }
@@ -440,11 +409,14 @@ function funnel(sim: Sim) {
   const acted = landed.filter((p) => steps(p.id).some((x) => x.cart) || outcome(sim, p.id) === "bought");
   // A one-page store has nothing to click past, so scrolling on or acting counts as engaging. Keeps the funnel monotonic.
   const explored = landed.filter((p) => steps(p.id).length > 1 || acted.includes(p));
+  const ordered = landed.filter((p) => steps(p.id).some((x) => x.ordered));
+  const canOrder = landed.some((p) => sim.decisions[p.id]?.order_possible);
   return [
     { label: "Landed on the site", n: landed.length },
     { label: "Kept looking past the first screen", n: explored.length },
-    { label: "Reached a buy decision (cart, buy, download)", n: acted.length },
-    { label: "Converted", n: bought.length },
+    { label: "Added to cart (or clicked buy)", n: acted.length },
+    ...(canOrder ? [{ label: "Placed the order", n: ordered.length }] : []),
+    { label: canOrder ? "Converted (ordered and happy or not)" : "Converted (decided to buy)", n: bought.length },
   ];
 }
 

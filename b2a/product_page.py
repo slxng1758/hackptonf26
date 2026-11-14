@@ -19,7 +19,7 @@ import re
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -67,7 +67,7 @@ def load(pid: str) -> Product:
 CSS = """*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1d1d1f;background:#fafafa}
 header{background:#fff;border-bottom:1px solid #e5e5e5;padding:14px 32px;display:flex;justify-content:space-between;align-items:center}
 header a{color:#1d1d1f;text-decoration:none;margin-left:20px;font-size:15px}.brand{font-weight:700;font-size:18px;margin:0}
-main{max-width:980px;margin:32px auto;padding:0 24px}.hero{display:grid;grid-template-columns:1fr 1fr;gap:40px;background:#fff;border-radius:16px;padding:32px}
+main{max-width:980px;margin:32px auto;padding:0 24px}table{width:100%;border-collapse:collapse;background:#fff;margin:16px 0}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #e5e5e5}.hero{display:grid;grid-template-columns:1fr 1fr;gap:40px;background:#fff;border-radius:16px;padding:32px}
 .img{background:#f0f0f3;border-radius:12px;min-height:280px;display:flex;align-items:center;justify-content:center;color:#888;font-size:14px;overflow:hidden}
 .img img{width:100%;height:100%;object-fit:cover}h1{font-size:30px;margin:0 0 8px}.price{font-size:24px;font-weight:600;margin:12px 0 20px}
 .btn{display:inline-block;background:#0071e3;color:#fff;padding:14px 28px;border-radius:999px;text-decoration:none;font-size:16px;border:0}
@@ -114,14 +114,39 @@ def render_details(p: Product, pid: str) -> str:
     body = (f"<section><h1>{_e(p.name)}</h1>{_paras(p.description)}"
             + (f"<h2>What's new</h2>{_paras(p.changes)}" if p.changes else "")
             + (f"<h2>Price</h2><p>{_e(p.price)}</p>" if p.price else "")
-            + f"<p><a class='btn' href='/api/products/{pid}/cart'>Add to cart</a></p></section>")
+            + f"<p><a class='btn' href='/api/products/{pid}/cart?add=1'>Add to cart</a></p></section>")
     return _page(p, pid, body, f"{p.name}: details")
 
 
-def render_cart(p: Product, pid: str) -> str:
-    body = (f"<section><h1>Added to cart</h1><p>{_e(p.name)}{f' · {_e(p.price)}' if p.price else ''}</p>"
-            f"<p><a href='/api/products/{pid}/'>Continue shopping</a></p></section>")
+def _line(p: Product) -> str:
+    price = _e(p.price) if p.price else "see price on the details page"
+    return (f"<table><tr><th>Item</th><th>Qty</th><th>Price</th></tr><tr><td>{_e(p.name)}</td><td>1</td><td>{price}</td></tr>"
+            f"<tr><td colspan='2'><b>Total</b></td><td><b>{price}</b></td></tr></table>")
+
+
+def render_cart(p: Product, pid: str, has_item: bool = True) -> str:
+    """A working cart (the customer's choice is kept in a cookie), so simulated customers can finish a purchase instead of
+    hitting a dead end that they then blame on the business."""
+    base = f"/api/products/{pid}"
+    if not has_item:
+        body = f"<section><h1>Your cart is empty</h1><p><a class='btn' href='{base}/details'>See the product</a></p></section>"
+    else:
+        body = (f"<section><h1>Your cart</h1>{_line(p)}"
+                f"<p><a class='btn' href='{base}/checkout'>Checkout</a> <a href='{base}/'>Continue shopping</a></p></section>")
     return _page(p, pid, body, "Cart")
+
+
+def render_checkout(p: Product, pid: str) -> str:
+    base = f"/api/products/{pid}"
+    body = (f"<section><h1>Checkout</h1>{_line(p)}<p>This is a test store: placing the order takes no payment and no personal details.</p>"
+            f"<p><a class='btn' href='{base}/order'>Place order</a> <a href='{base}/cart'>Back to cart</a></p></section>")
+    return _page(p, pid, body, "Checkout")
+
+
+def render_order(p: Product, pid: str) -> str:
+    body = (f"<section><h1>Order placed</h1><p>Thank you! Your order for {_e(p.name)}{f' ({_e(p.price)})' if p.price else ''} is confirmed.</p>"
+            f"<p><a href='/api/products/{pid}/'>Back to the shop</a></p></section>")
+    return _page(p, pid, body, "Order placed")
 
 
 # ---------------------------------------------------------------- API
@@ -152,5 +177,20 @@ def details(pid: str):
 
 
 @router.get("/{pid}/cart", response_class=HTMLResponse)
-def cart(pid: str):
-    return render_cart(_get(pid), pid)
+def cart(pid: str, request: Request, add: int = 0):
+    p = _get(pid)
+    has = bool(add) or request.cookies.get(f"cart_{pid}") == "1"
+    r = HTMLResponse(render_cart(p, pid, has))
+    if add:
+        r.set_cookie(f"cart_{pid}", "1", path=f"/api/products/{pid}")
+    return r
+
+
+@router.get("/{pid}/checkout", response_class=HTMLResponse)
+def checkout(pid: str):
+    return render_checkout(_get(pid), pid)
+
+
+@router.get("/{pid}/order", response_class=HTMLResponse)
+def order(pid: str):
+    return render_order(_get(pid), pid)
