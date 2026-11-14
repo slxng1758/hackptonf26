@@ -143,7 +143,10 @@ class BrowserSession:
             targets, text = {}, ""
         title = self.pg.title()
         return {"url": self.pg.url, "title": title, "targets": targets, "text": text, "jpg": jpg,
-                "blocked": session.is_bot_wall(text, title), "order_done": bool(outcome.ORDER_DONE.search(text[:2000]))}
+                "blocked": session.is_bot_wall(text, title), "order_done": outcome.order_confirmed(text, outcome.order_possible(self.pg.url))}  # only our store takes orders
+
+    def disabled(self, t: str) -> bool:
+        return session.is_disabled(self.pg, t)
 
     def click(self, t: str, targets: dict) -> dict:
         was = self.pg.url
@@ -293,7 +296,17 @@ class Visit:
                 if not self.browser.do(self.browser.search, target):
                     notes.append("(There is no search box on this page.)")
         except Exception as e:
-            notes.append(f"(tried to {action} '{target}' but it didn't work: {type(e).__name__})")
+            greyed = False
+            if action == "click" and target:
+                try:
+                    greyed = self.browser.do(self.browser.disabled, target.strip(), timeout=10)
+                except Exception:
+                    pass
+            if greyed:  # configurators (Apple: storage unlocks after color) grey out a choice until the one before it is made
+                notes.append(f"(tried to click '{target}' but it is greyed out: on this page it unlocks only after an earlier choice "
+                             "is made. Pick the first unanswered option above it (for example a model or color) first.)")
+            else:
+                notes.append(f"(tried to {action} '{target}' but it didn't work: {type(e).__name__})")
         self.notes += notes
         return self.page_text(self._look(), notes)
 
