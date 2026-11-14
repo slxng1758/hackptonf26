@@ -29,6 +29,7 @@ export function WordOfMouth({ social, personas }: { social: Social; personas: Pe
       <Eyebrow n="04" label="word of mouth" color={C.mid} />
       <h2 className="text-center font-serif text-[30px]">What spread by word of mouth</h2>
       <p className="mx-auto mt-2 max-w-2xl text-center text-[15px] text-white/60">{social.summary.replace(/\*\*/g, "")}</p>
+      {social.network_summary && <p className="mx-auto mt-2 max-w-2xl text-center text-[13.5px] text-white/50"><b className="text-white/70">Network analysis:</b> {social.network_summary.replace(/\*\*/g, "")}</p>}
       <div className="mt-6 grid gap-5 md:grid-cols-[1fr_400px]">
         <div className={`${PANEL} max-h-[420px] space-y-3 overflow-y-auto p-4`}>
           {social.posts.map((post) => {

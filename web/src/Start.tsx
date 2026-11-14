@@ -61,7 +61,7 @@ function Scene() {
   );
 }
 
-export interface StartInput { description: string; name: string; price: string; context: string; world: string }
+export interface StartInput { url?: string; description: string; name: string; price: string; context: string; world: string; director?: boolean }
 
 const EXAMPLE = {
   name: "Oat milk latte",
@@ -77,10 +77,15 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
   const [more, setMore] = useState(false);
   const [context, setContext] = useState("");
   const [world, setWorld] = useState(WORLDS[0]);
-  const ready = description.trim().length >= 10;
+  const [mode, setMode] = useState<"site" | "describe">("site");
+  const [url, setUrl] = useState("");
+  const [director, setDirector] = useState(false);
+  const ready = mode === "site" ? url.trim().length > 3 : description.trim().length >= 10;
+  const extra = () => ({ context, world: world === WORLDS[0] ? "" : world, director });
   const go = (b?: { description: string; name: string; price: string }) => {
+    if (!b && mode === "site") { if (url.trim().length > 3) onGo({ url: url.trim(), description: "", name: "", price: "", ...extra() }); return; }
     const x = b ?? { description, name, price };
-    if (x.description.trim().length >= 10) onGo({ ...x, description: x.description.trim(), context, world: world === WORLDS[0] ? "" : world });
+    if (x.description.trim().length >= 10) onGo({ ...x, description: x.description.trim(), ...extra() });
   };
 
   return (
@@ -90,10 +95,24 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
       <div className="flex -space-x-3">
         {CROWD.map((c, i) => <div key={i} className="rounded-full ring-4 ring-[var(--bg)]" style={{ animationDelay: `${i * 0.2}s` }}><Avatar seed={c.seed} archetype={c.a} age={c.age} feeling={c.f} size={64} busy /></div>)}
       </div>
-      <h1 className="mt-8 font-serif text-[56px] leading-[1.02]">Watch your customers<br /><span className="shimmer">try your product.</span></h1>
-      <p className="mt-3 text-[16px] text-white/55">Describe it. AI customers look it over, think out loud, and decide if they'd buy.</p>
+      <h1 className="mt-8 font-serif text-[56px] leading-[1.02]">Can AI agents buy from you?<br /><span className="shimmer">Would your customers?</span></h1>
+      <p className="mt-3 text-[16px] text-white/55">AI shopping agents and AI customers try your real site or product, decide, and tell you what to fix.</p>
 
-      <form onSubmit={(e) => { e.preventDefault(); go(); }} className="mt-10 w-full space-y-2 rounded-2xl border border-white/15 bg-white/[0.04] p-3 text-left focus-within:border-[#3ff0d4]">
+      <div className="mt-8 flex rounded-xl border border-white/15 p-1 text-[13px] font-semibold">
+        {([["site", "Test a website"], ["describe", "Describe a product"]] as const).map(([m, l]) => (
+          <button key={m} onClick={() => setMode(m)} className={`rounded-lg px-4 py-1.5 ${mode === m ? "bg-white/10" : "text-white/50 hover:text-white"}`}>{l}</button>
+        ))}
+      </div>
+
+      {mode === "site" && (
+        <form onSubmit={(e) => { e.preventDefault(); go(); }} className="mt-4 flex w-full gap-2 rounded-2xl border border-white/15 bg-white/[0.04] p-2 focus-within:border-[#3ff0d4]">
+          <input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} placeholder="yourbusiness.com"
+            className="min-w-0 flex-1 bg-transparent px-4 py-3 text-[18px] outline-none placeholder:text-white/30" />
+          <button disabled={!ready} className="rounded-xl px-7 text-[16px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 30px ${C.win}55` }}>Test</button>
+        </form>
+      )}
+
+      {mode === "describe" && <form onSubmit={(e) => { e.preventDefault(); go(); }} className="mt-4 w-full space-y-2 rounded-2xl border border-white/15 bg-white/[0.04] p-3 text-left focus-within:border-[#3ff0d4]">
         <textarea autoFocus value={description} onChange={(e) => setDescription(e.target.value)} rows={5}
           placeholder="Describe your product the way you'd explain it to a customer: what it is, what's in it, options, price, how to get it."
           className="w-full resize-none bg-transparent px-3 py-2 text-[16px] leading-relaxed outline-none placeholder:text-white/30" />
@@ -104,11 +123,19 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
             className="w-36 rounded-xl border border-white/10 bg-transparent px-3 py-2 text-[14px] outline-none placeholder:text-white/30 focus:border-white/30" />
           <button disabled={!ready} className="rounded-xl px-7 text-[16px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 30px ${C.win}55` }}>Go</button>
         </div>
-      </form>
+      </form>}
+
+      <label className="mt-3 flex cursor-pointer items-center gap-2 text-[13px] text-white/60">
+        <input type="checkbox" checked={director} onChange={(e) => setDirector(e.target.checked)} className="h-4 w-4 accent-[#6d4aff]" />
+        Director agent plans and explains every step (Deep Agents, slower)
+      </label>
 
       <div className="mt-4 flex flex-wrap justify-center gap-2 text-[13px]">
         <span className="text-white/35">try:</span>
-        <button onClick={() => { setDescription(EXAMPLE.description); setName(EXAMPLE.name); setPrice(EXAMPLE.price); go(EXAMPLE); }}
+        <button onClick={() => { setMode("site"); setUrl("melomed.io"); onGo({ url: "melomed.io", description: "", name: "", price: "", ...extra() }); }}
+          className="text-white/60 underline decoration-white/20 hover:text-white">melomed.io</button>
+        <span className="text-white/20">·</span>
+        <button onClick={() => { setMode("describe"); setDescription(EXAMPLE.description); setName(EXAMPLE.name); setPrice(EXAMPLE.price); go(EXAMPLE); }}
           className="text-white/60 underline decoration-white/20 hover:text-white">an oat milk latte</button>
         <span className="text-white/20">·</span>
         <button onClick={() => setMore(!more)} className="text-white/45 hover:text-white">{more ? "− less" : "+ what changed?"}</button>

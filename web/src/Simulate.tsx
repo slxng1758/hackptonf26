@@ -4,6 +4,7 @@ import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, PANEL } from "./theme";
 import { SiteMap, ThoughtStream, outcome } from "./SiteMap";
 import { Timeline } from "./Timeline";
+import { Lens } from "./Lens";
 import { Accuracy, Learned, WordOfMouth } from "./Extras";
 import type { SimExtras } from "./sim-extras";
 
@@ -16,6 +17,7 @@ export interface Sim extends Partial<SimExtras> {
   personas: Persona[]; live: Record<string, SimStep[]>; decisions: Record<string, Decision>;
   summary: { agents?: { persona: string; model: string; bought: boolean; decision: string; missing: string; quote: string }[]; buy_rate: number; by_model?: Record<string, { bought: number; of: number }>; rating: number; decisions: Record<string, number>; missing: { persona: string; text: string }[] } | null;
   report: string; steps: { t: string; kind: string; note: string }[]; memory: Record<string, string>; round?: number; parent?: string | null;
+  director?: { t: string; tool: string; reason: string; result: string }[]; todos?: { content: string; status: string }[];
   actions?: { fix: string; why: string; audience: "people" | "AI agents" | "both"; who: string[]; page: string; effort: "small" | "medium" | "big" }[];
 }
 
@@ -219,7 +221,9 @@ export function SimView({ id }: { id: string }) {
             { id: "map", label: "Sessions", show: true },
             { id: "fixes", label: "Recommendations", show: !!sim.actions?.length },
             { id: "agents", label: "Agent checkout", show: sim.status === "done" && !!sim.summary?.agents?.length },
+            { id: "lens", label: "Friction hotspots", show: sim.status === "done" },
             { id: "talk", label: "Word of mouth", show: !!x.social },
+            { id: "director", label: "Director", show: !!sim.director?.length },
             { id: "voices", label: "Objections", show: sim.status === "done" && unconvinced.length > 0 },
             { id: "learned", label: "Panel memory", show: !!x.persona_changes?.length },
             { id: "accuracy", label: "Accuracy", show: !!x.evals?.length },
@@ -234,6 +238,8 @@ export function SimView({ id }: { id: string }) {
           {tab === "fixes" && sim.actions && sim.actions.length > 0 && <DoThese actions={sim.actions} />}
           {tab === "agents" && sim.summary?.agents && sim.summary.agents.length > 0 && <AgentsPanel sim={sim} />}
 
+          {tab === "lens" && <Lens simId={sim.id} />}
+          {tab === "director" && sim.director && <DirectorLog sim={sim} />}
           {tab === "talk" && x.social && <WordOfMouth social={x.social} personas={sim.personas} />}
           {tab === "accuracy" && x.evals && x.evals.length > 0 && <Accuracy evals={x.evals} />}
           {tab === "learned" && x.persona_changes && x.persona_changes.length > 0 && <Learned changes={x.persona_changes} personas={sim.personas} />}
@@ -481,5 +487,34 @@ function Tabs({ tab, setTab, items }: { tab: string; setTab: (t: string) => void
           style={tab === t.id ? { background: C.brain, color: "#fff" } : undefined}>{t.label}</button>
       ))}
     </nav>
+  );
+}
+
+// Jayden's director agent (b2a/director.py): its live plan and the reason behind every decision it made.
+function DirectorLog({ sim }: { sim: Sim }) {
+  return (
+    <section className="mx-auto mt-10 grid max-w-6xl gap-5 lg:grid-cols-[320px_1fr]">
+      <div className={`${PANEL} h-fit p-5`}>
+        <div className="text-[13px] font-semibold">The director's plan</div>
+        <ol className="mt-3 space-y-2">
+          {(sim.todos ?? []).map((t, i) => (
+            <li key={i} className="flex gap-2 text-[13.5px]"><span className="mt-0.5 font-mono text-[12px]" style={{ color: t.status === "completed" ? C.win : t.status === "in_progress" ? C.mid : "rgba(127,127,127,.7)" }}>{t.status === "completed" ? "✓" : t.status === "in_progress" ? "●" : "○"}</span><span className={t.status === "completed" ? "text-white/55 line-through" : ""}>{t.content}</span></li>
+          ))}
+          {!sim.todos?.length && <li className="text-[13px] text-white/50">No plan recorded.</li>}
+        </ol>
+      </div>
+      <div className={`${PANEL} p-5`}>
+        <div className="text-[13px] font-semibold">Every decision, with its reason</div>
+        <ol className="mt-3 space-y-3">
+          {(sim.director ?? []).map((d, i) => (
+            <li key={i} className="border-l-2 pl-3" style={{ borderColor: C.brain }}>
+              <div className="font-mono text-[11px] text-white/45">{d.t} · {d.tool}</div>
+              <div className="text-[14px]">{d.reason}</div>
+              {d.result && <div className="mt-0.5 line-clamp-2 text-[12.5px] text-white/50">{d.result}</div>}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
   );
 }
