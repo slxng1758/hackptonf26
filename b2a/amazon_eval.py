@@ -98,9 +98,12 @@ def themes_of(reviews: list[dict], title: str) -> list[dict]:
 def teach_text(reviews: list[dict], title: str) -> str:
     sample = random.Random(3).sample(reviews, min(150, len(reviews)))
     text = "\n".join(f"- {r['rating']:.0f}★ {r['title']}: {r['text'][:300]}" for r in sample)
-    return fast().invoke(f"Real Amazon reviews of '{title}':\n{text}\n\nIn 4-6 short sentences, tell a group of shoppers what real buyers "
+    out = fast().invoke(f"Real Amazon reviews of '{title}':\n{text}\n\nIn 4-6 short sentences, tell a group of shoppers what real buyers "
                          f"of this product actually did and felt: who bought it, what pleased them, what disappointed them, and "
-                         f"roughly how satisfied they were overall. No star numbers. Under 900 characters.").content[:1900]
+                         f"roughly how satisfied they were overall. No star numbers. Under 900 characters.").content
+    if not isinstance(out, str):  # the model may return reasoning blocks alongside the text
+        out = " ".join(b.get("text", "") for b in out if isinstance(b, dict) and b.get("type") == "text")
+    return out.strip()[:1900]
 
 
 class Match(BaseModel):
