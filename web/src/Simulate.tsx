@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { marked } from "marked";
+import { pretty, isOwnPage } from "./pretty";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, PANEL } from "./theme";
 import { SiteMap, ThoughtStream, outcome, outcomeDetail, outcomeColor, OUTCOME_LABEL } from "./SiteMap";
@@ -82,7 +83,7 @@ export function SimView({ id }: { id: string }) {
 
   useEffect(() => {
     let alive = true;
-    const tick = () => fetch(`/api/sims/${id}`).then((r) => r.json()).then((s: Sim) => { if (alive && !s.id) setMissing(true); if (alive && s.id) { setSim(s); if (s.status === "awaiting_approval" && !cast) setCast(s.personas); } }).catch(() => {});
+    const tick = () => fetch(`/api/sims/${id}`).then((r) => r.json()).then((s: Sim) => { if (alive && !s.id) { setMissing(true); alive = false; } if (alive && s.id) { setSim(s); if (s.status === "awaiting_approval" && !cast) setCast(s.personas); } }).catch(() => {});
     tick();
     const building = !sim || ["casting", "briefing", "resuming"].includes(sim.status);  // stream the agent's reasoning smoothly
     const t = setInterval(() => { if (!sim || !["done", "error"].includes(sim.status)) tick(); }, building ? 600 : 1500);
@@ -130,7 +131,7 @@ export function SimView({ id }: { id: string }) {
     <div className="mx-auto max-w-[1400px] px-6 pb-16">
       {/* one headline that always says what is happening */}
       <div className="pt-6 text-center">
-        <div className="font-mono text-[12px] text-white/40">{sim.round ? <span className="mr-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.brain }}>round {sim.round + 1} · they remember round {sim.round}</span> : null}{/\/api\/product\//.test(sim.input.url) ? "Amazon listing, rebuilt from the public Amazon Reviews 2023 dataset" : host(sim.input.url)}{sim.input.context ? ` · ${sim.input.context}` : ""}{sim.input.world ? ` · ${sim.input.world}` : ""}</div>
+        <div className="font-mono text-[12px] text-white/40">{sim.round ? <span className="mr-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.brain }}>round {sim.round + 1} · they remember round {sim.round}</span> : null}{/\/api\/product\//.test(sim.input.url) ? "Amazon listing, rebuilt from the public Amazon Reviews 2023 dataset" : isOwnPage(sim.input.url) ? "Generated product page" : host(sim.input.url)}{sim.input.context ? ` · ${sim.input.context}` : ""}{sim.input.world ? ` · ${sim.input.world}` : ""}</div>
         <h1 className="mt-2 font-serif text-[40px] leading-tight">
           {["casting", "briefing"].includes(sim.status) && <>Casting customers for {name}<span className="animate-pulse">…</span></>}
           {sim.status === "awaiting_approval" && <>Review your test panel</>}
@@ -148,7 +149,7 @@ export function SimView({ id }: { id: string }) {
         )}
         {sim.summary?.by_model && Object.keys(sim.summary.by_model).length > 1 && (
           <div className="mt-3 flex justify-center gap-2 font-mono text-[12px]">
-            {Object.entries(sim.summary.by_model).map(([m, v]) => <span key={m} className="rounded-full border border-white/15 px-3 py-1 text-white/70">{m} customers: <b className="text-white">{v.bought}/{v.of}</b> bought</span>)}
+            {Object.entries(humans.reduce((acc, p) => { const m = p.played_by || p.model || "Claude"; const v = (acc[m] ??= { bought: 0, of: 0 }); if (sim.decisions[p.id]) { v.of++; if (outcome(sim, p.id) === "bought") v.bought++; } return acc; }, {} as Record<string, { bought: number; of: number }>)).filter(([, v]) => v.of).map(([m, v]) => <span key={m} className="rounded-full border border-white/15 px-3 py-1 text-white/70">{m} customers: <b className="text-white">{v.bought}/{v.of}</b> bought</span>)}
           </div>
         )}
         {sim.error && <p className="mt-2 text-[13px]" style={{ color: C.loss }}>{sim.error}</p>}
@@ -308,7 +309,7 @@ export function SimView({ id }: { id: string }) {
 
           {tab === "report" && sim.report && (
             <div className="mt-8 text-center">
-              {<article className={`${PANEL} report mx-auto mt-4 max-w-4xl p-8 text-left`} dangerouslySetInnerHTML={{ __html: marked.parse(sim.report, { async: false }) as string }} />}
+              {<article className={`${PANEL} report mx-auto mt-4 max-w-4xl p-8 text-left`} dangerouslySetInnerHTML={{ __html: marked.parse(pretty(sim.report), { async: false }) as string }} />}
             </div>
           )}
         </>
@@ -353,15 +354,15 @@ function AgentsPanel({ sim }: { sim: Sim }) {
       <h2 className="text-center font-serif text-[30px]">Can AI agents check out?</h2>
       <p className="mt-2 text-center text-[14px] text-white/55">Shoppers now send ChatGPT, Gemini and Claude to buy for them. Agents need facts: exact product, price, terms, a path to checkout.</p>
       <div className="mt-6 grid gap-3 md:grid-cols-3">
-        {rows.map((r) => { const p = sim.personas.find((x) => x.id === r.persona)!; return (
+        {rows.map((r) => { const p = sim.personas.find((x) => x.id === r.persona)!; const ok = outcome(sim, r.persona) === "bought"; return (
           <div key={r.persona} onClick={() => { location.hash = `#sim=${sim.id}&p=${r.persona}`; }} className={`${PANEL} cursor-pointer p-4 transition hover:-translate-y-0.5`}>
             <div className="flex items-center gap-3">
               <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} size={48} feeling={sim.decisions[p.id]?.feeling ?? "neutral"} />
               <div><div className="text-[15px] font-semibold">{p.name}</div>
-                <div className="font-mono text-[12px] font-semibold" style={{ color: r.bought ? C.win : C.loss }}>{r.bought ? "✓ could buy" : "✗ couldn't buy"}</div></div>
+                <div className="font-mono text-[12px] font-semibold" style={{ color: ok ? C.win : C.loss }}>{ok ? "✓ could buy" : "✗ couldn't buy"}</div></div>
             </div>
             <p className="mt-3 text-[13px] text-white/75">“{r.quote}”</p>
-            {!r.bought && r.missing && <p className="mt-2 text-[12px] text-white/50"><span className="text-white/70">Needed:</span> {r.missing}</p>}
+            {!ok && r.missing && <p className="mt-2 text-[12px] text-white/50"><span className="text-white/70">Needed:</span> {r.missing}</p>}
           </div>
         ); })}
       </div>

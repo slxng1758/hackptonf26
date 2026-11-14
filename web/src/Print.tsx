@@ -6,10 +6,13 @@ import { Avatar } from "./Avatar";
 import { C } from "./theme";
 import type { Sim } from "./Simulate";
 import { outcome } from "./SiteMap";
+import { pretty } from "./pretty";
 
 export function PrintReport({ id }: { id: string }) {
   const [sim, setSim] = useState<Sim | null>(null);
-  useEffect(() => { fetch(`/api/sims/${id}`).then((r) => r.json()).then(setSim); }, [id]);
+  const [missing, setMissing] = useState(false);
+  useEffect(() => { fetch(`/api/sims/${id}`).then((r) => r.json()).then((s) => { if (s && s.id) setSim(s); else setMissing(true); }).catch(() => setMissing(true)); }, [id]);
+  if (missing) return <p className="p-10 text-center">This test isn't here anymore.</p>;
   if (!sim) return null;
   const people = sim.personas.filter((p) => p.kind !== "agent" && sim.decisions[p.id]);
   const agents = sim.personas.filter((p) => p.kind === "agent" && sim.decisions[p.id]);
@@ -89,7 +92,7 @@ export function PrintReport({ id }: { id: string }) {
 
       {sim.report && <>
         <h2 className="mt-8 break-before-page text-[17px] font-bold">Analyst report</h2>
-        <article className="report print-report mt-2" dangerouslySetInnerHTML={{ __html: marked.parse(sim.report, { async: false }) as string }} />
+        <article className="report print-report mt-2" dangerouslySetInnerHTML={{ __html: marked.parse(pretty(sim.report), { async: false }) as string }} />
       </>}
 
       <p className="mt-10 border-t border-[#e4e7ec] pt-3 text-[11px] text-[#667085]">Simulated customers browsing the real website: a fast first pass before testing with real people. Personas played by {[...new Set(sim.personas.map((p) => p.model).filter(Boolean))].join(", ")}.</p>

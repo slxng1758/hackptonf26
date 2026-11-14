@@ -1,6 +1,7 @@
 // One customer, all the way down: who they are and the prompt that created them, every step they took (screenshot,
 // thought, the exact prompt), their decision and review, their suggestions, what they posted and what they learned.
 import { useEffect, useState } from "react";
+import { pretty, isOwnPage } from "./pretty";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, PANEL } from "./theme";
 import type { Persona } from "./Simulate";
@@ -145,8 +146,8 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
                   <ol className="mt-3 space-y-3">
                     {dec.suggestions.map((s, i) => (
                       <li key={i} className="flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[12px] font-bold text-[#ffffff]" style={{ background: s.impact === "would make me buy" ? C.win : C.brain }}>{i + 1}</span>
-                        <div><div className="text-[14.5px] font-semibold">{s.change} <span className="ml-1 rounded border border-white/15 px-1.5 text-[10.5px] font-normal text-white/60">{s.impact}</span></div>
-                          <div className="text-[13px] text-white/65">{s.why}{s.where && <span className="text-white/45"> · {s.where}</span>}</div></div></li>
+                        <div><div className="text-[14.5px] font-semibold">{pretty(s.change)} <span className="ml-1 rounded border border-white/15 px-1.5 text-[10.5px] font-normal text-white/60">{s.impact}</span></div>
+                          <div className="break-words text-[13px] text-white/65">{pretty(s.why)}{s.where && <span className="text-white/45"> · {pretty(s.where)}</span>}</div></div></li>
                     ))}
                   </ol>
                 </div>
@@ -168,7 +169,7 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
                   </div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-white/50">
-                      <span>step {s.n}</span><span className="truncate">{s.url.replace(/^https?:\/\//, "")}</span>
+                      <span>step {s.n}</span><span className="truncate">{isOwnPage(s.url) ? "the product page" : s.url.replace(/^https?:\/\//, "")}</span>
                       {s.blocked && <span className="rounded-full bg-white/10 px-2 text-white/70">bot check · not counted</span>}
                       {s.cart && <span className="rounded-full px-2 font-semibold" style={{ background: `${C.win}33`, color: C.win }}>clicked “{s.target}”</span>}
                       {s.ordered && <span className="rounded-full px-2 font-semibold text-black" style={{ background: C.win }}>order placed</span>}

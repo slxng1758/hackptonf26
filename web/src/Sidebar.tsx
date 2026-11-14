@@ -22,7 +22,7 @@ export function Sidebar({ current, view, go }: { current?: string; view: string;
   for (const r of rows) {
     const key = label(r);
     const s = sites.get(key);
-    const live = ["browsing", "talking", "analyzing"].includes(r.status);
+    const live = ["casting", "briefing", "awaiting_approval", "browsing", "talking", "analyzing"].includes(r.status);
     if (!s) sites.set(key, { latest: r, tests: 1, running: live });
     else { s.tests++; if (s.latest.status !== "done" && r.status === "done") s.latest = r; }
   }
