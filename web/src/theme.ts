@@ -7,8 +7,8 @@ const THEMES: Record<ThemeName, { bg: string; card: string; ink: string; win: st
   dark: { bg: "#08080d", card: "#11131c", ink: "#f2efe8", win: "#3ff0d4", loss: "#ff3355", mid: "#ffb547", brain: "#d16bff", avatarBg: "#141623" },
 };
 function read(): ThemeName {
-  try { const t = localStorage.getItem("theme"); if (t && t in THEMES) return t as ThemeName; } catch { /* storage unavailable */ }
-  return "storefront";
+  try { const t = localStorage.getItem("theme"); if (t === "dark" || t === "storefront") return t; } catch { /* storage unavailable */ }
+  return "dark";
 }
 export const THEME = read();
 const T = THEMES[THEME];
@@ -22,9 +22,8 @@ export function setTheme(t: ThemeName) {
   location.reload();
 }
 export const THEME_LIST: { id: ThemeName; label: string; swatch: string[] }[] = [
-  { id: "storefront", label: "Storefront", swatch: ["#b8f5e4", "#e7d4ff", "#ffe58a"] },
-  { id: "paper", label: "Paper", swatch: ["#f6f1e7", "#1c1a17", "#0f9e86"] },
   { id: "dark", label: "Dark", swatch: ["#08080d", "#3ff0d4", "#d16bff"] },
+  { id: "storefront", label: "Light", swatch: ["#b8f5e4", "#e7d4ff", "#ffe58a"] },
 ];
 
 export const C = {
