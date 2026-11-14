@@ -118,3 +118,11 @@ def sim_approve(sim_id: str, body: Approve):
     if not sim.approve(sim_id, body.personas):
         raise HTTPException(409, "This simulation isn't waiting for approval.")
     return {"ok": True}
+
+
+@app.get("/api/fixtures/extras")
+def extras_fixture():
+    """Sarah's example data for evals / persona_changes / social, so the UI can be built before the backend exists."""
+    import json
+    from pathlib import Path
+    return json.loads((Path(__file__).parent / "fixtures" / "sim_extras_example.json").read_text())

@@ -7,12 +7,12 @@ import { SimView } from "./Simulate";
 type View = { kind: "start" } | { kind: "job"; id: string } | { kind: "sim"; id: string };
 
 export function App() {
-  const [view, setView] = useState<View>(() => (location.hash.startsWith("#job=") ? { kind: "job", id: location.hash.slice(5) } : location.hash.startsWith("#sim=") ? { kind: "sim", id: location.hash.slice(5) } : { kind: "start" }));
+  const [view, setView] = useState<View>(() => (location.hash.startsWith("#job=") ? { kind: "job", id: location.hash.slice(5).split("&")[0] } : location.hash.startsWith("#sim=") ? { kind: "sim", id: location.hash.slice(5).split("&")[0] } : { kind: "start" }));
   const [job, setJob] = useState<Job | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    const on = () => { const h = location.hash; if (h.startsWith("#sim=")) setView({ kind: "sim", id: h.slice(5) }); else if (h.startsWith("#job=")) setView({ kind: "job", id: h.slice(5) }); };
+    const on = () => { const h = location.hash; if (h.startsWith("#sim=")) setView({ kind: "sim", id: h.slice(5).split("&")[0] }); else if (h.startsWith("#job=")) setView({ kind: "job", id: h.slice(5).split("&")[0] }); };
     addEventListener("hashchange", on);
     return () => removeEventListener("hashchange", on);
   }, []);

@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, PANEL } from "./theme";
 import { SiteMap, outcome } from "./SiteMap";
+import { Accuracy, Learned, WordOfMouth } from "./Extras";
+import type { SimExtras } from "./sim-extras";
 
 export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number } }
 interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; thought: string; feeling: Feeling; action: string; target: string }
 interface Decision { decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string }
-export interface Sim {
+export interface Sim extends Partial<SimExtras> {
   id: string; input: { url: string; name: string; category: string; context: string; world: string; customers: string };
   status: "casting" | "awaiting_approval" | "browsing" | "analyzing" | "done" | "error"; error: string | null;
   personas: Persona[]; live: Record<string, SimStep[]>; decisions: Record<string, Decision>;
@@ -80,6 +82,8 @@ export function SimView({ id }: { id: string }) {
   const [cast, setCast] = useState<Persona[] | null>(null);
   const [open, setOpen] = useState<Persona | null>(null);
   const [report, setReport] = useState(false);
+  const [demo, setDemo] = useState<SimExtras | null>(null);
+  useEffect(() => { if (location.hash.includes("demo")) fetch("/api/fixtures/extras").then((r) => r.json()).then(setDemo).catch(() => {}); }, []);
 
   useEffect(() => {
     let alive = true;
@@ -146,6 +150,12 @@ export function SimView({ id }: { id: string }) {
         <>
           <SiteMap sim={sim} onOpen={setOpen} />
           <p className="mt-3 text-center text-[12px] text-white/35">click anyone to replay their visit · hover a page to see it</p>
+
+          {(() => { const x = { ...demo, ...Object.fromEntries(Object.entries({ social: sim.social, evals: sim.evals, persona_changes: sim.persona_changes }).filter(([, v]) => v && (!Array.isArray(v) || v.length))) } as Partial<SimExtras>; return <>
+            {x.social && <WordOfMouth social={x.social} personas={sim.personas} />}
+            {x.evals && x.evals.length > 0 && <Accuracy evals={x.evals} />}
+            {x.persona_changes && x.persona_changes.length > 0 && <Learned changes={x.persona_changes} personas={sim.personas} />}
+          </>; })()}
 
           {sim.status === "done" && unconvinced.length > 0 && (
             <section className="mx-auto mt-10 max-w-3xl">
