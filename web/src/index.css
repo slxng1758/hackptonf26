@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f4efe4;
+  --color-paper2: #ebe3d2;
+  --color-card: #fbf8f1;
+  --color-ink: #2b2118;
+  --color-ink2: #6b5d4f;
+  --color-ink3: #a39482;
+  --color-seal: #a33a2a;
+  --color-belief: #2f6f6a;
+  --color-practice: #b5852a;
+  --color-myth: #7a4a8c;
+  --font-serif: Fraunces, Georgia, serif;
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html, body, #root { min-height: 100%; }
+body { margin: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); }
+.rule-line { background-image: linear-gradient(transparent 27px, rgb(43 33 24 / .06) 28px); background-size: 100% 28px; }
+input[type=range] { accent-color: var(--color-seal); }
+
+/* the saying assembles word by word; words that changed since last generation glow */
+.saying span { display: inline-block; opacity: 0; animation: rise .55s ease forwards; }
+.saying span.fresh { text-shadow: 0 0 24px currentColor; }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .saying span { animation: none; opacity: 1; } }
+
+.toast { animation: toast-in .5s cubic-bezier(.2,.9,.3,1.3); }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px) scale(.94); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+.epi-range { accent-color: #ff3355; }
+
+.masthead { font-family: "UnifrakturMaguntia", Fraunces, serif; }
+.paper-in { animation: paper-in .6s cubic-bezier(.2,.8,.2,1); transform-origin: top center; }
+@keyframes paper-in { from { opacity: 0; transform: perspective(1200px) rotateX(-8deg) translateY(-14px); } to { opacity: 1; transform: none; } }
