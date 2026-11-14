@@ -5,7 +5,7 @@ import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C } from "./theme";
 import type { Persona, Sim } from "./Simulate";
 
-const COL = 250, ROW = 170, NODE_W = 190, NODE_H = 120, PAD = 40;
+const COL = 250, ROW = 170, NODE_W = 190, NODE_H = 120, EXIT_H = 165, PAD = 40;
 const BOUGHT = new Set(["buy", "would recommend"]);
 const MAYBE = new Set(["maybe later"]);
 
@@ -51,7 +51,7 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
     for (const n of nodes.values()) (cols[n.depth] ??= []).push(n.key);
     cols.forEach((keys, d) => keys.forEach((k, i) => { const n = nodes.get(k)!; n.x = PAD + d * COL; n.y = PAD + i * ROW; }));
     const exitX = PAD + Math.max(cols.length, 1) * COL + 30;
-    const height = Math.max(PAD * 2 + Math.max(...cols.map((c) => c.length), 3) * ROW, 3 * ROW + PAD * 2);
+    const height = Math.max(PAD * 2 + Math.max(...cols.map((c) => c.length), 3) * ROW, 3 * (EXIT_H + 20) + PAD * 2);
     return { nodes, edges, width: exitX + NODE_W + PAD, height, exitX };
   }, [sim, rootHost]);
 
@@ -60,8 +60,9 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
     { id: "maybe", label: "Maybe later", color: C.mid },
     { id: "left", label: "Left", color: C.loss },
   ];
-  const exitY = (i: number) => PAD + i * ((height - PAD * 2 - NODE_H) / 2);
+  const exitY = (i: number) => PAD + i * Math.max(EXIT_H + 20, (height - PAD * 2 - EXIT_H) / 2);
 
+  const maxVisits = Math.max(1, ...[...nodes.values()].map((n) => n.visits));
   // where each avatar stands right now
   const crowd = new Map<string, number>();
   const spots = sim.personas.map((p) => {
@@ -89,23 +90,32 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
           })}
         </svg>
 
-        {[...nodes.values()].map((n) => (
+        {[...nodes.values()].map((n) => { const here = crowd.get(n.key) ?? 0; const heat = Math.min(n.visits / maxVisits, 1); return (
           <div key={n.key} onMouseEnter={() => setHover(n.key)} onMouseLeave={() => setHover(null)}
-            className="absolute overflow-hidden rounded-2xl border bg-[#11131c] shadow-xl transition-transform hover:z-20 hover:scale-[1.6]"
-            style={{ left: n.x, top: n.y, width: NODE_W, height: NODE_H, borderColor: n.blocked ? "rgba(255,255,255,0.15)" : hover === n.key ? C.win : "rgba(255,255,255,0.14)", transformOrigin: "top left" }}>
+            className={`absolute overflow-hidden rounded-2xl border bg-[#11131c] transition-all duration-700 hover:z-20 hover:scale-[1.6] ${here ? "heat" : ""}`}
+            style={{ left: n.x, top: n.y, width: NODE_W, height: NODE_H, transformOrigin: "top left",
+              borderColor: n.blocked ? "rgba(255,255,255,0.15)" : hover === n.key || here ? C.win : `rgba(63,240,212,${0.12 + heat * 0.4})`,
+              boxShadow: here ? `0 0 ${18 + here * 16}px ${C.win}${here > 2 ? "aa" : "66"}, inset 0 0 30px ${C.win}22` : `0 10px 30px rgba(0,0,0,.5), 0 0 ${heat * 24}px ${C.win}33` }}>
             {n.shot ? <img src={`/api/shots/${sim.id}/shots/${n.shot}`} alt="" className="h-full w-full object-cover object-top opacity-60" /> : <div className="h-full w-full bg-white/[0.03]" />}
             <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/90 to-transparent px-2.5 pb-4 pt-1.5">
               <span className="truncate text-[12px] font-semibold">{n.label}</span>
-              {n.blocked ? <span className="font-mono text-[9px] text-white/50">bot check</span> : n.visits > 0 && <span className="font-mono text-[10px] text-white/50">{n.visits}×</span>}
+              {n.blocked ? <span className="font-mono text-[9px] text-white/50">bot check</span> : here > 0 ? <span className="rounded-full px-1.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.win }}>{here} here</span> : n.visits > 0 && <span className="font-mono text-[10px] text-white/50">{n.visits}×</span>}
             </div>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1" style={{ background: `linear-gradient(90deg, ${C.win}, ${C.brain})`, opacity: heat }} />
           </div>
-        ))}
+        ); })}
 
         {exits.map((e, i) => {
           const n = sim.personas.filter((p) => outcome(sim, p.id) === e.id).length;
           return (
-            <div key={e.id} className="absolute rounded-2xl border-2 border-dashed" style={{ left: exitX, top: exitY(i), width: NODE_W, height: NODE_H, borderColor: `${e.color}66`, background: `${e.color}0d` }}>
-              <div className="flex items-center justify-between px-3 pt-2"><span className="text-[13px] font-semibold" style={{ color: e.color }}>{e.label}</span><span className="font-mono text-[18px] font-semibold" style={{ color: e.color }}>{n}</span></div>
+            <div key={e.id} className={`absolute rounded-2xl border-2 ${e.id === "bought" && n ? "border-solid" : "border-dashed"}`} style={{ left: exitX, top: exitY(i), width: NODE_W, height: EXIT_H, borderColor: `${e.color}${n ? "cc" : "55"}`, background: `${e.color}${n ? "1a" : "0a"}`, boxShadow: e.id === "bought" && n ? `0 0 ${20 + n * 12}px ${e.color}66` : "none" }}>
+              <div className="flex items-center justify-between px-3 pt-2"><span className="text-[13px] font-semibold" style={{ color: e.color }}>{e.label}</span><span key={n} className="cell-in font-mono text-[22px] font-semibold" style={{ color: e.color }}>{n}</span></div>
+              {e.id === "bought" && n > 0 && (
+                <div key={`burst${n}`} className="pointer-events-none absolute right-6 top-4">
+                  {Array.from({ length: 12 }, (_, k) => <span key={k} className="spark" style={{ ["--a" as string]: `${k * 30}deg`, background: k % 2 ? C.win : C.mid }} />)}
+                  <span className="plus-one font-mono text-[14px] font-bold" style={{ color: C.win }}>+1 🛒</span>
+                </div>
+              )}
             </div>
           );
         })}
@@ -126,6 +136,35 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
           </button>
         ))}
       </div>
+      <Ticker sim={sim} />
+    </div>
+  );
+}
+
+// What everyone is thinking right now, as a tape along the bottom of the map.
+function Ticker({ sim }: { sim: Sim }) {
+  const items = sim.personas.flatMap((p) => {
+    const d = sim.decisions[p.id], steps = sim.live[p.id] ?? [];
+    const last = steps[steps.length - 1];
+    const text = d ? d.quote : last?.thought;
+    if (!text) return [];
+    const o = outcome(sim, p.id);
+    return [{ p, text, color: o === "bought" ? C.win : o === "maybe" ? C.mid : o === "left" ? C.loss : "rgba(255,255,255,0.75)", feeling: (d?.feeling ?? last?.feeling ?? "neutral") as Feeling }];
+  });
+  if (!items.length) return null;
+  const row = items.map((it, i) => (
+    <span key={i} className="mx-6 inline-flex items-center gap-2 align-middle">
+      <Avatar seed={it.p.avatar.seed} archetype={it.p.archetype} age={it.p.age} size={22} feeling={it.feeling} />
+      <b className="text-[12px]" style={{ color: SHIRT[it.p.archetype] }}>{it.p.name}</b>
+      <span className="text-[12px]" style={{ color: it.color }}>{it.text.length > 120 ? it.text.slice(0, 120) + "…" : it.text}</span>
+    </span>
+  ));
+  return (
+    <div className="relative overflow-hidden border-t border-white/10 bg-black/40 py-2">
+      <div className="absolute left-0 top-0 z-10 flex h-full items-center gap-1.5 bg-gradient-to-r from-[#08080d] via-[#08080d] to-transparent pl-3 pr-8 font-mono text-[10px] font-semibold tracking-widest" style={{ color: sim.status === "browsing" ? C.loss : "rgba(255,255,255,0.4)" }}>
+        {sim.status === "browsing" && <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: C.loss }} />}{sim.status === "browsing" ? "LIVE" : "HEARD"}
+      </div>
+      <div className="ticker whitespace-nowrap" style={{ animationDuration: `${Math.max(30, items.length * 9)}s` }}>{row}{row}</div>
     </div>
   );
 }

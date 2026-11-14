@@ -23,3 +23,15 @@ textarea, input, select { color-scheme: dark; }
 
 .flow { animation: flow 1.2s linear infinite; }
 @keyframes flow { to { stroke-dashoffset: -12; } }
+
+.heat { animation: heat 2.2s ease-in-out infinite; }
+@keyframes heat { 50% { filter: brightness(1.18) saturate(1.2); } }
+.spark { position: absolute; width: 6px; height: 6px; border-radius: 9999px; opacity: 0; animation: spark .9s cubic-bezier(.1,.8,.3,1) forwards; }
+@keyframes spark { 0% { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1); } 100% { opacity: 0; transform: rotate(var(--a)) translateX(46px) scale(.3); } }
+.plus-one { position: absolute; left: -10px; top: -6px; white-space: nowrap; animation: plus 1.6s ease-out forwards; }
+@keyframes plus { 0% { opacity: 0; transform: translateY(6px) scale(.8); } 20% { opacity: 1; transform: translateY(0) scale(1.15); } 100% { opacity: 0; transform: translateY(-34px) scale(1); } }
+.ticker { display: inline-block; animation: tick linear infinite; }
+.ticker:hover { animation-play-state: paused; }
+@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.shimmer { background: linear-gradient(90deg, #3ff0d4, #d16bff, #ffb547, #3ff0d4); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 6s linear infinite; }
+@keyframes shimmer { to { background-position: 300% 0; } }
