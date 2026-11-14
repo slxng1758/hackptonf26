@@ -36,7 +36,7 @@ def fast():
     """Cheap model for persona work."""
     _anthropic_key()
     from langchain_anthropic import ChatAnthropic
-    return ChatAnthropic(model=os.getenv("FAST_MODEL", "claude-haiku-5-5"), max_tokens=2048, timeout=60, max_retries=2)
+    return ChatAnthropic(model=os.getenv("FAST_MODEL", "claude-haiku-5-5"), max_tokens=4096, timeout=60, max_retries=2)
 
 
 @lru_cache

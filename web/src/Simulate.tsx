@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, PANEL } from "./theme";
+import { SiteMap } from "./SiteMap";
 
 export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number } }
-interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; thought: string; feeling: Feeling; action: string; target: string }
+interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; thought: string; feeling: Feeling; action: string; target: string }
 interface Decision { decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string }
 export interface Sim {
   id: string; input: { url: string; name: string; category: string; context: string; world: string; customers: string };
@@ -35,35 +36,6 @@ function PersonaCard({ p, onRemove }: { p: Persona; onRemove?: () => void }) {
   );
 }
 
-function Tile({ sim, p, onOpen }: { sim: Sim; p: Persona; onOpen: () => void }) {
-  const steps = sim.live[p.id] ?? [];
-  const last = steps[steps.length - 1];
-  const d = sim.decisions[p.id];
-  const feeling: Feeling = d?.feeling ?? last?.feeling ?? "neutral";
-  return (
-    <button onClick={onOpen} className={`${PANEL} group relative overflow-hidden text-left transition hover:border-white/30`}>
-      <div className="relative aspect-[16/10] bg-black/40">
-        {last?.shot ? <img src={shot(sim.id, last.shot)} alt="" className="h-full w-full object-cover object-top opacity-90" /> :
-          <div className="grid h-full place-items-center font-mono text-[11px] text-white/30">{sim.status === "browsing" ? "opening the site…" : "waiting"}</div>}
-        {last && !d && <div className="absolute left-2 top-2 max-w-[85%] truncate rounded-md bg-black/70 px-2 py-0.5 font-mono text-[10px] text-white/70">{last.url.replace(/^https?:\/\//, "")}</div>}
-        {d && <div className="absolute right-2 top-2 rounded-full px-2.5 py-1 font-mono text-[11px] font-semibold text-black" style={{ background: DEC_COLOR[d.decision] ?? C.mid }}>{d.decision} · {d.rating}/5</div>}
-        <div className="absolute bottom-2 left-2 flex items-end gap-2">
-          <div className="rounded-full ring-2" style={{ boxShadow: `0 0 0 2px ${SHIRT[p.archetype]}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={58} feeling={feeling} busy={sim.status === "browsing" && !d} /></div>
-          {(d || last) && (
-            <div className="bubble mb-6 max-w-[230px] rounded-xl rounded-bl-none bg-white px-3 py-2 text-[12px] leading-snug text-black shadow-lg">
-              {d ? d.quote : last!.thought}
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center justify-between px-3 py-2">
-        <span className="text-[13px]"><b>{p.name}</b> <span className="text-white/45">· {p.archetype}</span></span>
-        <span className="flex gap-1">{Array.from({ length: 7 }, (_, k) => <span key={k} className="h-1.5 w-1.5 rounded-full" style={{ background: k < steps.length ? SHIRT[p.archetype] : "rgba(255,255,255,0.12)" }} />)}</span>
-      </div>
-    </button>
-  );
-}
-
 function Replay({ sim, p, onClose }: { sim: Sim; p: Persona; onClose: () => void }) {
   const steps = sim.live[p.id] ?? [];
   const d = sim.decisions[p.id];
@@ -80,7 +52,7 @@ function Replay({ sim, p, onClose }: { sim: Sim; p: Persona; onClose: () => void
             <li key={s.n} className="grid gap-4 md:grid-cols-[360px_1fr]">
               {s.shot ? <img src={shot(sim.id, s.shot)} alt="" className="w-full rounded-lg border border-white/10" /> : <div className="rounded-lg bg-white/5" />}
               <div>
-                <div className="font-mono text-[11px] text-white/40">step {s.n} · {s.url.replace(/^https?:\/\//, "")}{s.blocked && <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-white/60">blocked by a bot check · not a customer issue</span>}</div>
+                <div className="font-mono text-[11px] text-white/40">step {s.n} · {s.url.replace(/^https?:\/\//, "")}{s.blocked && <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-white/60">blocked by a bot check · not a customer issue</span>}{s.cart && <span className="ml-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.win }}>🛒 chose to buy</span>}</div>
                 <div className="mt-2 flex items-start gap-3"><Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={40} feeling={s.feeling} /><p className="rounded-xl rounded-tl-none bg-white/[0.06] px-3 py-2 text-[14px] leading-snug">“{s.thought}”</p></div>
                 <div className="mt-2 font-mono text-[12px]" style={{ color: SHIRT[p.archetype] }}>→ {s.action === "click" ? `clicked “${s.target}”` : s.action === "decide" ? "ready to decide" : s.action}  <span className="text-white/40">· felt {s.feeling}</span></div>
               </div>
@@ -173,8 +145,8 @@ export function SimView({ id }: { id: string }) {
 
       {live && (
         <>
-          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{sim.personas.map((p) => <Tile key={p.id} sim={sim} p={p} onOpen={() => setOpen(p)} />)}</div>
-          <p className="mt-3 text-center text-[12px] text-white/35">click anyone to replay their visit</p>
+          <SiteMap sim={sim} onOpen={setOpen} />
+          <p className="mt-3 text-center text-[12px] text-white/35">click anyone to replay their visit · hover a page to see it</p>
 
           {sim.status === "done" && unconvinced.length > 0 && (
             <section className="mx-auto mt-10 max-w-3xl">
