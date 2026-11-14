@@ -91,6 +91,24 @@ def is_bot_wall(text: str, title: str) -> bool:
     return any(k in t for k in BOT_WALL)
 
 
+class Site(BaseModel):
+    name: str = Field(description="the business or product name")
+    category: str = Field(description="what it sells and where, one short line")
+    customers: str = Field(description="who its real customers are, 2-3 sentences, with rough shares")
+
+
+def read_site(url: str) -> dict:
+    """From just a URL: what the business is and who buys from it."""
+    from .scan import fetch_text
+    try:
+        text = fetch_text(url, 6000)
+    except Exception:
+        text = ""
+    s: Site = fast().with_structured_output(Site, method="json_schema").invoke(
+        f"Website: {url}\nPage text:\n{text or '(could not load; infer from the address)'}\n\nWhat is this business and who are its customers?")
+    return s.model_dump()
+
+
 FEELINGS = ["delighted", "interested", "neutral", "confused", "annoyed", "skeptical"]
 
 

@@ -90,6 +90,11 @@ class SimJob:
     def cast(self):
         try:
             i = self.inp
+            if not i.get("name") or not i.get("customers"):
+                site = session.read_site(i["url"])
+                for k in ("name", "category", "customers"):
+                    i[k] = i.get(k) or site[k]
+                self.log("read", f"{i['name']}: {i['category']}")
             self.personas = session.cast(i["name"], i["category"], i.get("context", ""), i.get("world", ""), i["customers"])
             self.log("cast", " · ".join(f"{p['name']} ({p['archetype']}, {round(p['share'] * 100)}%)" for p in self.personas))
             self.status = "awaiting_approval"

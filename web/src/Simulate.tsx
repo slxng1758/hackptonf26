@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
-import { C, LABEL, PANEL, pct } from "./theme";
+import { C, PANEL } from "./theme";
 
 export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number } }
 interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; thought: string; feeling: Feeling; action: string; target: string }
@@ -13,46 +13,8 @@ export interface Sim {
   report: string; steps: { t: string; kind: string; note: string }[]; memory: Record<string, string>;
 }
 
-export const WORLDS = ["Today, normal times", "During COVID-19 (spring 2020)", "A recession: budgets are tight", "Holiday season rush", "Back-to-school week"];
 const DEC_COLOR: Record<string, string> = { buy: C.win, "would recommend": C.win, "maybe later": C.mid, "not buy": C.loss, "would complain": C.loss };
 const shot = (simId: string, f: string | null) => (f ? `/api/shots/${simId}/shots/${f}` : "");
-
-// ---------- setup: what changed + which world ----------
-export function SimSetup({ draft, onStart, onBack }: { draft: { name: string; category: string; customers: string; url?: string }; onStart: (b: Sim["input"]) => void; onBack: () => void }) {
-  const [url, setUrl] = useState(draft.url ?? "");
-  const [context, setContext] = useState("");
-  const [world, setWorld] = useState(WORLDS[0]);
-  const [custom, setCustom] = useState("");
-  return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
-      <button onClick={onBack} className="font-mono text-[11px] text-white/45 hover:text-white">← back</button>
-      <div className={`${LABEL} mt-4`}>simulate your customers</div>
-      <h1 className="mt-1 font-serif text-[40px] leading-tight">{draft.name}</h1>
-      <p className="mt-2 text-[15px] text-white/55">Your customers become personas. Each one opens your real website in a browser, clicks around, thinks out loud, and decides. You approve who's in the room first.</p>
-
-      <label className="mt-8 block"><span className={LABEL}>the page they'll land on</span>
-        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://yourbusiness.com" className="mt-2 w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 font-mono text-[14px] outline-none focus:border-[#3ff0d4]" />
-      </label>
-
-      <label className="mt-6 block"><span className={LABEL}>what changed? (optional)</span>
-        <textarea rows={2} value={context} onChange={(e) => setContext(e.target.value)} placeholder="e.g. we just added online ordering for catering, or we raised prices 10%"
-          className="mt-2 w-full rounded-xl border border-white/15 bg-white/[0.04] p-3 text-[14px] outline-none focus:border-[#3ff0d4]" />
-      </label>
-
-      <div className="mt-6"><span className={LABEL}>the world they live in</span>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {WORLDS.map((w) => <button key={w} onClick={() => setWorld(w)} className={`rounded-full border px-3 py-1.5 text-[13px] ${world === w ? "border-[#3ff0d4] text-[#3ff0d4]" : "border-white/15 text-white/65 hover:text-white"}`}>{w}</button>)}
-          <input value={custom} onChange={(e) => { setCustom(e.target.value); if (e.target.value) setWorld(e.target.value); }} placeholder="or your own…" className="rounded-full border border-dashed border-white/20 bg-transparent px-3 py-1.5 text-[13px] outline-none" />
-        </div>
-      </div>
-
-      <button disabled={url.trim().length < 4} onClick={() => onStart({ url: url.trim(), name: draft.name, category: draft.category, customers: draft.customers, context, world })}
-        className="mt-10 w-full rounded-xl py-4 text-[16px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 40px ${C.win}55` }}>
-        Meet your customers →
-      </button>
-    </div>
-  );
-}
 
 // ---------- the simulation itself ----------
 function PersonaCard({ p, onRemove }: { p: Persona; onRemove?: () => void }) {
@@ -139,6 +101,9 @@ function Replay({ sim, p, onClose }: { sim: Sim; p: Persona; onClose: () => void
   );
 }
 
+const BUY = new Set(["buy", "would recommend"]);
+const host = (u: string) => u.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+
 export function SimView({ id }: { id: string }) {
   const [sim, setSim] = useState<Sim | null>(null);
   const [cast, setCast] = useState<Persona[] | null>(null);
@@ -160,58 +125,76 @@ export function SimView({ id }: { id: string }) {
     setSim({ ...sim!, status: "browsing", personas: cast ?? sim!.personas });
   }
 
-  const s = sim.summary;
+  const name = sim.input.name || host(sim.input.url);
+  const decided = Object.keys(sim.decisions).length;
+  const buyers = Object.values(sim.decisions).filter((d) => BUY.has(d.decision)).length;
+  const live = ["browsing", "analyzing", "done"].includes(sim.status);
+  const unconvinced = sim.personas.filter((p) => sim.decisions[p.id] && !BUY.has(sim.decisions[p.id].decision) && sim.decisions[p.id].missing);
+
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className={LABEL}>{sim.input.world || "today"}{sim.input.context ? ` · changed: ${sim.input.context}` : ""}</div>
-          <h1 className="mt-1 font-serif text-[34px] leading-tight">{sim.input.name}</h1>
-          <a href={sim.input.url} target="_blank" rel="noreferrer" className="font-mono text-[12px] text-white/45 hover:text-white">{sim.input.url}</a>
-        </div>
-        <span className="rounded-full border px-3 py-1 font-mono text-[11px]" style={{ borderColor: sim.status === "done" ? C.win : sim.status === "error" ? C.loss : C.mid, color: sim.status === "done" ? C.win : sim.status === "error" ? C.loss : C.mid }}>
-          {{ casting: "● meeting your customers", awaiting_approval: "waiting for you", browsing: "● customers are browsing your site", analyzing: "● agent analyzing and evolving personas", done: "done", error: "error" }[sim.status]}
-        </span>
+    <div className="mx-auto max-w-[1400px] px-6 pb-16">
+      {/* one headline that always says what is happening */}
+      <div className="pt-6 text-center">
+        <div className="font-mono text-[12px] text-white/40">{host(sim.input.url)}{sim.input.context ? ` · ${sim.input.context}` : ""}{sim.input.world ? ` · ${sim.input.world}` : ""}</div>
+        <h1 className="mt-2 font-serif text-[40px] leading-tight">
+          {sim.status === "casting" && <>Reading {name}<span className="animate-pulse">…</span></>}
+          {sim.status === "awaiting_approval" && <>Meet your customers</>}
+          {sim.status === "browsing" && <>{decided} of {sim.personas.length} have decided<span className="animate-pulse">…</span></>}
+          {sim.status === "analyzing" && <><span style={{ color: buyers ? C.win : C.loss }}>{buyers} of {decided}</span> would buy · <span className="text-white/50">writing up why<span className="animate-pulse">…</span></span></>}
+          {sim.status === "done" && <><span style={{ color: buyers / Math.max(decided, 1) >= 0.5 ? C.win : buyers ? C.mid : C.loss }}>{buyers} of {decided}</span> customers would buy from {name}</>}
+          {sim.status === "error" && <span style={{ color: C.loss }}>Something broke</span>}
+        </h1>
+        {sim.error && <p className="mt-2 text-[13px]" style={{ color: C.loss }}>{sim.error}</p>}
       </div>
-      {sim.error && <p className="mt-3 text-[13px]" style={{ color: C.loss }}>{sim.error}</p>}
 
-      {sim.status === "casting" && <div className={`${PANEL} mt-6 grid h-64 place-items-center font-mono text-white/45`}>casting customers from your market…</div>}
-
-      {sim.status === "awaiting_approval" && cast && (
-        <div className="mt-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[15px] text-white/70">These are the customers who'll test your site. Remove anyone who doesn't fit, then let them in.</p>
-            <button disabled={!cast.length} onClick={approve} className="rounded-xl px-6 py-3 font-semibold text-black" style={{ background: C.win, boxShadow: `0 0 30px ${C.win}55` }}>Approve and let them in →</button>
-          </div>
-          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cast.map((p) => <PersonaCard key={p.id} p={p} onRemove={() => setCast(cast.filter((x) => x.id !== p.id))} />)}</div>
+      {sim.status === "casting" && (
+        <div className="mt-12 flex justify-center gap-5">
+          {[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-20 w-20 animate-pulse rounded-full bg-white/[0.06]" style={{ animationDelay: `${i * 0.15}s` }} />)}
         </div>
       )}
 
-      {["browsing", "analyzing", "done"].includes(sim.status) && (
-        <>
-          {s && (
-            <div className="mt-6 grid gap-4 md:grid-cols-4">
-              <div className={`${PANEL} p-5`}><div className={LABEL}>would buy</div><div className="mt-2 font-mono text-[44px] font-semibold" style={{ color: s.buy_rate >= 0.5 ? C.win : s.buy_rate >= 0.25 ? C.mid : C.loss }}>{pct(s.buy_rate)}</div><div className="text-[12px] text-white/45">weighted by your customer mix</div></div>
-              <div className={`${PANEL} p-5`}><div className={LABEL}>average rating</div><div className="mt-2 font-mono text-[44px] font-semibold">{s.rating.toFixed(1)}<span className="text-[20px] text-white/40">/5</span></div></div>
-              <div className={`${PANEL} p-5 md:col-span-2`}><div className={LABEL}>what they decided</div>
-                <div className="mt-3 flex flex-wrap gap-2">{Object.entries(s.decisions).map(([k, v]) => <span key={k} className="rounded-full px-3 py-1 font-mono text-[12px] font-semibold text-black" style={{ background: DEC_COLOR[k] ?? C.mid }}>{v} × {k}</span>)}</div>
+      {sim.status === "awaiting_approval" && cast && (
+        <div className="mt-10 text-center">
+          <div className="flex flex-wrap justify-center gap-6">
+            {cast.map((p, i) => (
+              <div key={p.id} className="rise group relative w-[150px]" style={{ animationDelay: `${i * 0.08}s` }}>
+                <button onClick={() => setCast(cast.filter((x) => x.id !== p.id))} className="absolute right-3 top-0 z-10 hidden h-6 w-6 place-items-center rounded-full bg-white/15 text-white/70 hover:bg-[#ff3355] hover:text-white group-hover:grid" aria-label={`remove ${p.name}`}>×</button>
+                <div className="mx-auto w-fit rounded-full" style={{ boxShadow: `0 0 0 3px ${SHIRT[p.archetype]}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={96} /></div>
+                <div className="mt-3 text-[15px] font-semibold">{p.name}, {p.age}</div>
+                <div className="font-mono text-[11px]" style={{ color: SHIRT[p.archetype] }}>{p.archetype}</div>
+                <p className="mt-1 text-[12px] leading-snug text-white/50">{p.goal}</p>
               </div>
-            </div>
-          )}
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{sim.personas.map((p) => <Tile key={p.id} sim={sim} p={p} onOpen={() => setOpen(p)} />)}</div>
-          {s && s.missing.length > 0 && (
-            <section className={`${PANEL} mt-6 p-5`}>
-              <div className={LABEL}>what would have changed their minds</div>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {s.missing.map((m) => { const p = sim.personas.find((x) => x.id === m.persona)!; return (
-                  <div key={m.persona} className="flex items-start gap-3 rounded-xl bg-white/[0.03] p-3"><Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={36} feeling={sim.decisions[p.id]?.feeling ?? "neutral"} /><p className="text-[13px] text-white/80"><b>{p.name}:</b> {m.text}</p></div>
-                ); })}
+            ))}
+          </div>
+          <button disabled={!cast.length} onClick={approve} className="mt-10 rounded-2xl px-10 py-4 text-[17px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 40px ${C.win}66` }}>Let them in →</button>
+          <p className="mt-3 text-[12px] text-white/35">hover anyone to remove them</p>
+        </div>
+      )}
+
+      {live && (
+        <>
+          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{sim.personas.map((p) => <Tile key={p.id} sim={sim} p={p} onOpen={() => setOpen(p)} />)}</div>
+          <p className="mt-3 text-center text-[12px] text-white/35">click anyone to replay their visit</p>
+
+          {sim.status === "done" && unconvinced.length > 0 && (
+            <section className="mx-auto mt-10 max-w-3xl">
+              <h2 className="text-center font-serif text-[26px]">What would win the rest over</h2>
+              <div className="mt-5 space-y-3">
+                {unconvinced.map((p) => (
+                  <div key={p.id} className={`${PANEL} flex items-center gap-4 p-4`}>
+                    <Avatar seed={p.avatar.seed} archetype={p.archetype} age={p.age} size={48} feeling={sim.decisions[p.id].feeling} />
+                    <p className="text-[15px] leading-snug text-white/85"><b>{p.name}:</b> {sim.decisions[p.id].missing}</p>
+                  </div>
+                ))}
               </div>
             </section>
           )}
+
           {sim.report && (
-            <div className="mt-6"><button onClick={() => setReport(!report)} className="rounded-full border border-white/15 px-4 py-1.5 font-mono text-[11px] text-white/60 hover:text-white">{report ? "hide" : "read"} the agent's report</button>
-              {report && <pre className={`${PANEL} mt-3 whitespace-pre-wrap p-6 font-serif text-[15px] leading-relaxed text-white/85`}>{sim.report}</pre>}</div>
+            <div className="mt-8 text-center">
+              <button onClick={() => setReport(!report)} className="text-[13px] text-white/45 underline decoration-white/20 hover:text-white">{report ? "hide" : "read"} the full report</button>
+              {report && <pre className={`${PANEL} mx-auto mt-4 max-w-3xl whitespace-pre-wrap p-6 text-left font-serif text-[15px] leading-relaxed text-white/85`}>{sim.report}</pre>}
+            </div>
           )}
         </>
       )}

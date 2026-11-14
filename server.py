@@ -81,9 +81,9 @@ app.mount("/api/shots", StaticFiles(directory=str(sim.SIMS)), name="shots")
 
 class SimIn(BaseModel):
     url: str = Field(min_length=4, max_length=500)
-    name: str = Field(min_length=1, max_length=120)
-    category: str = Field(min_length=1, max_length=200)
-    customers: str = Field(min_length=3, max_length=20000)
+    name: str = Field("", max_length=120)
+    category: str = Field("", max_length=200)
+    customers: str = Field("", max_length=20000)
     context: str = Field("", max_length=1000, description="what changed about the product")
     world: str = Field("", max_length=300, description="the world the customers live in")
 
