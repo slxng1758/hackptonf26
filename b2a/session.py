@@ -185,6 +185,21 @@ def click_text(pg, t: str):
     raise last
 
 
+DISABLED_JS = """t => { t = t.toLowerCase();
+  const hit = [...document.querySelectorAll('label, button, [role=radio], [role=option], a')].filter(e => (e.innerText || '').toLowerCase().includes(t));
+  return hit.some(e => { const i = e.control || e.querySelector('input') || (e.htmlFor && document.getElementById(e.htmlFor));
+    return e.disabled || e.getAttribute('aria-disabled') === 'true' || (i && i.disabled); }); }"""
+
+
+def is_disabled(pg, t: str) -> bool:
+    """Is the option with this text greyed out? Configurators (Apple, car and laptop builders) unlock a choice only after
+    the one before it, e.g. storage after color. Without saying so, a customer clicks the dead option again and again."""
+    try:
+        return bool(pg.evaluate(DISABLED_JS, t))
+    except Exception:
+        return False
+
+
 def is_bot_wall(text: str, title: str) -> bool:
     t = (text[:1500] + " " + title).lower()
     return any(k in t for k in BOT_WALL)
@@ -395,7 +410,7 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                 except Exception:
                     pass
                 continue
-            just_ordered = not ordered_at and bool(outcome.ORDER_DONE.search(text[:2000]))
+            just_ordered = not ordered_at and outcome.order_confirmed(text, can_order)
             if just_ordered:
                 ordered_at = n
                 history.append(f"(step {n}: the confirmation page says your order went through. You placed the order: you bought it.)")
@@ -448,7 +463,11 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                     if not pg.url.startswith("http"):  # went back past the landing page
                         pg.goto(url, timeout=30000, wait_until="domcontentloaded")
             except Exception:
-                history.append(f"(tried to {s.action} '{s.target}' but it didn't work)")
+                if s.action == "click" and s.target and is_disabled(pg, s.target.strip()):
+                    history.append(f"(tried to click '{s.target}' but it is greyed out: on this page it unlocks only after an earlier "
+                                   "choice is made. Pick the first unanswered option above it (for example a model or color) first.)")
+                else:
+                    history.append(f"(tried to {s.action} '{s.target}' but it didn't work)")
         b.close()
     carted = next((x["n"] for x in steps if x.get("cart")), 0)
     did = (f"you placed the order at step {ordered_at}." if ordered_at else

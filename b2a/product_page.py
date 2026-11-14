@@ -104,7 +104,7 @@ def render_index(p: Product, pid: str) -> str:
     feats = "".join(f"<li>{_e(f)}</li>" for f in p.features)
     body = (f"<div class='hero'><div class='img'>{img}</div><div><h1>{_e(p.name)}</h1><p>{_e(_summary(p))}</p>{new}"
             + (f"<div class='price'>{_e(p.price)}</div>" if p.price else "<div class='price'></div>")
-            + f"<a class='btn' href='/api/products/{pid}/cart'>Add to cart</a>"
+            + f"<a class='btn' href='/api/products/{pid}/cart?add=1'>Add to cart</a>"
             f"<p><a href='/api/products/{pid}/details'>See full details</a></p></div></div>"
             + (f"<section><h2>Features</h2><ul>{feats}</ul></section>" if feats else ""))
     return _page(p, pid, body, p.name)

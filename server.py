@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from b2a import agent, personas, scan as scanner, sim
 from b2a.models import shoppers
@@ -120,7 +120,8 @@ def _name_from(description: str) -> str:
     """Name for a described product when the owner gave none: its first sentence if short, else the first few words."""
     import re
     first = re.split(r"(?<=[.!?:])\s|\n", description.strip(), maxsplit=1)[0].strip(" .!?:-#*")
-    return first if len(first) <= 60 else " ".join(first.split()[:6])
+    name = first if len(first) <= 60 else " ".join(first.split()[:6])
+    return name or "Your product"  # e.g. a description that is only punctuation
 
 
 @app.post("/api/sims")
@@ -236,7 +237,11 @@ def sim_rerun(sim_id: str, body: Rerun | None = None):
 def sim_add_eval(sim_id: str, body: dict):
     """Attach an accuracy score (b2a/contract.py EvalScore)."""
     from b2a.contract import EvalScore
-    if not sim.add_eval(sim_id, EvalScore(**body).model_dump()):
+    try:
+        data = EvalScore(**body).model_dump()
+    except ValidationError as e:
+        raise HTTPException(422, str(e)[:500])
+    if not sim.add_eval(sim_id, data):
         raise HTTPException(404, "no such simulation")
     return {"ok": True}
 
@@ -245,7 +250,11 @@ def sim_add_eval(sim_id: str, body: dict):
 def sim_set_social(sim_id: str, body: dict):
     """Attach the social layer (b2a/contract.py Social)."""
     from b2a.contract import Social
-    if not sim.set_social(sim_id, Social(**body).model_dump()):
+    try:
+        data = Social(**body).model_dump()
+    except ValidationError as e:
+        raise HTTPException(422, str(e)[:500])
+    if not sim.set_social(sim_id, data):
         raise HTTPException(404, "no such simulation")
     return {"ok": True}
 

@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 
 OUTCOMES = ("bought", "bought_unhappy", "abandoned_cart", "maybe", "left")
-SCORE = {"bought": 1.0, "bought_unhappy": 1.0, "abandoned_cart": 0.0, "maybe": 0.3, "left": 0.0}  # how much counts as buying
+SCORE = {"bought": 1.0, "bought_unhappy": 1.0, "abandoned_cart": 0.3, "maybe": 0.3, "left": 0.0}  # how much counts as buying
 POSITIVE = {"buy", "would recommend"}
 
 # the page you see after a real order went through
@@ -26,6 +26,12 @@ ORDER_DONE = re.compile(r"order (placed|confirmed|complete|received)|thank you f
 def order_possible(url: str) -> bool:
     """Can a test customer actually place an order here? Only on our own generated store (no payment step)."""
     return "/api/products/" in (url or "")
+
+
+def order_confirmed(text: str, can_order: bool) -> bool:
+    """Did this page confirm a placed order? Only on our own store: on real sites, shipping text such as
+    "order placed before noon ships today" also matches, and our test customers never pay there."""
+    return can_order and bool(ORDER_DONE.search(text[:2000]))
 
 
 def decide(decision: dict, steps: list[dict], can_order: bool) -> str:
