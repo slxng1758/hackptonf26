@@ -145,6 +145,10 @@ def sim_start(body: SimIn):
     if len(url) < 4 and (m := re.search(r"https?://[^\s)>\]]+", desc)):
         # a link pasted into the description is the product's website
         url, desc = m.group(0).rstrip(".,;"), (desc[:m.start()] + desc[m.end():]).strip()
+    if len(url) < 4 and len(desc) >= 10:
+        # no website given: search the web for the described product and use the top product page.
+        # Nothing found (or no key) → the generated page below.
+        url = scanner.find_product_url(desc)
     if len(url) >= 4:
         # a real website: customers browse it. A description (if any) is context for casting and the report.
         if not url.startswith("http"):

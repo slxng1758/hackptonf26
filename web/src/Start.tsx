@@ -125,7 +125,7 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
         <textarea autoFocus value={description} onChange={(e) => setDescription(e.target.value)} rows={5}
           placeholder="Describe your product the way you'd explain it to a customer: what it is, what's in it, options, price, how to get it."
           className="w-full resize-none bg-transparent px-3 py-2 text-[16px] leading-relaxed outline-none placeholder:text-white/30" />
-        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Product website (optional): customers browse the real site, your description is used as context"
+        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Product website (optional): leave blank and we'll search the web for your product's page"
           className="w-full rounded-xl border border-white/10 bg-transparent px-3 py-2 text-[14px] outline-none placeholder:text-white/30 focus:border-white/30" />
         <div className="flex gap-2">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Product name (optional)"

@@ -6,6 +6,7 @@ from __future__ import annotations
 import html
 import json
 import re
+import urllib.parse
 import urllib.request
 
 from openai import OpenAI
@@ -81,6 +82,53 @@ def scan(query: str) -> dict:
         "competitor_meta": [{"name": c["name"], "url": c["url"]} for c in data["competitors"]],
         "customers": data["customers"], "sources": data["sources"], "fetched_site": bool(page),
     }
+
+
+FIND_PROMPT = """Search the web for this product and find the page where a shopper would look at it and buy it.
+
+Product, as its owner describes it:
+{description}
+
+Prefer the product's own page on the maker's site; otherwise the top store listing for this exact product. Never a review,
+news article, forum thread, video or search-results page.
+Reply with only that page's URL, copied exactly from a search result. If no result is this product, reply NONE."""
+
+
+def find_product_url(description: str) -> str:
+    """No website given: search the web for the described product and return the top product page URL ('' if none).
+    Best effort: any failure (no key, no results, API error) returns '' and the caller falls back to a generated page."""
+    import anthropic
+    import os
+    from b2a.models import _anthropic_key
+    if not _anthropic_key():
+        return ""
+    try:
+        r = anthropic.Anthropic(timeout=90, max_retries=1).beta.messages.create(
+            model=os.getenv("SEARCH_MODEL") or "claude-opus-5-5",
+            max_tokens=4000,
+            output_config={"effort": "low"},
+            betas=["server-side-fallback-2026-07-01"],
+            fallbacks="default",
+            tools=[{"type": "web_search_20260209", "name": "web_search", "max_uses": 3}],
+            messages=[{"role": "user", "content": FIND_PROMPT.format(description=description[:3000])}],
+        )
+    except Exception:
+        return ""
+    if r.stop_reason == "refusal":
+        return ""
+    results: list[str] = []  # every search result URL, in rank order
+    for b in r.content:
+        if b.type == "web_search_tool_result" and isinstance(b.content, list):  # an error result is an object, not a list
+            results += [x.url for x in b.content if getattr(x, "url", None)]
+    text = " ".join(b.text for b in r.content if b.type == "text")
+    picked = next((u.rstrip(".,;)") for u in re.findall(r"https?://[^\s<>\"'\]]+", text)), "")
+    if "NONE" in text.upper() and not picked:
+        return ""
+    # only trust a URL the search actually returned (or one on the same site), never one the model made up
+    host = lambda u: re.sub(r"^www\.", "", urllib.parse.urlsplit(u).netloc.lower())
+    if picked and (picked in results or host(picked) in {host(u) for u in results}):
+        return picked
+    return results[0] if results and not picked else ""
 
 
 def _schema(model) -> dict:
