@@ -34,7 +34,7 @@ export function PrintReport({ id }: { id: string }) {
       </div>
 
       <h1 className="mt-6 text-[28px] font-bold leading-tight tracking-tight">{name}</h1>
-      <div className="mt-1 text-[13px] text-[#667085]">{/\/api\/product\//.test(sim.input.url) ? "Amazon listing, rebuilt from the public Amazon Reviews 2023 dataset" : sim.input.url}{sim.input.context ? ` · change tested: ${sim.input.context}` : ""}{sim.round ? ` · round ${sim.round + 1}` : ""}</div>
+      <div className="mt-1 break-all text-[13px] text-[#667085]">{/\/api\/product\//.test(sim.input.url) ? "Amazon listing, rebuilt from the public Amazon Reviews 2023 dataset" : sim.input.url}{sim.input.context ? ` · change tested: ${sim.input.context}` : ""}{sim.round ? ` · round ${sim.round + 1}` : ""}</div>
 
       <div className="mt-6 grid grid-cols-4 gap-3">
         {[["Simulated conversion", pct(bought, people.length), `${bought} of ${people.length} panelists`],

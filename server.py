@@ -300,14 +300,23 @@ def memory_search(q: str):
 
 
 @app.get("/api/sims/{sim_id}/report.pdf")
-def sim_report_pdf(sim_id: str):
+def sim_report_pdf(sim_id: str, request: Request):
     """The report as a PDF: our own browser opens the print layout (web/src/Print.tsx) and saves it."""
     import os
+    import socket
     from fastapi.responses import Response
     from playwright.sync_api import sync_playwright
     if not sim.get(sim_id):
         raise HTTPException(404, "no such simulation")
-    front = os.getenv("FRONTEND_URL", "http://localhost:4621")
+    # Where the web app lives: FRONTEND_URL if set, else the Vite dev server if it's running (local dev), else this
+    # server itself, which serves web/dist in production (Docker has nothing on 4621).
+    front = os.getenv("FRONTEND_URL")
+    if not front:
+        try:
+            socket.create_connection(("127.0.0.1", 4621), timeout=0.3).close()
+            front = "http://localhost:4621"
+        except OSError:
+            front = f"http://127.0.0.1:{(request.scope.get('server') or ('', 4620))[1]}"
     with sync_playwright() as p:
         b = p.chromium.launch(args=["--disable-gpu", "--use-gl=swiftshader", "--disable-dev-shm-usage"])
         pg = b.new_page(viewport={"width": 900, "height": 1200})
