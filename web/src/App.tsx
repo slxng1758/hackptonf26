@@ -62,7 +62,7 @@ export function App() {
       <main className="min-w-0 flex-1">
         {/* phones and tablets: the sidebar is hidden below lg, so keep a way home and to memory (found by /qa) */}
         <nav className="sticky top-0 z-30 flex items-center gap-4 border-b border-white/10 bg-[var(--card)] px-4 py-2.5 text-[14px] lg:hidden">
-          <a href="#" onClick={(e) => { e.preventDefault(); setView({ kind: "start" }); }} className="flex items-center gap-2 font-semibold"><img src="/icon.svg" alt="" className="h-7 w-7" />Agent-ready</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setView({ kind: "start" }); }} className="flex items-center gap-2 font-semibold"><img src="/icon.svg" alt="" className="h-7 w-7" />Will Agents Buy?</a>
           <a href="#memory" onClick={(e) => { e.preventDefault(); setView({ kind: "memory" }); }} className="ml-auto text-white/70">Panel memory</a>
         </nav>
         {err && <div className="mx-auto mt-4 max-w-2xl rounded-xl border border-[#f2675b]/40 bg-[#f2675b]/10 px-4 py-2 text-center text-[13px] text-[#f59a90]">{err}</div>}

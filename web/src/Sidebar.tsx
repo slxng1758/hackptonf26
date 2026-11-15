@@ -34,7 +34,7 @@ export function Sidebar({ current, view, go }: { current?: string; view: string;
 
   if (small) return (
     <aside className="sticky top-0 hidden h-screen w-[64px] shrink-0 flex-col items-center gap-2 border-r border-white/10 bg-[var(--card)] py-4 lg:flex">
-      <button onClick={() => go({ kind: "start" })} title="Agent-ready"><img src="/icon.svg" alt="" className="h-9 w-9" /></button>
+      <button onClick={() => go({ kind: "start" })} title="Will Agents Buy?"><img src="/icon.svg" alt="" className="h-9 w-9" /></button>
       <button onClick={() => go({ kind: "start" })} title="New test" className="on-brain grid h-9 w-9 place-items-center rounded-lg text-[20px] font-semibold text-[#ffffff]" style={{ background: C.brain }}>+</button>
       <div className="mt-2 flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto">
         {[...sites.entries()].map(([host, s]) => (
@@ -52,7 +52,7 @@ export function Sidebar({ current, view, go }: { current?: string; view: string;
     <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col border-r border-white/10 bg-[var(--card)] px-3 py-4 lg:flex">
       <button onClick={() => go({ kind: "start" })} className="flex items-center gap-2 px-2 pb-4">
         <img src="/icon.svg" alt="" className="h-8 w-8" />
-        <span className="flex-1 text-left text-[17px] font-bold tracking-tight">Agent-ready</span>
+        <span className="flex-1 text-left text-[17px] font-bold tracking-tight">Will Agents Buy?</span>
       </button>
       <button onClick={() => go({ kind: "start" })} className="on-brain mb-4 rounded-lg px-3 py-2.5 text-[14px] font-semibold text-[#ffffff]" style={{ background: C.brain }}>+ New test</button>
 

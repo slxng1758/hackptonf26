@@ -1,4 +1,4 @@
-// Agent-ready over iMessage (Photon 2.0). A business owner texts their website and runs the whole test by text:
+// Will Agents Buy? over iMessage (Photon 2.0). A business owner texts their website and runs the whole test by text:
 // meet the customers, approve or correct them, get the result, teach them what real customers do, test again.
 //
 //   PHOTON_MODE=terminal  → talk to it in this terminal (no Photon account needed)
@@ -128,7 +128,7 @@ setInterval(watch, 4000);
 
 // ---------- terminal mode ----------
 if (TERMINAL) {
-  console.log("Agent-ready (terminal mode). Type like you're texting. Ctrl+C to quit.\n");
+  console.log("Will Agents Buy? (terminal mode). Type like you're texting. Ctrl+C to quit.\n");
   chats.set("me", { stage: "idle", seen: "", send: async (t) => console.log(`\n📱 agent: ${t}\n`) });
   const rl = readline.createInterface({ input: process.stdin });
   rl.on("line", (line) => { if (line.trim()) handle("me", line).catch((e) => console.error("error:", e.message)); });
@@ -140,7 +140,7 @@ if (TERMINAL) {
   const agent = process.env.PHOTON_AGENT_HANDLE!;
   const handled = new Set<string>();
   let since = new Date().toISOString();
-  console.log(`Agent-ready on iMessage at ${agent}. Text it a website.`);
+  console.log(`Will Agents Buy? on iMessage at ${agent}. Text it a website.`);
 
   const poll = async () => {
     try {

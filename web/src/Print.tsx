@@ -29,7 +29,7 @@ export function PrintReport({ id }: { id: string }) {
   return (
     <div id="print-ready" className="print-doc mx-auto max-w-[780px] bg-[#ffffff] px-10 py-10 text-[#101828]">
       <div className="flex items-center justify-between border-b border-[#e4e7ec] pb-4">
-        <div className="flex items-center gap-2"><img src="/icon.svg" alt="" className="h-7 w-7" /><b>Agent-ready</b><span className="text-[#667085]">· customer test report</span></div>
+        <div className="flex items-center gap-2"><img src="/icon.svg" alt="" className="h-7 w-7" /><b>Will Agents Buy?</b><span className="text-[#667085]">· customer test report</span></div>
         <span className="text-[12px] text-[#667085]">{date}</span>
       </div>
 

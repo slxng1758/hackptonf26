@@ -1,6 +1,6 @@
-<p align="center"><img src="web/public/icon-512.png" alt="Agent-ready icon: a glass shopping bag with an AI spark" width="120"></p>
+<p align="center"><img src="web/public/icon-512.png" alt="Will Agents Buy? icon: a glass shopping bag with an AI spark" width="120"></p>
 
-<h1 align="center">Agent-ready</h1>
+<h1 align="center">Will Agents Buy?</h1>
 
 <p align="center"><b>Can AI agents buy from your website? Would your customers?</b><br>
 AI shopping agents and AI customers open your real site, click around, decide whether to buy, talk about it, and tell you what to fix.</p>
