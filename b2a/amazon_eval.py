@@ -55,7 +55,7 @@ def pick_product(lo: int = 200, hi: int = 1000) -> tuple[dict, list[dict]]:
     return best, reviews
 
 
-def page(m: dict) -> str:
+def page(m: dict, asin: str = "") -> str:
     """A plain store page from the listing only: no stars, no review count, no reviews."""
     img = next((i.get("large") or i.get("hi_res") for i in m.get("images") or [] if i.get("large") or i.get("hi_res")), "")
     feats = "".join(f"<li>{html.escape(x)}</li>" for x in m.get("features") or [])
@@ -65,15 +65,32 @@ def page(m: dict) -> str:
     return f"""<!doctype html><html><head><meta charset="utf-8"><title>{t}</title>
 <style>body{{font-family:system-ui,sans-serif;max-width:980px;margin:24px auto;padding:0 16px;color:#111}}
 .grid{{display:grid;grid-template-columns:380px 1fr;gap:32px}}img{{max-width:100%;border-radius:12px}}
-.price{{font-size:28px;font-weight:700;margin:8px 0}}button{{background:#ffd814;border:0;border-radius:20px;padding:12px 28px;font-size:16px;cursor:pointer}}
+.price{{font-size:28px;font-weight:700;margin:8px 0}}.btn,button{{display:inline-block;color:#111;text-decoration:none;background:#ffd814;border:0;border-radius:20px;padding:12px 28px;font-size:16px;cursor:pointer}}
 th{{text-align:left;padding-right:12px;color:#555}}</style></head><body>
 <div class="grid"><div><img src="{html.escape(img)}" alt="{t}"></div><div>
 <h1>{t}</h1><div>by {html.escape(m.get("store") or "")}</div>
 <div class="price">${m["price"]:.2f}</div>
-<button onclick="this.textContent='Added to cart ✓'">Add to Cart</button>
+<a class="btn" href="{asin}-cart.html">Add to Cart</a>
 <h3>About this item</h3><ul>{feats}</ul></div></div>
 <h3>Product description</h3>{desc or "<p>(none)</p>"}
 <h3>Details</h3><table>{details}</table></body></html>"""
+
+
+def cart_pages(m: dict, asin: str) -> dict[str, str]:
+    """A working cart and checkout for the rebuilt listing. A dead "Add to Cart" made our customers abandon the cart and
+    blamed the listing for our page (found by /qa). Only what the listing says: no invented shipping or return terms."""
+    t, price = html.escape(m["title"]), f"${m['price']:.2f}"
+    head = ('<!doctype html><html><head><meta charset="utf-8"><title>{}</title><style>body{{font-family:system-ui,sans-serif;'
+            'max-width:720px;margin:32px auto;padding:0 16px;color:#111}}.btn{{display:inline-block;color:#111;text-decoration:none;'
+            'background:#ffd814;border-radius:20px;padding:12px 28px;font-size:16px}}</style></head><body>')
+    cart = (head.format("Shopping Cart") + f"<h1>Added to cart</h1><p><b>{t}</b></p><p>Qty: 1</p>"
+            f"<p>Subtotal (1 item): <b>{price}</b></p><p>Shipping and tax are calculated at checkout.</p>"
+            f'<p><a class="btn" href="{asin}-checkout.html">Proceed to checkout</a> &nbsp; <a href="{asin}.html">Back to the product</a></p></body></html>')
+    checkout = (head.format("Checkout") + f"<h1>Checkout</h1><p><b>{t}</b>, qty 1, {price}</p>"
+                "<p>This is a test copy of the listing, so checkout stops here and no payment is taken. "
+                "If you would buy it at this point, decide to buy.</p>"
+                f'<p><a href="{asin}-cart.html">Back to cart</a></p></body></html>')
+    return {f"{asin}-cart.html": cart, f"{asin}-checkout.html": checkout}
 
 
 # ---------- what real reviewers said ----------
@@ -163,7 +180,9 @@ def main(rounds: int = 2, resume: str | None = None):
     asin = m["parent_asin"]
     half = len(reviews) // 2
     teach, held = reviews[:half], reviews[half:]
-    (PAGES / f"{asin}.html").write_text(page(m))
+    (PAGES / f"{asin}.html").write_text(page(m, asin))
+    for name, body in cart_pages(m, asin).items():
+        (PAGES / name).write_text(body)
     print(f"product: {m['title'][:80]} ({asin}), ${m['price']}, {len(reviews)} reviews → teach {len(teach)}, held out {len(held)}")
     if resume:  # round 0 already scored: reuse its themes so every round is judged against the same answer key
         real = api(f"/api/sims/{resume}")["evals"][0]["real_themes"]
