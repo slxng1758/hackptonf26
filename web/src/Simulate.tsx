@@ -331,7 +331,7 @@ function DoThese({ actions }: { actions: NonNullable<Sim["actions"]> }) {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[17px] font-semibold">{a.fix}</span>
-                <span className="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: a.audience === "AI agents" ? "#9aa4b8" : a.audience === "both" ? C.brain : C.win }}>{AUD[a.audience]}</span>
+                <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black ${a.audience === "AI agents" ? "" : "on-brain"}`} style={{ background: a.audience === "AI agents" ? "#9aa4b8" : a.audience === "both" ? C.brain : C.win }}>{AUD[a.audience]}</span>
                 <span className="rounded-full border border-white/15 px-2 py-0.5 font-mono text-[10px] text-white/60">{a.effort} fix</span>
               </div>
               <p className="mt-1 text-[14px] text-white/70">{a.why}</p>

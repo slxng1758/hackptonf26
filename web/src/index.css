@@ -72,6 +72,9 @@ textarea, input, select { color-scheme: dark; }
 :root[data-theme="receipt"] .heat { animation: none; }
 /* text on an accent background: paper, not ink */
 :root[data-theme="receipt"] .on-brain { color: #fbf7ef !important; }
+/* teal focus rings from the dark theme read as ink on paper */
+:root[data-theme="receipt"] .focus-within\:border-\[\#3ff0d4\]:focus-within, :root[data-theme="receipt"] .focus\:border-\[\#3ff0d4\]:focus { border-color: var(--ink); }
+:root[data-theme="receipt"] form.rounded-2xl { background: #fbf7ef; border-color: rgba(27,24,19,.35); box-shadow: 3px 3px 0 rgba(27,24,19,.85); }
 /* receipt pieces */
 .leader { display: flex; align-items: baseline; gap: 8px; }
 .leader > .dots { flex: 1; border-bottom: 1.5px dotted color-mix(in oklab, var(--ink) 35%, transparent); transform: translateY(-4px); }

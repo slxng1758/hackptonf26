@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Avatar } from "./Avatar";
-import { C } from "./theme";
+import { C, THEME } from "./theme";
 import { YourSites } from "./Timeline";
 
 const WORLDS = ["Normal times", "COVID-19 (2020)", "A recession", "Holiday rush"];
@@ -95,7 +95,7 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
 
   return (
     <div className="relative overflow-hidden">
-    <Scene />
+    {THEME !== "receipt" && <Scene />}
     <div className="relative mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-6 py-14 text-center">
       <div className="flex -space-x-3">
         {CROWD.map((c, i) => <div key={i} className="rounded-full ring-4 ring-[var(--bg)]" style={{ animationDelay: `${i * 0.2}s` }}><Avatar seed={c.seed} archetype={c.a} age={c.age} feeling={c.f} size={64} busy /></div>)}
@@ -113,7 +113,7 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
         <form onSubmit={(e) => { e.preventDefault(); go(); }} className="mt-4 flex w-full gap-2 rounded-2xl border border-white/15 bg-white/[0.04] p-2 focus-within:border-[#3ff0d4]">
           <input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} placeholder="yourbusiness.com"
             className="min-w-0 flex-1 bg-transparent px-4 py-3 text-[18px] outline-none placeholder:text-white/30" />
-          <button disabled={!ready} className="on-brain rounded-xl px-7 text-[16px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 30px ${C.win}55` }}>Test</button>
+          <button disabled={!ready} className="on-brain rounded-xl px-7 text-[16px] font-semibold text-black disabled:opacity-40" style={THEME === "receipt" ? { background: C.brain } : { background: C.win, boxShadow: `0 0 30px ${C.win}55` }}>Test</button>
         </form>
       )}
 
@@ -128,7 +128,7 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
             className="min-w-0 flex-1 rounded-xl border border-white/10 bg-transparent px-3 py-2 text-[14px] outline-none placeholder:text-white/30 focus:border-white/30" />
           <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price (optional)"
             className="w-36 rounded-xl border border-white/10 bg-transparent px-3 py-2 text-[14px] outline-none placeholder:text-white/30 focus:border-white/30" />
-          <button disabled={!ready} className="on-brain rounded-xl px-7 text-[16px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 30px ${C.win}55` }}>Go</button>
+          <button disabled={!ready} className="on-brain rounded-xl px-7 text-[16px] font-semibold text-black disabled:opacity-40" style={THEME === "receipt" ? { background: C.brain } : { background: C.win, boxShadow: `0 0 30px ${C.win}55` }}>Go</button>
         </div>
       </form>}
 
