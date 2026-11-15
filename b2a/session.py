@@ -154,7 +154,11 @@ VISIBLE_LINKS = """() => {
     if (!t) continue;
     if (t.length > 60) t = t.slice(0, 60);
     if (seen.has(t)) continue;
-    seen.add(t); out.push({ t, href: (e.tagName === 'A' && e.href) || '' });
+    // Only a real destination counts as a link to follow. Many sites (bose.com's product tabs) put a CSS selector or an
+    // in-page anchor in href (".reviews", "#faq") and scroll there with JavaScript: following that URL directly is a 404.
+    const raw = (e.getAttribute('href') || '').trim();
+    const real = e.tagName === 'A' && raw && !/^(#|javascript:|\\.(?![.\\/]))/i.test(raw);
+    seen.add(t); out.push({ t, href: (real && e.href) || '' });
     if (out.length >= 60) break;
   }
   return out;
@@ -183,6 +187,29 @@ def click_text(pg, t: str):
         except Exception as e:
             last = e
     raise last
+
+
+def click_target(ctx, pg, t: str, targets: dict):
+    """Do what a person clicking `t` would get. Returns (the page now in front, the href followed or None).
+
+    A plain link is followed by its URL (reliable when the text matches several elements). If that URL errors (4xx/5xx)
+    the site most likely handles the click in JavaScript, so go back and really click it instead: a person clicking
+    would never have loaded that URL."""
+    href = targets.get(t) or next((h for k, h in targets.items() if k.lower() == t.lower()), None) \
+        or next((h for k, h in targets.items() if t.lower() in k.lower() or k.lower() in t.lower()), None)
+    if href and href.startswith("http"):
+        r = pg.goto(href, timeout=30000, wait_until="domcontentloaded")
+        if not (r and r.status >= 400):
+            return pg, href
+        pg.go_back(timeout=10000)
+        href = None
+    before = len(ctx.pages)
+    click_text(pg, t)
+    pg.wait_for_timeout(1200)
+    if len(ctx.pages) > before:  # opened a new tab: follow it like a real person would
+        pg = ctx.pages[-1]
+    pg.wait_for_load_state("domcontentloaded", timeout=15000)
+    return pg, None
 
 
 DISABLED_JS = """t => { t = t.toLowerCase();
@@ -435,17 +462,7 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                 if s.action == "click" and s.target:
                     was = pg.url
                     t = s.target.strip()
-                    href = targets.get(t) or next((h for k, h in targets.items() if k.lower() == t.lower()), None) \
-                        or next((h for k, h in targets.items() if t.lower() in k.lower() or k.lower() in t.lower()), None)
-                    if href and href.startswith("http"):
-                        pg.goto(href, timeout=30000, wait_until="domcontentloaded")  # a link: go where it points
-                    else:
-                        before = len(ctx.pages)
-                        click_text(pg, t)
-                        pg.wait_for_timeout(1200)
-                        if len(ctx.pages) > before:  # opened a new tab: follow it like a real person would
-                            pg = ctx.pages[-1]
-                        pg.wait_for_load_state("domcontentloaded", timeout=15000)
+                    pg, href = click_target(ctx, pg, t, targets)
                     if CART.search(t):
                         step["cart"] = True
                         on_step(persona["id"], None)

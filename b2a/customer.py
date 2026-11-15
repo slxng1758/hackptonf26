@@ -150,17 +150,7 @@ class BrowserSession:
 
     def click(self, t: str, targets: dict) -> dict:
         was = self.pg.url
-        href = targets.get(t) or next((h for k, h in targets.items() if k.lower() == t.lower()), None) \
-            or next((h for k, h in targets.items() if t.lower() in k.lower() or k.lower() in t.lower()), None)
-        if href and href.startswith("http"):
-            self.pg.goto(href, timeout=30000, wait_until="domcontentloaded")  # a link: go where it points
-        else:
-            before = len(self.ctx.pages)
-            session.click_text(self.pg, t)
-            self.pg.wait_for_timeout(1200)
-            if len(self.ctx.pages) > before:  # opened a new tab: follow it like a real person would
-                self.pg = self.ctx.pages[-1]
-            self.pg.wait_for_load_state("domcontentloaded", timeout=15000)
+        self.pg, href = session.click_target(self.ctx, self.pg, t, targets)
         return {"unchanged": self.pg.url == was and not href}
 
     def scroll(self):
