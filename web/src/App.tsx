@@ -7,6 +7,7 @@ import { Sidebar } from "./Sidebar";
 import { Memory } from "./Memory";
 import { PrintReport } from "./Print";
 import { PersonaPage } from "./PersonaPage";
+import { ZoomRoot } from "./Lightbox";
 
 type View = { kind: "start" } | { kind: "job"; id: string } | { kind: "sim"; id: string } | { kind: "memory" } | { kind: "print"; id: string } | { kind: "persona"; id: string; pid: string };
 
@@ -70,6 +71,7 @@ export function App() {
         {view.kind === "sim" && <SimView key={view.id} id={view.id} />}
         {view.kind === "memory" && <Memory />}
         {view.kind === "persona" && <PersonaPage key={view.id + view.pid} simId={view.id} pid={view.pid} />}
+        <ZoomRoot />
         {view.kind === "job" && (job && job.id === view.id ? <Dashboard job={job} /> : <div className="grid h-[60vh] place-items-center font-mono text-white/40">loading…</div>)}
       </main>
     </div>

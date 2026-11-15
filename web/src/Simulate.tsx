@@ -3,7 +3,7 @@ import { marked } from "marked";
 import { pretty, isOwnPage } from "./pretty";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, PANEL } from "./theme";
-import { SiteMap, ThoughtStream, outcome, outcomeDetail, outcomeColor, OUTCOME_LABEL } from "./SiteMap";
+import { SiteMap, ThoughtStream, ThoughtCard, outcome, outcomeDetail, outcomeColor, OUTCOME_LABEL } from "./SiteMap";
 import { Timeline } from "./Timeline";
 import { Lens } from "./Lens";
 import { PersonaEditor, blankPersona } from "./PersonaEditor";
@@ -72,6 +72,7 @@ export function SimView({ id }: { id: string }) {
     setEditing(null);
   };
   const openPersona = (p: Persona) => { location.hash = `#sim=${id}&p=${p.id}`; };
+  const [reading, setReading] = useState<string | null>(null);  // whose thought card is open
   const [fix, setFix] = useState("");
   const [tab, setTab] = useState("map");
   const [truth, setTruth] = useState("");
@@ -248,9 +249,10 @@ export function SimView({ id }: { id: string }) {
             { id: "report", label: "Report", show: !!sim.report },
           ]} />
           {tab === "map" && <>
-            <ThoughtStream sim={sim} onOpen={openPersona} />
-            <SiteMap sim={sim} onOpen={openPersona} />
-            <p className="mt-3 text-center text-[12px] text-white/35">click anyone to open their full profile: every step, the prompts behind it, their decision and suggestions</p>
+            <ThoughtStream sim={sim} onOpen={(p) => setReading(p.id)} />
+            <SiteMap sim={sim} onOpen={openPersona} onThought={(p) => setReading(p.id)} />
+            {reading && <ThoughtCard sim={sim} pid={reading} onClose={() => setReading(null)} onOpen={openPersona} />}
+            <p className="mt-3 text-center text-[12px] text-white/35">click a thought to read it in full, a page to enlarge it, or anyone to open their full profile</p>
           </>}
           {tab === "fixes" && sim.actions && sim.actions.length > 0 && <DoThese actions={sim.actions} />}
           {tab === "agents" && sim.summary?.agents && sim.summary.agents.length > 0 && <AgentsPanel sim={sim} />}

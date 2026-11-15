@@ -50,7 +50,7 @@ export function Lens({ simId }: { simId: string }) {
           <div className="mt-8 grid gap-5 lg:grid-cols-2">
             {shots.map((s, i) => (
               <figure key={i} className={`${PANEL} overflow-hidden`}>
-                <div className="relative">
+                <div className="relative" data-zoom={`/api/shots/${simId}/shots/${s.shot}`} data-title={`${s.persona} · ${s.why}`}>
                   <img src={`/api/shots/${simId}/shots/${s.shot}`} alt="" className="block w-full" />
                   {s.boxes.map((b, k) => { const [y0, x0, y1, x1] = b.box_2d; return (
                     <div key={k} className="absolute rounded-md" title={`${b.label}: ${b.issue}`}

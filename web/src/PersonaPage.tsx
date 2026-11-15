@@ -163,7 +163,7 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
                 const deciding = !!dec?.deciding_step && dec.deciding_step === s.n;
                 return (
                 <li key={s.n} id={`step-${s.n}`} className={`${PANEL} grid gap-4 p-4 md:grid-cols-[360px_1fr]`} style={deciding ? { outline: `2px solid ${color}` } : undefined}>
-                  <div className="relative overflow-hidden rounded-lg border border-white/10">
+                  <div className="relative overflow-hidden rounded-lg border border-white/10" data-zoom={s.shot ? `/api/shots/${simId}/shots/${s.shot}` : undefined} data-title={`${p.name} · step ${s.n}`} data-sub={s.url}>
                     {s.shot ? <img src={`/api/shots/${simId}/shots/${s.shot}`} alt="" className="block w-full" /> : <div className="aspect-[16/10] bg-white/5" />}
                     {boxes.map((b, k) => { const [y0, x0, y1, x1] = b.box_2d; return <div key={k} className="absolute rounded" title={`${b.label}: ${b.issue}`} style={{ top: `${y0 / 10}%`, left: `${x0 / 10}%`, height: `${(y1 - y0) / 10}%`, width: `${(x1 - x0) / 10}%`, border: `3px solid ${sev(b.severity)}` }} />; })}
                     {s.point && <div className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full" title={`clicked here: ${s.target || s.clicked || ""}`} style={{ top: `${s.point[1] / 10}%`, left: `${s.point[0] / 10}%`, border: `3px solid ${C.brain}`, boxShadow: "0 0 0 2px rgba(0,0,0,.6)" }} />}

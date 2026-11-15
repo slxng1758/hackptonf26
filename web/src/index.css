@@ -117,6 +117,9 @@ textarea, input, select { color-scheme: dark; }
 @keyframes drawer { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
 .scrim { animation: scrim .2s ease; }
 @keyframes scrim { from { opacity: 0; } to { opacity: 1; } }
+/* every screenshot opens big on click (Lightbox.tsx ZoomRoot) */
+img[src^="/api/shots/"], [data-zoom] { cursor: zoom-in; }
+[data-nozoom] img, [data-lightbox] img { cursor: auto; }
 .range-ink { accent-color: var(--ink); }
 
 /* streamed text: blinking cursor while the agent is still writing */

@@ -42,7 +42,7 @@ function keyOf(u: string, rootHost: string) {
   } catch { return { key: u, label: u }; }
 }
 
-export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => void }) {
+export function SiteMap({ sim, onOpen, onThought }: { sim: Sim; onOpen: (p: Persona) => void; onThought?: (p: Persona) => void }) {
   const [hover, setHover] = useState<string | null>(null);
   const rootHost = keyOf(sim.input.url.startsWith("http") ? sim.input.url : `https://${sim.input.url}`, "").label.toLowerCase();
 
@@ -106,6 +106,7 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
 
         {[...nodes.values()].map((n) => { const here = crowd.get(n.key) ?? 0; const heat = Math.min(n.visits / maxVisits, 1); return (
           <div key={n.key} onMouseEnter={() => setHover(n.key)} onMouseLeave={() => setHover(null)}
+            data-zoom={n.shot ? `/api/shots/${sim.id}/shots/${n.shot}` : undefined} data-title={n.label} data-sub={`${n.visits} visit${n.visits === 1 ? "" : "s"}`}
             className={`absolute overflow-hidden border bg-[var(--card)] transition-all duration-700 hover:z-20 hover:scale-[1.6] ${PAPER ? "rounded-[3px]" : "rounded-2xl"} ${here ? "heat" : ""}`}
             style={{ left: n.x, top: n.y, width: NODE_W, height: NODE_H, transformOrigin: "top left",
               borderColor: PAPER ? (hover === n.key || here ? C.text : `rgba(${INK},${0.14 + heat * 0.4})`) : n.blocked ? "rgba(255,255,255,0.15)" : hover === n.key || here ? C.win : `rgba(74,222,154,${0.12 + heat * 0.4})`,
@@ -142,9 +143,14 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
             {outcome(sim, p.id) === "bought" && <span className="on-brain absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold text-black" style={{ background: C.win }}>✓</span>}
             <div className="mx-auto mt-0.5 w-[44px] truncate text-center font-mono text-[9px] text-white/70">{p.name}{p.model && <span className="block text-white/35" title={p.model_note}>{p.played_by ? `${p.model}→${p.played_by}` : p.model}</span>}</div>
             {thought && (
-              <div key={thought} className={`bubble pointer-events-none absolute bottom-full left-1/2 mb-1 w-[200px] -translate-x-1/2 rounded-xl px-2.5 py-1.5 text-left text-[11px] leading-snug shadow-lg ${moving && first ? "block" : "hidden group-hover:block"}`}
-                style={{ background: d ? ({ bought: C.win, maybe: C.mid, left: "#fff" }[outcome(sim, p.id) ?? "left"]) : "#fff", color: "#000" }}>
-                {thought.length > 110 ? thought.slice(0, 110) + "…" : thought}
+              // the transparent pb-1 bridges the gap to the avatar so hover holds while the mouse moves up to click it
+              <div key={thought} role="button" title="Click to read it all" onClick={(e) => { e.stopPropagation(); (onThought ?? onOpen)(p); }}
+                className={`absolute bottom-full left-1/2 z-30 w-[200px] -translate-x-1/2 cursor-pointer pb-1 ${moving && first ? "block" : "hidden group-hover:block"}`}>
+                <div className="bubble rounded-xl px-2.5 py-1.5 text-left text-[11px] leading-snug shadow-lg transition hover:brightness-95"
+                  style={{ background: d ? ({ bought: C.win, maybe: C.mid, left: "#fff" }[outcome(sim, p.id) ?? "left"]) : "#fff", color: "#000" }}>
+                  {thought.length > 110 ? thought.slice(0, 110) + "…" : thought}
+                  <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-wider text-black/45">click to read more</span>
+                </div>
               </div>
             )}
           </button>
@@ -172,7 +178,7 @@ function Fit({ width, height, children }: { width: number; height: number; child
 }
 
 // What everyone is thinking right now: big speech cards drifting past, above the map.
-export function ThoughtStream({ sim, onOpen }: { sim: Sim; onOpen?: (p: Persona) => void }) {
+export function ThoughtStream({ sim, onOpen }: { sim: Sim; onOpen?: (p: Persona) => void }) {  // onOpen: show this card in full (ThoughtCard)
   const items = sim.personas.flatMap((p) => {
     const d = sim.decisions[p.id], steps = sim.live[p.id] ?? [];
     const last = steps[steps.length - 1];
@@ -184,7 +190,7 @@ export function ThoughtStream({ sim, onOpen }: { sim: Sim; onOpen?: (p: Persona)
   if (!items.length) return null;
   const live = sim.status === "browsing";
   const card = (it: (typeof items)[number], i: number) => (
-    <button key={i} type="button" onClick={() => onOpen?.(it.p)} title={`See why ${it.p.name} decided this, step by step`}
+    <button key={i} type="button" onClick={() => onOpen?.(it.p)} title={`Read what ${it.p.name} is thinking`}
       className="mx-2 inline-flex w-[360px] shrink-0 cursor-pointer items-start gap-3 whitespace-normal rounded-2xl border border-white/15 bg-[var(--card)] p-3 text-left align-top shadow-lg transition hover:-translate-y-0.5 hover:border-white/40 panel"
       style={{ borderLeft: `5px solid ${it.od ? outcomeColor(it.od) : SHIRT[it.p.archetype] ?? C.brain}` }}>
       <div className="shrink-0"><Avatar seed={it.p.avatar.seed} archetype={it.p.archetype} model={it.p.model} age={it.p.age} size={44} feeling={it.feeling} /></div>
@@ -192,7 +198,7 @@ export function ThoughtStream({ sim, onOpen }: { sim: Sim; onOpen?: (p: Persona)
         <div className="text-[13px]"><b>{it.p.name}</b> <span className="text-white/45">· {it.p.kind === "agent" ? "AI agent" : it.p.archetype}</span>
           {it.od && <span className="ml-1 font-mono text-[10px] font-semibold uppercase" style={{ color: outcomeColor(it.od) }}>{OUTCOME_LABEL[it.od]}</span>}</div>
         <p className="mt-0.5 line-clamp-3 text-[14px] leading-snug text-white/85">“{it.text}”</p>
-        {onOpen && <span className="mt-1 inline-block font-mono text-[10px] uppercase tracking-wider text-white/35">see why →</span>}
+        {onOpen && <span className="mt-1 inline-block font-mono text-[10px] uppercase tracking-wider text-white/35">read more →</span>}
       </div>
     </button>
   );
@@ -205,5 +211,85 @@ export function ThoughtStream({ sim, onOpen }: { sim: Sim; onOpen?: (p: Persona)
         <div className="ticker flex w-max" style={{ animationDuration: `${Math.max(40, items.length * 7)}s` }}>{items.map(card)}{items.map((it, i) => card(it, i + 100))}</div>
       </div>
     </section>
+  );
+}
+
+// One customer's thought in full: what they're thinking now (or their final word), the page they're on,
+// and every thought so far. Opened from a ticker card or a map bubble; updates live while they shop.
+export function ThoughtCard({ sim, pid, onClose, onOpen }: { sim: Sim; pid: string; onClose: () => void; onOpen: (p: Persona) => void }) {
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    addEventListener("keydown", k);
+    const was = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { removeEventListener("keydown", k); document.body.style.overflow = was; };
+  }, [onClose]);
+  const p = sim.personas.find((x) => x.id === pid);
+  if (!p) return null;
+  const steps = sim.live[pid] ?? [], last = steps[steps.length - 1], d = sim.decisions[pid];
+  const od = outcomeDetail(sim, pid), color = od ? outcomeColor(od) : SHIRT[p.archetype] ?? C.brain;
+  const host = (u: string) => u.replace(/^https?:\/\/(www\.)?/, "");
+  const shotOf = (f: string | null) => (f ? `/api/shots/${sim.id}/shots/${f}` : null);
+  const doing = (s: (typeof steps)[number]) => s.action === "click" || s.action === "click_at" ? `clicked “${s.target || s.clicked || "a spot"}”` : s.action === "decide" ? "ready to decide" : [s.action, s.target].filter(Boolean).join(" ");
+  return (
+    <div className="scrim fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 md:p-8" onClick={onClose}>
+      <div className="flex max-h-full w-full max-w-[860px] flex-col overflow-hidden rounded-2xl border border-white/15 bg-[var(--card)] shadow-2xl" style={{ borderTop: `5px solid ${color}` }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 border-b border-white/10 px-5 py-3">
+          <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={48} feeling={d?.feeling ?? last?.feeling ?? "neutral"} busy={!d && sim.status === "browsing"} />
+          <div className="min-w-0 flex-1">
+            <div className="text-[16px]"><b>{p.name}</b> <span className="text-white/50">· {p.kind === "agent" ? "AI agent" : `${p.age}, ${p.occupation}`}</span>
+              {od && <span className="ml-2 font-mono text-[11px] font-semibold uppercase" style={{ color }}>{OUTCOME_LABEL[od]}</span>}</div>
+            <div className="truncate font-mono text-[11px] text-white/45">{p.archetype}{p.model ? ` · ${p.model}` : ""}{p.goal ? ` · wants: ${p.goal}` : ""}{p.budget ? ` · budget ${p.budget}` : ""}</div>
+          </div>
+          <button onClick={onClose} aria-label="close" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[18px] text-white/60 hover:bg-white/10 hover:text-white">×</button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto p-5">
+          {d ? (
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/40">their final word · {d.decision}{d.rating ? ` · ${d.rating}/5` : ""}</div>
+              <p className="mt-1 font-serif text-[20px] leading-snug">“{d.quote}”</p>
+              {d.reasons?.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-[14px] text-white/80">{d.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
+              {d.missing && <p className="mt-3 text-[14px]"><span className="font-semibold" style={{ color: C.loss }}>What was missing:</span> <span className="text-white/80">{d.missing}</span></p>}
+            </div>
+          ) : last ? (
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/40">thinking right now · step {last.n} · felt {last.feeling}</div>
+              <p className="mt-1 font-serif text-[20px] leading-snug">“{last.thought}”</p>
+              <p className="mt-2 text-[13px]"><span className="font-semibold" style={{ color: C.brain }}>→ {doing(last)}</span> <span className="text-white/45">on {host(last.url)}</span></p>
+            </div>
+          ) : <p className="text-white/50">Hasn't started yet.</p>}
+
+          {last?.shot && (
+            <figure className="mt-4 overflow-hidden rounded-lg border border-white/10" data-zoom={shotOf(last.shot)!} data-title={`${p.name} · step ${last.n}`} data-sub={last.url}>
+              <img src={shotOf(last.shot)!} alt="" className="block max-h-[320px] w-full object-cover object-top" />
+              <figcaption className="truncate px-3 py-1.5 font-mono text-[11px] text-white/45">{d ? "last page they saw" : "where they are"} · {host(last.url)} · click to enlarge</figcaption>
+            </figure>
+          )}
+
+          {steps.length > 0 && (
+            <div className="mt-5">
+              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/40">every thought so far</div>
+              <ol className="mt-2 space-y-2">
+                {[...steps].reverse().map((s) => (
+                  <li key={s.n} className="flex gap-3 rounded-lg bg-white/[0.04] p-2.5">
+                    {s.shot ? <img src={shotOf(s.shot)!} alt={`${p.name} · step ${s.n}`} className="h-14 w-20 shrink-0 rounded border border-white/10 object-cover object-top" /> : <div className="h-14 w-20 shrink-0 rounded bg-white/5" />}
+                    <div className="min-w-0 text-[13px]">
+                      <div className="truncate font-mono text-[10.5px] text-white/45">step {s.n} · {host(s.url)} · felt {s.feeling}{s.blocked ? " · bot check" : ""}</div>
+                      <p className="leading-snug text-white/85">“{s.thought}”</p>
+                      <div className="text-[12px]" style={{ color: C.brain }}>→ {doing(s)}</div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end border-t border-white/10 px-5 py-3">
+          <button onClick={() => onOpen(p)} className="on-brain rounded-xl px-4 py-2 text-[14px] font-semibold text-[#ffffff]" style={{ background: C.brain }}>Open full profile: prompts, decision, suggestions →</button>
+        </div>
+      </div>
+    </div>
   );
 }
