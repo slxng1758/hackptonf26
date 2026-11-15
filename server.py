@@ -81,9 +81,22 @@ from fastapi.staticfiles import StaticFiles
 sim.SIMS.mkdir(parents=True, exist_ok=True)
 app.mount("/api/shots", StaticFiles(directory=str(sim.SIMS)), name="shots")
 (sim.RUNS / "amazon" / "pages").mkdir(parents=True, exist_ok=True)
-# Amazon eval product pages: freshly built ones in runs/, else the committed demo listing in data/ (so a deploy has it).
-_pages = sim.RUNS / "amazon" / "pages"
-app.mount("/api/product", StaticFiles(directory=str(_pages if _pages.exists() else __import__("pathlib").Path(__file__).parent / "data" / "amazon_pages")), name="product")  # Amazon eval product pages
+# Amazon eval product pages: freshly built ones in runs/, then the committed demo listing in data/, so a deploy whose
+# runs/ volume has an empty pages folder still serves the demo listing.
+_PAGE_DIRS = [sim.RUNS / "amazon" / "pages", __import__("pathlib").Path(__file__).parent / "data" / "amazon_pages"]
+
+
+@app.get("/api/product/{name}")
+def amazon_product_page(name: str):
+    from fastapi.responses import FileResponse
+    import re as _re
+    if not _re.fullmatch(r"[A-Za-z0-9_-]+\.html", name):
+        raise HTTPException(404, "no such page")
+    for d in _PAGE_DIRS:
+        f = d / name
+        if f.is_file():
+            return FileResponse(f, media_type="text/html")
+    raise HTTPException(404, "no such page")
 
 
 class SimIn(BaseModel):

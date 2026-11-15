@@ -62,3 +62,13 @@ def test_cart_then_maybe_scores_at_least_maybe():
     carted = outcome.decide({"decision": "maybe later"}, [{"cart": True}], can_order=False)
     plain = outcome.decide({"decision": "maybe later"}, [], can_order=False)
     assert outcome.SCORE[carted] >= outcome.SCORE[plain]
+
+
+# Regression: ISSUE-014 (live server 404'd the demo listing when runs/amazon/pages existed but was empty). Found by /qa on 2026-11-15
+def test_product_page_served_from_committed_demo_listing():
+    import server
+    c = TestClient(server.app)
+    assert c.get("/api/product/B09LHS6RGF.html").status_code == 200
+    assert c.get("/api/product/B09LHS6RGF-cart.html").status_code == 200
+    assert c.get("/api/product/..%2Fserver.py").status_code == 404
+    assert c.get("/api/product/nope.html").status_code == 404
