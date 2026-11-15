@@ -27,7 +27,7 @@ Backend: `http://localhost:4620` (`server.py`, engine in `b2a/sim.py` + `b2a/ses
 ```
 id, input, status, error
 personas[]   { id: "p1", name, age, occupation, archetype, segment, share, goal, budget, voice, avatar: { seed } }
-live         { [persona_id]: Step[] }      Step = { n, url, title, shot, blocked?, cart?, thought, feeling, action, target }
+live         { [persona_id]: Step[] }      Step = { n, url, title, shot, blocked?, cart?, point?, clicked?, thought, feeling, action, target }
 decisions    { [persona_id]: { decision, rating, feeling, quote, reasons[], missing } }
 summary      { buy_rate, clicked_buy: persona_id[], rating, decisions: { [decision]: count }, missing: [{ persona, text }] }
 report       markdown from the analyst agent
@@ -120,6 +120,6 @@ a round (`start_round(layer, customer_ids)`), sends every customer of the round 
 (they shop in parallel, capped by `MAX_BROWSERS`), and closes it (`end_round`). `run_base_models` / `run_personas` are gone.
 Customers cast mid-run become subagents through an automatic rebuild of the director (same thread, same checkpoint).
 
-Each tool call records one `live` step as before; `search` is a new step action (`target` = the query). `open_site` shows
+Each tool call records one `live` step as before; `search` is a new step action (`target` = the query). `click_at` clicks a point on the screenshot for things with no text (swatches, icon buttons): `point` = [x, y], 0-1000 over the screenshot the step shows, `target` = the customer's words for it, `clicked` = the label of what was under the point. `open_site` shows
 the customer its memory, read fresh from the store. `decide` checks the decision against the visit and sets `outcome`.
 The default pipeline runs the same customer agent when `CUSTOMER_AGENT=1` (otherwise the older loop).

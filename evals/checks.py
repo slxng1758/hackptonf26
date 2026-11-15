@@ -472,7 +472,7 @@ def clicks_visible_targets(r: RunRecord) -> dict:
 
 
 def moves_well_formed(r: RunRecord, max_steps: int = 10) -> dict:
-    moves = [c for c in r.traj.calls if c.name in ("click", "scroll", "back", "search")]
+    moves = [c for c in r.traj.calls if c.name in ("click", "click_at", "scroll", "back", "search")]
     problems = [f"{c.name}#{c.i}: thought {len(str(c.args.get('thought', '')).split())} words" for c in moves
                 if not 1 <= len(str(c.args.get("thought", "")).split()) <= 35]
     if len(moves) > max_steps:

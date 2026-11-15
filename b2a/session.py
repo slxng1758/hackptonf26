@@ -63,8 +63,11 @@ Only give someone a history with the business (a past purchase, a favorite) if t
 class Step(BaseModel):
     thought: str = Field(description="what you think right now, first person, in your voice, max 30 words")
     feeling: Literal["delighted", "interested", "neutral", "confused", "annoyed", "skeptical"]
-    action: Literal["click", "scroll", "back", "decide"]
-    target: str = Field(default="", description="for click: the exact text of the link or button to click; otherwise empty")
+    action: Literal["click", "click_at", "scroll", "back", "decide"]
+    target: str = Field(default="", description="for click: the exact text of the link or button to click; for click_at: what "
+                                                "you are clicking, a few words (e.g. 'red colour swatch'); otherwise empty")
+    x: int = Field(default=0, description="for click_at only: how far across the screenshot (scale given in the instructions)")
+    y: int = Field(default=0, description="for click_at only: how far down the screenshot (scale given in the instructions)")
 
 
 class Suggestion(BaseModel):
@@ -113,7 +116,9 @@ Page text (excerpt): {text}
 What you've done so far: {history}
 
 Look at the screenshot like a real person would. Decide your next move: click one of the visible links or buttons, scroll,
-go back, or decide. Shop like a real person with limited patience: use search, filters or menus instead of scrolling long lists.
+go back, or decide. Prefer clicking a listed link or button by its text; if what you want is visible on the screenshot but
+not in that list (a colour swatch, an image, an icon-only button), use click_at on that spot of the
+screenshot. Shop like a real person with limited patience: use search, filters or menus instead of scrolling long lists.
 If you find something that fits and you want it, buy it like a real customer: pick the size/option, add it to the cart, go
 to checkout, and place the order if the site lets you without payment details. Never enter payment details: if the site
 asks for them, stop there and decide. If the site clearly isn't for you, decide early. Stay in character."""
@@ -218,6 +223,63 @@ def click_target(ctx, pg, t: str, targets: dict):
         pg = ctx.pages[-1]
     pg.wait_for_load_state("domcontentloaded", timeout=15000)
     return pg, None
+
+
+# What's under a point on the screen: the nearest clickable thing's text, aria-label, alt or title (icons and swatches
+# often have no text but do have one of these), so a click on the screenshot is recorded as something readable.
+POINT_JS = """([x, y]) => {
+  let e = document.elementFromPoint(x, y);
+  if (!e) return '';
+  const hit = e.closest('a, button, label, summary, input, select, [role=button], [role=link], [role=tab], [role=radio], [role=option], [role=checkbox], [onclick]') || e;
+  const img = hit.querySelector && hit.querySelector('img[alt]');
+  const t = (hit.innerText || hit.getAttribute('aria-label') || hit.getAttribute('title') || hit.getAttribute('alt')
+             || (img && img.getAttribute('alt')) || hit.value || '').trim().split('\\n').map(s => s.trim()).filter(Boolean).slice(0, 2).join(' ');
+  return t.slice(0, 60);
+}"""
+
+
+VIEW_W, VIEW_H = 1280, 800  # every customer's browser window, and so every screenshot
+
+
+def gives_norm(family: str | None) -> bool:
+    """Each model points on a screenshot its own way and keeps doing it whatever the prompt says (measured): Gemini gives
+    0-1000 over width and height (its native box_2d scale), Claude and the others give pixels."""
+    from .models import family as real
+    return real(family or "").lower().startswith("gemini")
+
+
+def coord_hint(family: str | None) -> str:
+    """The click_at scale for this customer's model, added after its prompt."""
+    return ("\nFor click_at, x and y go from 0 to 1000 over the screenshot's width and height." if gives_norm(family) else
+            f"\nFor click_at, x and y are pixels on the {VIEW_W}x{VIEW_H} screenshot (x 0-{VIEW_W} from the left, y 0-{VIEW_H} from the top).")
+
+
+def to_norm(family: str | None, x, y) -> list[int]:
+    """A click_at point from the model that answered, as 0-1000 over the screenshot (how steps store it)."""
+    x, y = float(x or 0), float(y or 0)
+    if not gives_norm(family):
+        x, y = x * 1000 / VIEW_W, y * 1000 / VIEW_H
+    return [max(0, min(1000, round(x))), max(0, min(1000, round(y)))]
+
+
+def click_point(ctx, pg, x: int, y: int):
+    """Click a point on the screenshot the customer saw, given as 0-1000 over its width and height (the screenshot is
+    the viewport, so it maps straight to the page). For things with no text: swatches, image thumbnails, icon buttons.
+    Returns (the page now in front, the label of what was under the point)."""
+    x, y = max(0, min(1000, int(x))), max(0, min(1000, int(y)))
+    vp = pg.viewport_size or {"width": VIEW_W, "height": VIEW_H}
+    px, py = x * vp["width"] / 1000, y * vp["height"] / 1000
+    try:
+        label = pg.evaluate(POINT_JS, [px, py]) or ""
+    except Exception:
+        label = ""
+    before = len(ctx.pages)
+    pg.mouse.click(px, py)
+    pg.wait_for_timeout(1200)
+    if len(ctx.pages) > before:  # opened a new tab: follow it like a real person would
+        pg = ctx.pages[-1]
+    pg.wait_for_load_state("domcontentloaded", timeout=15000)
+    return pg, label
 
 
 DISABLED_JS = """t => { t = t.toLowerCase();
@@ -447,8 +509,10 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                 history.append(f"(step {n}: the confirmation page says your order went through. You placed the order: you bought it.)")
             page = dict(world=world or "today, normal times", context=context or "none", url=pg.url, n=n, max_steps=max_steps,
                         links=", ".join(links) or "(none)", text=text, history=" → ".join(history) or "just arrived")
-            prompt = STEP.format(**{**persona, "memory": persona.get("memory") or "nothing yet", "instructions": instructions(persona)}, **page)
+            prompt = STEP.format(**{**persona, "memory": persona.get("memory") or "nothing yet", "instructions": instructions(persona)}, **page) \
+                + coord_hint(persona.get("model"))
             prompts.append({"n": n, "prompt": prompt, "with_screenshot": bool(jpg)})  # the exact prompt, for the persona page
+            stood_in = fallbacks["n"]
             try:
                 s: Step = ask(Step, [_img_msg(prompt, jpg)] if jpg else prompt)
             except ModelUnavailable:
@@ -459,8 +523,11 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                     "thought": s.thought, "feeling": s.feeling, "action": s.action, "target": s.target}
             if just_ordered:
                 step["ordered"] = True
+            if s.action == "click_at":  # Claude Haiku standing in answers in pixels, whatever the prompt said
+                step["point"] = to_norm("Claude" if fallbacks["n"] > stood_in else persona.get("model"), s.x, s.y)
             steps.append(step)
-            history.append(f"step {n} [{pg.url}] thought: {s.thought} ({s.feeling}) → {s.action} {s.target}".strip())
+            where = f" ({step['point'][0]},{step['point'][1]})" if s.action == "click_at" else ""
+            history.append(f"step {n} [{pg.url}] thought: {s.thought} ({s.feeling}) → {s.action} {s.target}{where}".strip())
             on_step(persona["id"], step)
             if s.action == "decide" or n == max_steps:
                 break
@@ -479,6 +546,20 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                                            "looks empty or an error shows after this, that is our test setup, not the business. Don't hold it against them.)")
                     elif pg.url == was and not href:
                         history.append(f"(clicked '{t}': the page stayed the same, maybe a menu opened)")
+                elif s.action == "click_at":
+                    was = pg.url
+                    pg, label = click_point(ctx, pg, *step["point"])
+                    what = s.target.strip() or label or "that spot"
+                    if label:
+                        step["clicked"] = label
+                    if CART.search(f"{label} {s.target}"):
+                        step["cart"] = True
+                        on_step(persona["id"], None)
+                        history.append(f"(You clicked '{what}': you chose to buy." + (" On this store checkout needs no payment: the purchase is done when you place the order.)"
+                                       if can_order else " Test browsers are often blocked at the cart, so an empty cart after this is our test setup, not the business.)"))
+                    elif pg.url == was:
+                        history.append(f"(clicked '{what}' on the screen" + (f" (it is '{label}')" if label and label != what else "")
+                                       + ": the page stayed the same, or only part of it changed)")
                 elif s.action == "scroll":
                     pg.mouse.wheel(0, 900)
                 elif s.action == "back":

@@ -12,7 +12,7 @@ import { Accuracy, Learned, WordOfMouth } from "./Extras";
 import type { SimExtras } from "./sim-extras";
 
 export interface Persona { id: string; name: string; age: number; occupation: string; archetype: string; segment: string; share: number; goal: string; budget: string; voice: string; avatar: { seed: number }; model?: string; memory?: string; inherited?: boolean; kind?: "agent"; played_by?: string; model_note?: string; instructions?: string; custom?: boolean; why?: string }
-interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; ordered?: boolean; thought: string; feeling: Feeling; action: string; target: string }
+interface SimStep { n: number; url: string; title: string; shot: string | null; blocked?: boolean; cart?: boolean; ordered?: boolean; point?: [number, number]; clicked?: string; thought: string; feeling: Feeling; action: string; target: string }
 interface Suggestion { change: string; why: string; where: string; impact: "would make me buy" | "nice to have" }
 interface Decision {
   decision: string; rating: number; feeling: Feeling; quote: string; reasons: string[]; missing: string;

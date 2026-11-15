@@ -46,7 +46,8 @@ You are visiting {site} as this person. Shop with your tools, like a real person
   with read_file: {memory_files}.
 - Move around with click, scroll, back and search. Use search, filters or menus instead of scrolling long lists. Every move
   needs your thought (first person, in your voice, max 30 words) and how you feel. You see a screenshot before every move:
-  look at it like a real person would.
+  look at it like a real person would. Click listed links and buttons by their text; if what you want is on the screenshot
+  but not in that list (a colour swatch, an image, an icon-only button), use click_at on that spot.
 - If you find something that fits and you want it, buy it like a real customer: pick the size/option, add it to the cart,
   go to checkout, and place the order if the site lets you without payment details. Never enter payment details: if the
   site asks for them, stop there and decide.
@@ -153,6 +154,11 @@ class BrowserSession:
         self.pg, href = session.click_target(self.ctx, self.pg, t, targets)
         return {"unchanged": self.pg.url == was and not href}
 
+    def click_at(self, x: int, y: int) -> dict:
+        was = self.pg.url
+        self.pg, label = session.click_point(self.ctx, self.pg, x, y)
+        return {"unchanged": self.pg.url == was, "label": label}
+
     def scroll(self):
         self.pg.mouse.wheel(0, 900)
 
@@ -190,6 +196,7 @@ class Visit:
         self.decision: dict | None = None
         self.bounced = ""
         self.fallbacks = {"n": 0, "why": ""}
+        self.answered_by = ""  # the family whose model made the last move (Claude when it stands in): sets the click_at scale
         self.decide_prompt = ""
         self.browser: BrowserSession | None = None
         self._slot = False
@@ -246,28 +253,45 @@ class Visit:
         return text
 
     # ---- moving
-    def _record(self, action: str, target: str, thought: str, feeling: str) -> dict:
+    def _record(self, action: str, target: str, thought: str, feeling: str, point: list[int] | None = None) -> dict:
         self.n += 1
         c = self.cur or {}
         step = {"n": self.n, "url": c.get("url", self.url), "title": c.get("title", ""), "shot": c.get("shot"),
                 "thought": thought, "feeling": feeling, "action": action, "target": target}
+        if point:
+            step["point"] = point
         if c.get("order_done") and not self.ordered_at:  # they're on the confirmation page: the order went through
             step["ordered"], self.ordered_at = True, self.n
             self.notes.append(f"(step {self.n}: the confirmation page says your order went through. You placed the order: you bought it.)")
         self.steps.append(step)
-        self.notes.append(f"step {self.n} [{step['url']}] thought: {thought} ({feeling}) → {action} {target}".strip())
+        where = f" ({point[0]},{point[1]})" if point else ""
+        self.notes.append(f"step {self.n} [{step['url']}] thought: {thought} ({feeling}) → {action} {target}{where}".strip())
         self.on_step(self.cid, step)
         return step
 
-    def act(self, action: str, target: str, thought: str, feeling: str) -> str:
+    def act(self, action: str, target: str, thought: str, feeling: str, point: tuple[int, int] | None = None) -> str:
         if self.decision:
             return "You already decided. Reply with one line about your visit."
         if self.n >= self.max_steps:
             return "You have no moves left: call decide now."
-        step = self._record(action, target, thought, feeling)
+        pt = session.to_norm(self.answered_by or self.p.get("model"), *point) if point else None
+        step = self._record(action, target, thought, feeling, pt)
         notes: list[str] = []
         try:
-            if action == "click":
+            if action == "click_at" and pt:
+                r = self.browser.do(self.browser.click_at, *pt)
+                label, what = r["label"], target.strip() or r["label"] or "that spot"
+                if label:
+                    step["clicked"] = label
+                if session.CART.search(f"{label} {target}"):
+                    step["cart"] = True
+                    self.on_step(self.cid, None)
+                    notes.append(f"(You clicked '{what}': you chose to buy." + (" On this store checkout needs no payment: the purchase is done when you place the order.)"
+                                 if self.can_order else " Test browsers are often blocked at the cart, so an empty cart after this is our test setup, not the business.)"))
+                elif r["unchanged"]:
+                    notes.append(f"(clicked '{what}' on the screen" + (f" (it is '{label}')" if label and label != what else "")
+                                 + ": the page stayed the same, or only part of it changed)")
+            elif action == "click":
                 r = self.browser.do(self.browser.click, target.strip(), (self.cur or {}).get("targets", {}))
                 if session.CART.search(target):
                     step["cart"] = True
@@ -404,6 +428,13 @@ def tools_for(host: Host, cid: str) -> list:
         v = current()
         return v if isinstance(v, str) else v.act("click", target, thought, feeling)
 
+    def click_at(x: int, y: int, what: str, thought: str, feeling: Feeling) -> str:
+        """Click a point on the screenshot you were just shown, for something you can see that is NOT in the visible
+        links and buttons list (a colour swatch, an image, an icon-only button). x, y: where on the screenshot, on the
+        scale your instructions give. what: what you are clicking, a few words. Prefer click when it's listed."""
+        v = current()
+        return v if isinstance(v, str) else v.act("click_at", what, thought, feeling, (x, y))
+
     def scroll(thought: str, feeling: Feeling) -> str:
         """Scroll down the page."""
         v = current()
@@ -425,7 +456,7 @@ def tools_for(host: Host, cid: str) -> list:
             return "Call open_site first."
         return v.decide(kw)
 
-    return [StructuredTool.from_function(f) for f in (open_site, click, scroll, back, search)] + [
+    return [StructuredTool.from_function(f) for f in (open_site, click, click_at, scroll, back, search)] + [
         StructuredTool.from_function(decide, name="decide", description=DECIDE_TOOL, args_schema=DecideArgs)]
 
 
@@ -454,6 +485,8 @@ class CustomerMiddleware(AgentMiddleware):
                 {"type": "image", "source_type": "base64", "mime_type": "image/jpeg", "data": base64.b64encode(v.cur["jpg"]).decode()}]))
         req = request.override(messages=msgs)
         name = (v.p.get("model") if v else "") or ""
+        if v:
+            v.answered_by = name
         try:
             if persona_model(name) is fast() or not down_reason(name):
                 return call_with_retry(lambda: handler(req), name)
@@ -466,6 +499,8 @@ class CustomerMiddleware(AgentMiddleware):
         if v:
             v.fallbacks["n"] += 1
             v.fallbacks["why"] = v.fallbacks["why"] or down_reason(name)[:200]
+        if v:
+            v.answered_by = "Claude"
         try:
             return call_with_retry(lambda: handler(req.override(model=fast())), "Claude Haiku (standing in)")
         except ModelUnavailable as e:
@@ -478,7 +513,7 @@ def system_prompt(p: dict, host: Host) -> str:
     files = (f"/memories/business/{p['id']}.md (your own past visits here) and /memories/{p['archetype'].replace(' ', '-')}.md "
              "(what customers like you learned on other sites)") if p.get("kind") != "agent" else "none (AI agents start fresh)"
     return CUSTOMER.format(**{**p, "instructions": session.instructions(p)}, world=host.world or "today, normal times",
-                           context=host.context or "none", site=host.url, max_steps=MAX_STEPS, memory_files=files)
+                           context=host.context or "none", site=host.url, max_steps=MAX_STEPS, memory_files=files) + session.coord_hint(p.get("model"))
 
 
 def description(p: dict) -> str:

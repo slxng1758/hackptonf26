@@ -96,6 +96,12 @@ def persona(name: str | None = None):
     return ms.get(name or "", None) or next(iter(ms.values()), None) or fast()
 
 
+def family(name: str | None = None) -> str:
+    """The family that really plays a customer labelled `name` (persona() falls back to the first family with a key)."""
+    ms = persona_models()
+    return name if name in ms else next(iter(ms), "Claude")
+
+
 RETRY_WAITS = (2, 6)  # seconds between tries when a customer's model fails
 
 

@@ -7,7 +7,7 @@ import { C, PANEL } from "./theme";
 import type { Persona } from "./Simulate";
 import { OUTCOME_LABEL, outcomeColor, type Outcome } from "./SiteMap";
 
-interface Step { n: number; url: string; title?: string; shot: string | null; blocked?: boolean; cart?: boolean; ordered?: boolean; thought: string; feeling: Feeling; action: string; target: string }
+interface Step { n: number; url: string; title?: string; shot: string | null; blocked?: boolean; cart?: boolean; ordered?: boolean; point?: [number, number]; clicked?: string; thought: string; feeling: Feeling; action: string; target: string }
 interface Suggestion { change: string; why: string; where: string; impact: string }
 interface Decision {
   decision: string; rating: number; feeling: Feeling; confidence?: number; quote: string; reasons: string[]; missing: string; stars_after_use?: number | null;
@@ -166,6 +166,7 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
                   <div className="relative overflow-hidden rounded-lg border border-white/10">
                     {s.shot ? <img src={`/api/shots/${simId}/shots/${s.shot}`} alt="" className="block w-full" /> : <div className="aspect-[16/10] bg-white/5" />}
                     {boxes.map((b, k) => { const [y0, x0, y1, x1] = b.box_2d; return <div key={k} className="absolute rounded" title={`${b.label}: ${b.issue}`} style={{ top: `${y0 / 10}%`, left: `${x0 / 10}%`, height: `${(y1 - y0) / 10}%`, width: `${(x1 - x0) / 10}%`, border: `3px solid ${sev(b.severity)}` }} />; })}
+                    {s.point && <div className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full" title={`clicked here: ${s.target || s.clicked || ""}`} style={{ top: `${s.point[1] / 10}%`, left: `${s.point[0] / 10}%`, border: `3px solid ${C.brain}`, boxShadow: "0 0 0 2px rgba(0,0,0,.6)" }} />}
                   </div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-white/50">
@@ -180,7 +181,7 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
                       <div className="shrink-0"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={36} feeling={s.feeling} /></div>
                       <p className="rounded-xl rounded-tl-none bg-white/[0.06] px-3 py-2 text-[14.5px] leading-snug">“{q(s.thought)}”</p>
                     </div>
-                    <div className="mt-2 text-[13px]"><span className="font-semibold" style={{ color: C.brain }}>→ {s.action === "click" ? `clicked “${s.target}”` : s.action === "decide" ? "ready to decide" : s.action}</span> <span className="text-white/45">· felt {s.feeling}</span></div>
+                    <div className="mt-2 text-[13px]"><span className="font-semibold" style={{ color: C.brain }}>→ {s.action === "click" ? `clicked “${s.target}”` : s.action === "click_at" ? `clicked “${s.target || s.clicked || "a spot"}” on the screen` : s.action === "decide" ? "ready to decide" : s.action}</span> <span className="text-white/45">· felt {s.feeling}</span></div>
                     {boxes.map((b, k) => <div key={k} className="mt-2 rounded-lg border-l-4 bg-white/[0.03] px-3 py-1.5 text-[12.5px]" style={{ borderColor: sev(b.severity) }}><b>{b.label}:</b> {b.issue} <span className="text-white/60">Fix: {b.fix}</span></div>)}
                     {pr && <details className="mt-3"><summary className="cursor-pointer font-mono text-[11.5px] text-white/50 hover:text-white">the exact prompt at this step{pr.with_screenshot ? " (+ screenshot)" : ""}</summary><pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-lg bg-black/25 p-3 font-mono text-[11.5px] text-white/75">{pr.prompt}</pre></details>}
                   </div>
