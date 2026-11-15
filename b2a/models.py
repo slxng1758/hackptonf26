@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import time
 from functools import lru_cache
 
 from dotenv import load_dotenv
@@ -28,7 +29,11 @@ def brain():
     """The deep agent and its sub-agents."""
     _anthropic_key()
     from langchain_anthropic import ChatAnthropic
-    return ChatAnthropic(model=(os.getenv("BRAIN_MODEL") or "claude-sonnet-5-5"), max_tokens=4096, timeout=90, max_retries=2)
+    # The director rebuilds itself when it casts mid-run (new customer subagents -> new system prompt and tools), which
+    # invalidates the thinking blocks already in its history: drop them instead of failing the request with a 400.
+    return ChatAnthropic(model=(os.getenv("BRAIN_MODEL") or "claude-sonnet-5-5"), max_tokens=4096, timeout=90, max_retries=2,
+                         betas=["thinking-binding-controls-2026-08-01"],
+                         thinking={"type": "adaptive", "block_binding": {"prefix_mismatch_behavior": "drop_block"}})
 
 
 @lru_cache
@@ -88,3 +93,24 @@ def persona(name: str | None = None):
     """The model that plays one customer (by family name); falls back to Claude Haiku."""
     ms = persona_models()
     return ms.get(name or "", None) or next(iter(ms.values()), None) or fast()
+
+
+RETRY_WAITS = (2, 6)  # seconds between tries when a customer's model fails
+
+
+class ModelUnavailable(RuntimeError):
+    """A customer's model kept failing (quota, outage). That customer is skipped: another model never stands in, so a run
+    stays played by the one model the owner picked."""
+
+
+def call_with_retry(fn, who: str = "", tries: int = 3):
+    """fn() with retries and backoff; after the last failure, ModelUnavailable says which model failed and why."""
+    last: Exception | None = None
+    for i in range(tries):
+        try:
+            return fn()
+        except Exception as e:
+            last = e
+            if i < tries - 1:
+                time.sleep(RETRY_WAITS[min(i, len(RETRY_WAITS) - 1)])
+    raise ModelUnavailable(f"{who or 'the model'} failed {tries} times: {type(last).__name__}: {str(last)[:160]}") from last

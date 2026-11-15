@@ -20,7 +20,7 @@ from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 
 from . import outcome
-from .models import fast, persona as persona_model
+from .models import ModelUnavailable, call_with_retry, fast, persona as persona_model
 
 ARCHETYPES = ["price-sensitive", "quality-first", "brand-loyal", "function-first", "first-time user", "skeptic", "enthusiast"]
 
@@ -359,19 +359,14 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
     history: list[str] = []
     can_order = outcome.order_possible(url)  # our generated store: checkout needs no payment, so a real order is possible
     ordered_at = 0
-    model, backup = persona_model(persona.get("model")), fast()
+    model = persona_model(persona.get("model"))
 
-    fallbacks = {"n": 0, "why": ""}
+    fallbacks = {"n": 0, "why": ""}  # kept in the result shape; no other model stands in any more
     prompts: list[dict] = []
 
     def ask(schema, msg):
-        try:
-            return model.with_structured_output(schema).invoke(msg)
-        except Exception as e:
-            # the persona's own model failed (e.g. Gemini free-tier quota): Claude stands in, and we say so
-            fallbacks["n"] += 1
-            fallbacks["why"] = fallbacks["why"] or f"{type(e).__name__}: {str(e)[:120]}"
-            return backup.with_structured_output(schema).invoke(msg)
+        # the persona's own model, retried; if it keeps failing (e.g. Gemini quota) ModelUnavailable skips this customer
+        return call_with_retry(lambda: model.with_structured_output(schema).invoke(msg), persona.get("model") or "")
 
     with sync_playwright() as p:
         b = p.chromium.launch(args=["--disable-gpu", "--use-gl=swiftshader", "--disable-dev-shm-usage"])
@@ -423,6 +418,8 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
             prompts.append({"n": n, "prompt": prompt, "with_screenshot": bool(jpg)})  # the exact prompt, for the persona page
             try:
                 s: Step = ask(Step, [_img_msg(prompt, jpg)] if jpg else prompt)
+            except ModelUnavailable:
+                raise
             except Exception as e:
                 s = Step(thought=f"(couldn't read the page: {type(e).__name__})", feeling="confused", action="decide")
             step = {"n": n, "url": pg.url, "title": pg.title() if pg else "", "shot": shot_name if jpg else None,
@@ -481,6 +478,8 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
                       history="\n".join(history), did=did)
     try:
         d: Decision = ask(Decision, q)
+    except ModelUnavailable:
+        raise
     except Exception:
         d = ask(Decision, q + "\nFill in every field.")
     why = contradiction(d, steps, can_order)

@@ -22,12 +22,12 @@ from pathlib import Path
 from typing import Literal
 
 from langchain.agents.middleware import AgentMiddleware
-from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import StructuredTool
 from pydantic import Field
 
 from . import outcome, session
-from .models import fast, persona as persona_model
+from .models import ModelUnavailable, call_with_retry, persona as persona_model
 
 Feeling = Literal["delighted", "interested", "neutral", "confused", "annoyed", "skeptical"]
 MAX_STEPS = 10
@@ -352,12 +352,8 @@ class Visit:
             return
         q = session.DECIDE.format(**{**self.p, "memory": self.p.get("memory") or "nothing yet", "instructions": session.instructions(self.p)},
                                   world="", product=self.url, history="\n".join(self.notes) or "(nothing)", did=self.did())
-        try:
-            d = persona_model(self.p.get("model")).with_structured_output(session.Decision).invoke(q)
-        except Exception as e:
-            self.fallbacks["n"] += 1
-            self.fallbacks["why"] = self.fallbacks["why"] or f"{type(e).__name__}: {str(e)[:120]}"
-            d = fast().with_structured_output(session.Decision).invoke(q)
+        # own model only, retried; ModelUnavailable skips this customer (another model never stands in)
+        d = call_with_retry(lambda: persona_model(self.p.get("model")).with_structured_output(session.Decision).invoke(q), self.p.get("model") or "")
         self.decide_prompt = q
         self.finish(d.model_dump())
         self.decide_prompt = q
@@ -468,12 +464,11 @@ class CustomerMiddleware(AgentMiddleware):
                 {"type": "image", "source_type": "base64", "mime_type": "image/jpeg", "data": base64.b64encode(v.cur["jpg"]).decode()}]))
         req = request.override(messages=msgs)
         try:
-            return handler(req)
-        except Exception as e:  # e.g. Gemini free-tier quota: Claude stands in, and we say so
+            return call_with_retry(lambda: handler(req), (v.p.get("model") if v else "") or "")
+        except ModelUnavailable as e:  # e.g. Gemini quota: end this customer's turn; force_decision then skips them
             if v:
-                v.fallbacks["n"] += 1
-                v.fallbacks["why"] = v.fallbacks["why"] or f"{type(e).__name__}: {str(e)[:120]}"
-            return handler(req.override(model=fast()))
+                v.notes.append(f"(the visit stopped: {e})")
+            return AIMessage(content=f"(I can't continue: {e})")
 
 
 def system_prompt(p: dict, host: Host) -> str:
@@ -540,6 +535,8 @@ def run_standalone(p: dict, url: str, world: str, context: str, out_dir: Path, o
         host.v.notes.append(f"(the visit stopped early: {type(e).__name__})")
     if not host.v:
         host.begin(p["id"])
-    host.v.force_decision()
-    host.v.close()
+    try:
+        host.v.force_decision()  # ModelUnavailable propagates: session.run_all records this customer as skipped
+    finally:
+        host.v.close()
     return host.v.result()

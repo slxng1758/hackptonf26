@@ -20,8 +20,9 @@ def _clean(v, limit: int) -> str:
     return " ".join(str(v or "").split())[:limit]
 
 
-def normalize_cast(personas: list[dict]) -> list[dict]:
-    """Fill defaults, clamp values, keep ids unique, rebalance customers' shares to 100% (agents keep theirs)."""
+def normalize_cast(personas: list[dict], default_model: str = "") -> list[dict]:
+    """Fill defaults, clamp values, keep ids unique, rebalance customers' shares to 100% (agents keep theirs).
+    A customer left on "Auto" (no model) gets default_model: the model the owner picked for the whole run."""
     out, seen = [], set()
     used = {str(p.get("id")) for p in personas if p.get("id")}
     n = 1
@@ -52,7 +53,7 @@ def normalize_cast(personas: list[dict]) -> list[dict]:
         p["id"] = pid
         if not isinstance(p.get("avatar"), dict) or "seed" not in p["avatar"]:
             p["avatar"] = {"seed": random.Random(p.get("name", pid)).randint(0, 10_000)}
-        p["model"] = _clean(p.get("model"), 40)
+        p["model"] = _clean(p.get("model"), 40) or (_clean(default_model, 40) if not agent else "")
         out.append(p)
     people = [p for p in out if p.get("kind") != "agent"]
     shares = [max(0.0, float(p.get("share") or 0)) for p in people]

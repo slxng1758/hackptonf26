@@ -165,7 +165,7 @@ class SimJob:
             # 3. write the personas
             ev = self.think("step", "Writing the personas", "turning that reasoning into specific people")
             self.personas = session.cast(i["name"], i["category"], i.get("context", ""), i.get("world", ""), i["customers"], i.get("offer", ""),
-                                         segments=reasoning)
+                                         segments=reasoning, models=i.get("models") or None)  # the model the owner picked plays everyone
             models = sorted({p.get("model", "") for p in self.personas} - {""})
             self.think_done(ev, f"{len(self.personas)} customers, played by {' and '.join(models) or 'the default model'}")
             for p in self.personas:  # long-term memory: start from what this type of customer learned on other sites

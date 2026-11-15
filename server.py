@@ -173,7 +173,8 @@ class Approve(BaseModel):
 @app.post("/api/sims/{sim_id}/approve")
 def sim_approve(sim_id: str, body: Approve):
     from b2a.persona_edit import normalize_cast
-    personas = normalize_cast(body.personas) if body.personas else body.personas  # edited/added customers: safe to run
+    run_model = ((sim.get(sim_id) or {}).get("input", {}).get("models") or [""])[0]  # "Auto" = the run's model
+    personas = normalize_cast(body.personas, run_model) if body.personas else body.personas  # edited/added customers: safe to run
     if not sim.approve(sim_id, personas):
         raise HTTPException(409, "This simulation isn't waiting for approval.")
     return {"ok": True}

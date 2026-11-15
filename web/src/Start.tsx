@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar } from "./Avatar";
 import { C, THEME } from "./theme";
 import { YourSites } from "./Timeline";
@@ -65,7 +65,7 @@ function Scene() {
   );
 }
 
-export interface StartInput { url?: string; description: string; name: string; price: string; context: string; world: string; director?: boolean }
+export interface StartInput { url?: string; description: string; name: string; price: string; context: string; world: string; director?: boolean; models?: string[] }
 
 const EXAMPLE = {
   name: "Oat milk latte",
@@ -84,8 +84,12 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
   const [mode, setMode] = useState<"site" | "describe">("site");
   const [url, setUrl] = useState("");
   const [director, setDirector] = useState(false);
+  // which model plays every customer in this run (Claude unless the user picks another)
+  const [models, setModels] = useState<string[]>([]);
+  const [model, setModel] = useState("Claude");
+  useEffect(() => { fetch("/api/models").then((r) => r.json()).then((ms: string[]) => { setModels(ms); if (ms.length && !ms.includes("Claude")) setModel(ms[0]); }).catch(() => {}); }, []);
   const ready = mode === "site" ? url.trim().length > 3 : description.trim().length >= 10;
-  const extra = () => ({ context, world: world === WORLDS[0] ? "" : world, director });
+  const extra = () => ({ context, world: world === WORLDS[0] ? "" : world, director, ...(models.includes(model) ? { models: [model] } : {}) });
   const go = (b?: { description: string; name: string; price: string }) => {
     if (!b && mode === "site") { if (url.trim().length > 3) onGo({ url: url.trim(), description: "", name: "", price: "", ...extra() }); return; }
     const x = b ?? { description, name, price };
@@ -131,6 +135,16 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
           <button disabled={!ready} className="on-brain rounded-xl px-7 text-[16px] font-semibold text-black disabled:opacity-40" style={THEME === "receipt" ? { background: C.brain } : { background: C.win }}>Go</button>
         </div>
       </form>}
+
+      {models.length > 1 && (
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[13px]">
+          <span className="text-white/50">Customers played by</span>
+          {models.map((m) => (
+            <button key={m} type="button" onClick={() => setModel(m)} aria-pressed={model === m}
+              className={`rounded-full border px-3 py-1 font-semibold transition ${model === m ? "border-white/70 bg-white/15 text-white" : "border-white/15 text-white/50 hover:text-white"}`}>{m}</button>
+          ))}
+        </div>
+      )}
 
       <label className="mt-3 flex cursor-pointer items-center gap-2 text-[13px] text-white/60">
         <input type="checkbox" checked={director} onChange={(e) => setDirector(e.target.checked)} className="h-4 w-4 accent-[#6d4aff]" />
