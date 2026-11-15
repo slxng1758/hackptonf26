@@ -57,6 +57,28 @@ textarea, input, select { color-scheme: dark; }
 :root[data-theme="storefront"] .rounded-full.border:not([style*="border-color"]) { border-color: #d6dae1 !important; background: #fff; }
 :root[data-theme="storefront"] .shimmer { background-image: linear-gradient(90deg, #00a37a, #6d4aff, #00a37a); }
 
+/* Receipt (default): warm paper, ink, one tomato accent. Flat surfaces, hairline rules, print-like type. */
+:root[data-theme="receipt"] { --color-white: var(--ink); --font-sans: "Instrument Sans", system-ui, sans-serif; --font-mono: "IBM Plex Mono", ui-monospace, monospace; }
+:root[data-theme="receipt"] body { background: #f3ede2; }
+:root[data-theme="receipt"] textarea, :root[data-theme="receipt"] input { color-scheme: light; }
+:root[data-theme="receipt"] ::selection { background: #c8402a33; }
+:root[data-theme="receipt"] .panel { background: #fbf7ef; border: 1px solid rgba(27,24,19,.16) !important; border-radius: 6px; box-shadow: none; }
+:root[data-theme="receipt"] .rounded-2xl { border-radius: 8px; }
+:root[data-theme="receipt"] .rounded-xl { border-radius: 6px; }
+:root[data-theme="receipt"] h1, :root[data-theme="receipt"] h2, :root[data-theme="receipt"] .font-serif { font-family: var(--font-serif); font-weight: 500; letter-spacing: -0.015em; }
+:root[data-theme="receipt"] .shimmer { background: none; color: #c8402a; -webkit-text-fill-color: #c8402a; animation: none; font-style: italic; }
+:root[data-theme="receipt"] .bubble { box-shadow: 0 0 0 1px var(--ink), 3px 3px 0 var(--ink); border-radius: 4px; }
+:root[data-theme="receipt"] .rounded-full.border:not([style*="border-color"]) { border-color: rgba(27,24,19,.22) !important; background: transparent; }
+:root[data-theme="receipt"] .heat { animation: none; }
+/* text on an accent background: paper, not ink */
+:root[data-theme="receipt"] .on-brain { color: #fbf7ef !important; }
+/* receipt pieces */
+.leader { display: flex; align-items: baseline; gap: 8px; }
+.leader > .dots { flex: 1; border-bottom: 1.5px dotted color-mix(in oklab, var(--ink) 35%, transparent); transform: translateY(-4px); }
+.rule { border-top: 1.5px dashed color-mix(in oklab, var(--ink) 30%, transparent); }
+.stub { background: var(--card); border: 1px solid color-mix(in oklab, var(--ink) 18%, transparent);
+  -webkit-mask: radial-gradient(circle 6px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 6px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat; }
+
 /* the analyst's report, rendered from markdown */
 .report { font-size: 15px; line-height: 1.65; }
 .report h1 { font-family: var(--font-serif); font-size: 28px; margin: 0 0 12px; text-transform: none; }

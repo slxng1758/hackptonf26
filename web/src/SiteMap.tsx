@@ -2,7 +2,8 @@
 // then leave through the exits on the right: bought, maybe later, or left.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
-import { C } from "./theme";
+import { C, THEME } from "./theme";
+const PAPER = THEME === "receipt";  // print look: ink lines, no glows
 import type { Persona, Sim } from "./Simulate";
 
 const COL = 250, ROW = 170, NODE_W = 190, NODE_H = 120, EXIT_H = 165, PAD = 40;
@@ -34,7 +35,7 @@ function keyOf(u: string, rootHost: string) {
     const x = new URL(u);
     const path = x.pathname.replace(/\/+$/, "") || "/";
     const host = x.host.replace(/^www\./, "");
-    if (path.startsWith("/api/product/")) return { key: host + path, label: "Product page" };  // the rebuilt Amazon listing
+    if (path.startsWith("/api/product/")) return { key: host + path, label: path.endsWith("-cart.html") ? "Cart" : path.endsWith("-checkout.html") ? "Checkout" : "Product page" };  // the rebuilt Amazon listing
     const label = host !== rootHost ? host + (path === "/" ? "" : " · " + decodeURIComponent(path.split("/").filter(Boolean).pop() ?? "").replace(/[-_]+/g, " ")) : path === "/" ? "Home" : decodeURIComponent(path.split("/").filter(Boolean).pop() ?? "").replace(/[-_]+/g, " ").replace(/\.\w+$/, "");
     return { key: host + path, label: label.charAt(0).toUpperCase() + label.slice(1) };
   } catch { return { key: u, label: u }; }
@@ -98,29 +99,29 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
             const x1 = a.x + NODE_W, y1 = a.y + NODE_H / 2, x2 = b.x, y2 = b.y + NODE_H / 2;
             const back = x2 <= x1;
             const d = back ? `M${a.x + NODE_W / 2} ${a.y + NODE_H} C ${a.x + NODE_W / 2} ${a.y + NODE_H + 50}, ${b.x + NODE_W / 2} ${b.y + NODE_H + 50}, ${b.x + NODE_W / 2} ${b.y + NODE_H}` : `M${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`;
-            return <path key={e.a + e.b} d={d} fill="none" stroke="rgba(63,240,212,0.35)" strokeWidth={1 + e.n} strokeDasharray="6 6" className="flow" />;
+            return <path key={e.a + e.b} d={d} fill="none" stroke={PAPER ? "rgba(27,24,19,0.45)" : "rgba(63,240,212,0.35)"} strokeWidth={PAPER ? 1 + e.n * 0.6 : 1 + e.n} strokeDasharray={PAPER ? "2 5" : "6 6"} strokeLinecap="round" className="flow" />;
           })}
         </svg>
 
         {[...nodes.values()].map((n) => { const here = crowd.get(n.key) ?? 0; const heat = Math.min(n.visits / maxVisits, 1); return (
           <div key={n.key} onMouseEnter={() => setHover(n.key)} onMouseLeave={() => setHover(null)}
-            className={`absolute overflow-hidden rounded-2xl border bg-[var(--card)] transition-all duration-700 hover:z-20 hover:scale-[1.6] ${here ? "heat" : ""}`}
+            className={`absolute overflow-hidden border bg-[var(--card)] transition-all duration-700 hover:z-20 hover:scale-[1.6] ${PAPER ? "rounded-[3px]" : "rounded-2xl"} ${here ? "heat" : ""}`}
             style={{ left: n.x, top: n.y, width: NODE_W, height: NODE_H, transformOrigin: "top left",
-              borderColor: n.blocked ? "rgba(255,255,255,0.15)" : hover === n.key || here ? C.win : `rgba(63,240,212,${0.12 + heat * 0.4})`,
-              boxShadow: here ? `0 0 ${18 + here * 16}px ${C.win}${here > 2 ? "aa" : "66"}, inset 0 0 30px ${C.win}22` : `0 10px 30px rgba(0,0,0,.5), 0 0 ${heat * 24}px ${C.win}33` }}>
-            {n.shot ? <img src={`/api/shots/${sim.id}/shots/${n.shot}`} alt="" className="h-full w-full object-cover object-top opacity-60" /> : <div className="h-full w-full bg-white/[0.03]" />}
+              borderColor: PAPER ? (hover === n.key || here ? C.text : `rgba(27,24,19,${0.2 + heat * 0.45})`) : n.blocked ? "rgba(255,255,255,0.15)" : hover === n.key || here ? C.win : `rgba(63,240,212,${0.12 + heat * 0.4})`,
+              boxShadow: PAPER ? (here ? `4px 4px 0 ${C.text}` : `3px 3px 0 rgba(27,24,19,${0.08 + heat * 0.25})`) : here ? `0 0 ${18 + here * 16}px ${C.win}${here > 2 ? "aa" : "66"}, inset 0 0 30px ${C.win}22` : `0 10px 30px rgba(0,0,0,.5), 0 0 ${heat * 24}px ${C.win}33` }}>
+            {n.shot ? <img src={`/api/shots/${sim.id}/shots/${n.shot}`} alt="" className={`h-full w-full object-cover object-top ${PAPER ? "opacity-90 grayscale-[35%]" : "opacity-60"}`} /> : <div className="h-full w-full bg-white/[0.03]" />}
             <div className="absolute inset-x-0 top-0 flex items-center justify-between px-2.5 pb-4 pt-1.5" style={{ background: "linear-gradient(var(--card) 55%, transparent)" }}>
               <span className="truncate text-[12px] font-semibold">{n.label}</span>
-              {n.blocked ? <span className="font-mono text-[9px] text-white/50">bot check</span> : here > 0 ? <span className="rounded-full px-1.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.win }}>{here} here</span> : n.visits > 0 && <span className="font-mono text-[10px] text-white/50">{n.visits}×</span>}
+              {n.blocked ? <span className="on-brain font-mono text-[9px] text-white/50">bot check</span> : here > 0 ? <span className="rounded-full px-1.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.win }}>{here} here</span> : n.visits > 0 && <span className="font-mono text-[10px] text-white/50">{n.visits}×</span>}
             </div>
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1" style={{ background: `linear-gradient(90deg, ${C.win}, ${C.brain})`, opacity: heat }} />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1" style={{ background: PAPER ? C.accent : `linear-gradient(90deg, ${C.win}, ${C.brain})`, opacity: heat }} />
           </div>
         ); })}
 
         {exits.map((e, i) => {
           const n = sim.personas.filter((p) => outcome(sim, p.id) === e.id).length;
           return (
-            <div key={e.id} className={`absolute rounded-2xl border-2 ${e.id === "bought" && n ? "border-solid" : "border-dashed"}`} style={{ left: exitX, top: exitY(i), width: NODE_W, height: EXIT_H, borderColor: `${e.color}${n ? "cc" : "55"}`, background: `${e.color}${n ? "1a" : "0a"}`, boxShadow: e.id === "bought" && n ? `0 0 ${20 + n * 12}px ${e.color}66` : "none" }}>
+            <div key={e.id} className={PAPER ? "panel absolute" : `absolute rounded-2xl border-2 ${e.id === "bought" && n ? "border-solid" : "border-dashed"}`} style={PAPER ? { left: exitX, top: exitY(i), width: NODE_W, height: EXIT_H, borderTop: `4px solid ${e.color}` } : { left: exitX, top: exitY(i), width: NODE_W, height: EXIT_H, borderColor: `${e.color}${n ? "cc" : "55"}`, background: `${e.color}${n ? "1a" : "0a"}`, boxShadow: e.id === "bought" && n ? `0 0 ${20 + n * 12}px ${e.color}66` : "none" }}>
               <div className="flex items-center justify-between px-3 pt-2"><span className="text-[13px] font-semibold" style={{ color: e.color }}>{e.label}</span><span key={n} className="cell-in font-mono text-[22px] font-semibold" style={{ color: e.color }}>{n}</span></div>
               {e.id === "bought" && n > 0 && (
                 <div key={`burst${n}`} className="pointer-events-none absolute right-6 top-4">
@@ -134,10 +135,10 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
 
         {spots.map(({ p, first, x, y, feeling, thought, d, moving }) => (
           <button key={p.id} onClick={() => onOpen(p)} className="group absolute z-10 transition-all duration-[1200ms] ease-in-out" style={{ left: x, top: y }} title={`${p.name} · ${p.archetype}${p.model ? ` · ${p.model}` : ""}`}>
-            <div className="rounded-full" style={{ boxShadow: `0 0 0 2.5px ${SHIRT[p.archetype]}, 0 6px 20px rgba(0,0,0,.6)` }}>
+            <div className="rounded-full" style={{ boxShadow: PAPER ? `0 0 0 2px ${C.text}` : `0 0 0 2.5px ${SHIRT[p.archetype]}, 0 6px 20px rgba(0,0,0,.6)` }}>
               <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={40} feeling={feeling} busy={moving} />
             </div>
-            {outcome(sim, p.id) === "bought" && <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold text-black" style={{ background: C.win }}>✓</span>}
+            {outcome(sim, p.id) === "bought" && <span className="on-brain absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold text-black" style={{ background: C.win }}>✓</span>}
             <div className="mx-auto mt-0.5 w-[44px] truncate text-center font-mono text-[9px] text-white/70">{p.name}{p.model && <span className="block text-white/35" title={p.model_note}>{p.played_by ? `${p.model}→${p.played_by}` : p.model}</span>}</div>
             {thought && (
               <div key={thought} className={`bubble pointer-events-none absolute bottom-full left-1/2 mb-1 w-[200px] -translate-x-1/2 rounded-xl px-2.5 py-1.5 text-left text-[11px] leading-snug shadow-lg ${moving && first ? "block" : "hidden group-hover:block"}`}
@@ -161,7 +162,9 @@ function Fit({ width, height, children }: { width: number; height: number; child
     ro.observe(el); return () => ro.disconnect();
   }, [width]);
   return (
-    <div ref={ref} className="relative mt-6 overflow-hidden rounded-3xl border border-white/10 panel" style={{ height: height * k + 16, backgroundImage: "radial-gradient(rgba(127,127,127,0.18) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
+    <div ref={ref} className="relative mt-6 overflow-hidden rounded-3xl border border-white/10 panel" style={PAPER
+      ? { height: height * k + 16, backgroundImage: "linear-gradient(rgba(27,24,19,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(27,24,19,0.06) 1px, transparent 1px)", backgroundSize: "32px 32px" }  // a store floor plan
+      : { height: height * k + 16, backgroundImage: "radial-gradient(rgba(127,127,127,0.18) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
       <div className="absolute left-1/2 top-2" style={{ width, height, transform: `translateX(-50%) scale(${k})`, transformOrigin: "top center" }}>{children}</div>
     </div>
   );

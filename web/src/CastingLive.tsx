@@ -21,7 +21,7 @@ function Dot({ ev, color }: { ev: ThinkEvent; color: string }) {
   if (ev.status === "running")
     return <span className="grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-[var(--card)]"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/15" style={{ borderTopColor: color }} /></span>;
   if (ev.status === "error")
-    return <span className="grid h-7 w-7 place-items-center rounded-full text-[13px] font-bold text-black" style={{ background: C.loss }}>!</span>;
+    return <span className="on-brain grid h-7 w-7 place-items-center rounded-full text-[13px] font-bold text-black" style={{ background: C.loss }}>!</span>;
   return <span className="grid h-7 w-7 place-items-center rounded-full border text-[12px]" style={{ borderColor: `${color}66`, background: `${color}1a`, color }}>✓</span>;
 }
 

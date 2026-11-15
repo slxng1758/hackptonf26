@@ -60,7 +60,7 @@ export function PrintReport({ id }: { id: string }) {
         <h2 className="mt-8 text-[17px] font-bold">Recommendations</h2>
         <ol className="mt-3 space-y-3">
           {sim.actions.map((a, i) => (
-            <li key={i} className="flex gap-3 break-inside-avoid"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[12px] font-bold text-[#ffffff]" style={{ background: C.brain }}>{i + 1}</span>
+            <li key={i} className="on-brain flex gap-3 break-inside-avoid"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[12px] font-bold text-[#ffffff]" style={{ background: C.brain }}>{i + 1}</span>
               <div><div className="text-[14px] font-semibold">{a.fix} <span className="ml-1 rounded border border-[#e4e7ec] px-1.5 text-[10px] font-normal text-[#667085]">{a.audience} · {a.effort} effort</span></div>
                 <div className="mt-0.5 text-[12.5px] text-[#475467]">{a.why}</div>
                 <div className="mt-0.5 text-[11.5px] text-[#667085]">Wins back: {a.who.join(", ")}{a.page ? ` · ${a.page}` : ""}</div></div></li>

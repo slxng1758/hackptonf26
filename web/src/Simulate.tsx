@@ -129,16 +129,15 @@ export function SimView({ id }: { id: string }) {
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 pb-16">
-      {/* one headline that always says what is happening */}
-      <div className="pt-6 text-center">
-        <div className="font-mono text-[12px] text-white/40">{sim.round ? <span className="mr-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.brain }}>round {sim.round + 1} · they remember round {sim.round}</span> : null}{/\/api\/product\//.test(sim.input.url) ? "Amazon listing, rebuilt from the public Amazon Reviews 2023 dataset" : isOwnPage(sim.input.url) ? "Generated product page" : host(sim.input.url)}{sim.input.context ? ` · ${sim.input.context}` : ""}{sim.input.world ? ` · ${sim.input.world}` : ""}</div>
+      {/* one headline that always says what is happening; once done, the receipt below says it */}
+      {sim.status !== "done" && <div className="pt-6 text-center">
+        <div className="on-brain font-mono text-[12px] text-white/40">{sim.round ? <span className="mr-2 rounded-full px-2 py-0.5 font-semibold text-black" style={{ background: C.brain }}>round {sim.round + 1} · they remember round {sim.round}</span> : null}{/\/api\/product\//.test(sim.input.url) ? "Amazon listing, rebuilt from the public Amazon Reviews 2023 dataset" : isOwnPage(sim.input.url) ? "Generated product page" : host(sim.input.url)}{sim.input.context ? ` · ${sim.input.context}` : ""}{sim.input.world ? ` · ${sim.input.world}` : ""}</div>
         <h1 className="mt-2 font-serif text-[40px] leading-tight">
           {["casting", "briefing"].includes(sim.status) && <>Casting customers for {name}<span className="animate-pulse">…</span></>}
           {sim.status === "awaiting_approval" && <>Review your test panel</>}
           {sim.status === "browsing" && <>{decided + botsDone} of {sim.personas.length} have decided<span className="animate-pulse">…</span></>}
           {sim.status === "talking" && <><span style={{ color: buyers ? C.win : C.loss }}>{buyers} of {decided}</span> would buy · <span className="text-white/50">now they're posting about it<span className="animate-pulse">…</span></span></>}
           {sim.status === "analyzing" && <><span style={{ color: buyers ? C.win : C.loss }}>{buyers} of {decided}</span> would buy · <span className="text-white/50">writing up why<span className="animate-pulse">…</span></span></>}
-          {sim.status === "done" && <><span style={{ color: buyers / Math.max(decided, 1) >= 0.5 ? C.win : buyers ? C.mid : C.loss }}>{buyers} of {decided}</span> customers would buy from {name}</>}
           {sim.status === "error" && <span style={{ color: C.loss }}>Something broke</span>}
         </h1>
         {bots.length > 0 && botsDone > 0 && ["talking", "analyzing", "done"].includes(sim.status) && (
@@ -154,7 +153,7 @@ export function SimView({ id }: { id: string }) {
         )}
         {sim.error && <p className="mt-2 text-[13px]" style={{ color: C.loss }}>{sim.error}</p>}
         <Timeline url={sim.input.url} current={sim.id} />
-      </div>
+      </div>}
 
       {(["casting", "briefing"].includes(sim.status) || (sim.status === "resuming" && !sim.steps.some((x) => x.kind === "approved"))) && (
         <CastingLive events={sim.thinking ?? []} personas={sim.personas} director={!!sim.input.director} />
@@ -188,7 +187,7 @@ export function SimView({ id }: { id: string }) {
                     {p.model && <span className="rounded-full border border-white/15 px-2 py-0.5 font-mono text-[10px] text-white/60">played by {p.model}</span>}
                     {p.custom && <span className="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold" style={{ background: `${C.win}22`, color: C.win }}>{p.instructions ? "custom prompt" : "edited"}</span>}
                   </div>
-                  {p.inherited && <div title={p.memory} className="mt-1 inline-block cursor-help rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.brain }}>prior memory</div>}
+                  {p.inherited && <div title={p.memory} className="on-brain mt-1 inline-block cursor-help rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.brain }}>prior memory</div>}
                   <p className="mt-1 line-clamp-3 text-[12px] leading-snug text-white/50">{p.goal}</p>
                 </button>
               </div>
@@ -217,7 +216,7 @@ export function SimView({ id }: { id: string }) {
               </div>
             </div>
           )}
-          <button disabled={!cast.length} onClick={approve} className="mt-10 rounded-2xl px-10 py-4 text-[17px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 40px ${C.win}66` }}>Start the test →</button>
+          <button disabled={!cast.length} onClick={approve} className="on-brain mt-10 rounded-2xl px-10 py-4 text-[17px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 40px ${C.win}66` }}>Start the test →</button>
           <p className="mt-3 text-[12px] text-white/35">click anyone to edit their profile, model or persona prompt · shares rebalance to 100% when the test starts</p>
           <form onSubmit={(e) => { e.preventDefault(); if (fix.trim().length > 1) recast(); }} className="mx-auto mt-6 flex max-w-xl gap-2">
             <input value={fix} onChange={(e) => setFix(e.target.value)} placeholder="Anything off? e.g. my customers are older than that"
@@ -234,7 +233,7 @@ export function SimView({ id }: { id: string }) {
 
       {live && (
         <>
-          {sim.status === "done" && <Bento sim={sim} buyers={buyers} decided={decided} botsBought={botsBought} botsDone={botsDone} goto={setTab} />}
+          {sim.status === "done" && <Receipt sim={sim} name={name} buyers={buyers} decided={decided} botsBought={botsBought} botsDone={botsDone} goto={setTab} />}
           <Tabs tab={tab} setTab={setTab} items={[
             { id: "map", label: "Sessions", show: true },
             { id: "fixes", label: "Recommendations", show: !!sim.actions?.length },
@@ -292,7 +291,7 @@ export function SimView({ id }: { id: string }) {
                 <form onSubmit={(e) => { e.preventDefault(); teach(); }} className="mt-3 flex gap-2">
                   <input value={truth} onChange={(e) => setTruth(e.target.value)} disabled={teaching} placeholder="e.g. most of our buyers are over 50 and call to order, nobody reads the science page"
                     className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#d16bff]" />
-                  <button disabled={teaching || truth.trim().length < 3} className="rounded-xl px-4 text-[14px] font-semibold text-black disabled:opacity-40" style={{ background: C.brain }}>{teaching ? "Teaching…" : "Teach"}</button>
+                  <button disabled={teaching || truth.trim().length < 3} className="on-brain rounded-xl px-4 text-[14px] font-semibold text-black disabled:opacity-40" style={{ background: C.brain }}>{teaching ? "Teaching…" : "Teach"}</button>
                 </form>
                 {taught != null && <p className="mt-2 text-[13px]" style={{ color: C.brain }}>{taught === 0 ? "That didn't change anyone's memory." : `${taught} persona${taught > 1 ? "s" : ""} updated their memory. See "What they learned" above.`}</p>}
               </div>
@@ -301,7 +300,7 @@ export function SimView({ id }: { id: string }) {
                 <p className="mt-1 text-[13px] text-white/50">The same customers come back with their memory, so before and after is a fair comparison.</p>
                 <input value={change} onChange={(e) => setChange(e.target.value)} placeholder="What did you change? e.g. added prices to the Nocturne page (optional)"
                   className="mt-3 w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#d16bff]" />
-                <button onClick={rerun} className="mt-4 rounded-2xl px-6 py-3.5 text-[16px] font-semibold text-black" style={{ background: C.brain, boxShadow: `0 0 40px ${C.brain}66` }}>{change.trim() ? "Test the change →" : `Run round ${(sim.round ?? 0) + 2} →`}</button>
+                <button onClick={rerun} className="on-brain mt-4 rounded-2xl px-6 py-3.5 text-[16px] font-semibold text-black" style={{ background: C.brain, boxShadow: `0 0 40px ${C.brain}66` }}>{change.trim() ? "Test the change →" : `Run round ${(sim.round ?? 0) + 2} →`}</button>
               </div>
               </div>
             </section>
@@ -442,6 +441,74 @@ function downloadReport(sim: Sim) {
   URL.revokeObjectURL(url);
 }
 
+// The finished test as a receipt: what happened in dotted-leader rows, what to fix first, earlier tests.
+function Receipt({ sim, name, buyers, decided, botsBought, botsDone, goto }: { sim: Sim; name: string; buyers: number; decided: number; botsBought: number; botsDone: number; goto: (t: string) => void }) {
+  const people = sim.personas.filter((p) => p.kind !== "agent" && sim.decisions[p.id]);
+  const count = (o: string) => people.filter((p) => outcomeDetail(sim, p.id) === o).length;
+  const rows: [string, number, string][] = [
+    ["Bought", count("bought") + count("bought_unhappy"), C.win],
+    ["Added to cart, then left", count("abandoned_cart"), C.mid],
+    ["Maybe later", count("maybe"), C.mid],
+    ["Left without buying", count("left"), C.loss],
+  ];
+  const byModel = Object.entries(people.reduce((acc, p) => { const m = p.played_by || p.model || "Claude"; const v = (acc[m] ??= { b: 0, n: 0 }); v.n++; if (outcome(sim, p.id) === "bought") v.b++; return acc; }, {} as Record<string, { b: number; n: number }>));
+  const top = sim.social?.top_influencers?.[0];
+  const star = top ? sim.personas.find((p) => p.id === top) : undefined;
+  // first sentence of the word-of-mouth summary, without splitting at abbreviations like "vs." or "e.g."
+  const spread = sim.social?.summary?.replace(/\*\*/g, "").match(/^.*?(?<!\b(?:vs|e\.g|i\.e|etc|approx))[.!?](?=\s+[A-Z“"]|$)/)?.[0] ?? sim.social?.summary?.replace(/\*\*/g, "");
+  const when = `${sim.id.slice(0, 2)}/${sim.id.slice(2, 4)} ${sim.id.slice(5, 7)}:${sim.id.slice(7, 9)}`;
+  const where = /\/api\/product\//.test(sim.input.url) ? "Amazon listing, rebuilt from the public Amazon Reviews 2023 dataset" : isOwnPage(sim.input.url) ? "Generated product page" : host(sim.input.url);
+  return (
+    <div className="mx-auto mt-8 grid max-w-6xl gap-8 lg:grid-cols-[1.05fr_1fr]">
+      <section className="stub rise px-8 pb-7 pt-6">
+        <div className="flex justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-white/50"><span>Customer test · No. {sim.id.slice(-4)}</span><span>{when}{sim.round ? ` · re-test ${sim.round}` : ""}</span></div>
+        <div className="mt-1 font-mono text-[11px] text-white/40">{name} · {where}{sim.input.context ? ` · change tested: ${sim.input.context}` : ""}</div>
+        <h1 className="mt-5 font-serif text-[46px] leading-[1.02]"><span style={{ color: C.accent }}>{buyers} of {decided}</span> customers<br />would buy.</h1>
+        <div className="rule mt-5" />
+        <div className="mt-4 space-y-1.5 font-mono text-[14px]">
+          {rows.map(([l, n, c]) => <div key={l} className="leader"><span className="uppercase tracking-wide text-white/75">{l}</span><span className="dots" /><span className="font-semibold" style={{ color: n ? c : undefined }}>{n}</span></div>)}
+        </div>
+        <div className="rule mt-4" />
+        <div className="mt-4 space-y-1.5 font-mono text-[14px]">
+          {botsDone > 0 && <button onClick={() => goto("agents")} className="leader w-full text-left"><span className="uppercase tracking-wide text-white/75">AI agents checked out</span><span className="dots" /><span className="font-semibold" style={{ color: botsBought ? C.win : C.loss }}>{botsBought}/{botsDone}</span></button>}
+          {byModel.length > 1 && byModel.map(([m, v]) => <div key={m} className="leader text-[12.5px] text-white/55"><span>customers played by {m}</span><span className="dots" /><span>{v.b}/{v.n} bought</span></div>)}
+        </div>
+        <div className="rule mt-4" />
+        <div className="mt-5 flex flex-wrap gap-2">
+          <a href={`/api/sims/${sim.id}/report.pdf`} className="on-brain rounded-md px-4 py-2 text-[13px] font-semibold text-[#ffffff]" style={{ background: C.brain }}>Download PDF report</a>
+          <button onClick={() => downloadReport(sim)} className="rounded-md border border-white/20 px-4 py-2 text-[13px] font-semibold hover:border-white/50">Markdown</button>
+          <button onClick={() => goto("map")} className="rounded-md border border-white/20 px-4 py-2 text-[13px] font-semibold hover:border-white/50">Watch them shop ↓</button>
+        </div>
+      </section>
+      <div className="rise flex flex-col gap-6" style={{ animationDelay: ".1s" }}>
+        <section>
+          <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-white/50">Fix first</div>
+          <ol className="mt-3 space-y-4">
+            {(sim.actions ?? []).slice(0, 3).map((a, i) => (
+              <li key={i} className="flex gap-4">
+                <span className="font-serif text-[30px] leading-none" style={{ color: C.accent }}>{i + 1}</span>
+                <div><button onClick={() => goto("fixes")} className="text-left text-[16px] font-semibold leading-snug hover:underline">{a.fix}</button>
+                  <div className="mt-1 font-mono text-[11px] uppercase tracking-wide text-white/50">for {a.audience === "AI agents" ? "AI agents" : a.audience === "both" ? "people and agents" : "people"} · {a.effort} effort · wins back {a.who.length}</div></div>
+              </li>
+            ))}
+            {!sim.actions?.length && <li className="text-[14px] text-white/50">Writing recommendations…</li>}
+          </ol>
+        </section>
+        {spread && (
+          <button onClick={() => goto("talk")} className="rule pt-5 text-left">
+            <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-white/50">What's spreading{star ? ` · started by ${star.name}` : ""}</div>
+            <p className="mt-2 font-serif text-[19px] italic leading-snug">“{spread}”</p>
+          </button>
+        )}
+        <div className="rule pt-4">
+          <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-white/50">Earlier tests of this site</div>
+          <div className="-mx-1"><Timeline url={sim.input.url} current={sim.id} /></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Bento({ sim, buyers, decided, botsBought, botsDone, goto }: { sim: Sim; buyers: number; decided: number; botsBought: number; botsDone: number; goto: (t: string) => void }) {
   const top = sim.social?.top_influencers?.[0];
   const star = top ? sim.personas.find((p) => p.id === top) : undefined;
@@ -456,7 +523,7 @@ function Bento({ sim, buyers, decided, botsBought, botsDone, goto }: { sim: Sim;
       <div className="mb-3 flex items-center justify-between">
         <div className="text-[13px] font-semibold text-white/60">Summary</div>
         <div className="flex gap-2">
-          <a href={`/api/sims/${sim.id}/report.pdf`} className="rounded-lg px-3 py-1.5 text-[13px] font-semibold text-[#ffffff]" style={{ background: C.brain }}>Download PDF report</a>
+          <a href={`/api/sims/${sim.id}/report.pdf`} className="on-brain rounded-lg px-3 py-1.5 text-[13px] font-semibold text-[#ffffff]" style={{ background: C.brain }}>Download PDF report</a>
           <button onClick={() => downloadReport(sim)} className="rounded-lg border border-white/15 px-3 py-1.5 text-[13px] font-semibold hover:border-white/40">Markdown</button>
         </div>
       </div>
@@ -482,7 +549,7 @@ function Bento({ sim, buyers, decided, botsBought, botsDone, goto }: { sim: Sim;
           <div className="text-[13px] font-semibold">Top recommendations</div>
           <ol className="mt-3 space-y-3">
             {(sim.actions ?? []).slice(0, 3).map((a, i) => (
-              <li key={i} className="flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-md font-mono text-[12px] font-bold text-white" style={{ background: C.brain }}>{i + 1}</span>
+              <li key={i} className="on-brain flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-md font-mono text-[12px] font-bold text-white" style={{ background: C.brain }}>{i + 1}</span>
                 <span className="text-[14px] leading-snug"><span className="font-semibold">{a.fix}</span><span className="ml-2 rounded px-1.5 py-0.5 font-mono text-[10px] text-white/60 ring-1 ring-white/15">{a.audience === "AI agents" ? "agents" : a.audience === "both" ? "both" : "people"} · {a.effort}</span></span></li>
             ))}
             {!sim.actions?.length && <li className="text-[14px] text-white/50">Writing recommendations…</li>}

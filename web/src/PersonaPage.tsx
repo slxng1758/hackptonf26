@@ -85,7 +85,7 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
           <div className="text-[14px] text-white/60">{agent ? `Acting for a user · ${p.goal}` : p.occupation}{!agent && p.share != null && ` · ${Math.round(p.share * 100)}% of customers`}</div>
           <div className="mt-2 flex flex-wrap gap-2 text-[12px]">
             <span className="rounded-full border border-white/15 px-2.5 py-0.5">played by {p.played_by ? `${p.played_by} (${p.model} unavailable)` : p.model}</span>
-            {p.inherited && <span className="rounded-full px-2.5 py-0.5 font-semibold text-[#ffffff]" style={{ background: C.brain }}>carries memory from other businesses</span>}
+            {p.inherited && <span className="on-brain rounded-full px-2.5 py-0.5 font-semibold text-[#ffffff]" style={{ background: C.brain }}>carries memory from other businesses</span>}
             {d.fallbacks > 0 && <span className="rounded-full border px-2.5 py-0.5" style={{ borderColor: C.mid, color: C.mid }} title={d.fallback_reason}>Claude stood in for {d.fallbacks} step(s)</span>}
           </div>
         </div>
@@ -172,7 +172,7 @@ export function PersonaPage({ simId, pid }: { simId: string; pid: string }) {
                       <span>step {s.n}</span><span className="truncate">{isOwnPage(s.url) ? "the product page" : s.url.replace(/^https?:\/\//, "")}</span>
                       {s.blocked && <span className="rounded-full bg-white/10 px-2 text-white/70">bot check · not counted</span>}
                       {s.cart && <span className="rounded-full px-2 font-semibold" style={{ background: `${C.win}33`, color: C.win }}>clicked “{s.target}”</span>}
-                      {s.ordered && <span className="rounded-full px-2 font-semibold text-black" style={{ background: C.win }}>order placed</span>}
+                      {s.ordered && <span className="on-brain rounded-full px-2 font-semibold text-black" style={{ background: C.win }}>order placed</span>}
                       {Math.abs(swing) >= 2 && <span className="rounded-full px-2 font-semibold" style={{ background: `${swing < 0 ? C.loss : C.win}33`, color: swing < 0 ? C.loss : C.win }}>turning point: {prev.feeling} → {s.feeling}</span>}
                       {deciding && <span className="rounded-full px-2 font-semibold text-black" style={{ background: color }}>made up their mind here</span>}
                     </div>

@@ -118,7 +118,7 @@ export function PersonaEditor({ initial, isNew, models, simId, onSave, onRemove,
                 <input value={brief} onChange={(e) => setBrief(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); draft(); } }}
                   placeholder="e.g. a retired nurse on a fixed income who distrusts subscriptions" className={FIELD} />
                 <button onClick={draft} disabled={drafting || brief.trim().length < 3}
-                  className="shrink-0 rounded-xl px-4 text-[13px] font-semibold text-white transition disabled:opacity-40" style={{ background: C.brain }}>
+                  className="on-brain shrink-0 rounded-xl px-4 text-[13px] font-semibold text-white transition disabled:opacity-40" style={{ background: C.brain }}>
                   {drafting ? "Drafting…" : "Draft"}
                 </button>
               </div>
@@ -199,7 +199,7 @@ export function PersonaEditor({ initial, isNew, models, simId, onSave, onRemove,
           <div className="flex-1" />
           <button onClick={onClose} className="rounded-xl border border-white/15 px-4 py-2.5 text-[14px] text-white/70 transition hover:border-white/40 hover:text-white">Cancel</button>
           <button onClick={() => valid && onSave({ ...p, name: p.name.trim(), custom: true })} disabled={!valid}
-            className="rounded-xl px-5 py-2.5 text-[14px] font-semibold text-black transition disabled:opacity-40" style={{ background: C.win, boxShadow: valid ? `0 0 24px ${C.win}44` : undefined }}>
+            className="on-brain rounded-xl px-5 py-2.5 text-[14px] font-semibold text-black transition disabled:opacity-40" style={{ background: C.win, boxShadow: valid ? `0 0 24px ${C.win}44` : undefined }}>
             {isNew ? "Add customer" : "Save changes"}
           </button>
         </footer>

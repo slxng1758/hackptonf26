@@ -43,7 +43,7 @@ export function WordOfMouth({ social, personas }: { social: Social; personas: Pe
                   <div className="flex items-center gap-2 text-[12px]">
                     <b>{p.name}</b>
                     {tp && <span className="text-white/40">{post.kind === "repost" ? "🔁 reposted" : "↩ replied to"} {tp.name}</span>}
-                    {post.author === top && <span className="rounded-full px-1.5 font-mono text-[9px] font-semibold text-black" style={{ background: C.mid }}>spreads furthest</span>}
+                    {post.author === top && <span className="on-brain rounded-full px-1.5 font-mono text-[9px] font-semibold text-black" style={{ background: C.mid }}>spreads furthest</span>}
                     <span className="ml-auto h-2 w-2 rounded-full" style={{ background: sentColor(post.sentiment) }} />
                   </div>
                   <p className="mt-0.5 text-[14px] leading-snug text-white/85">{post.text}</p>
@@ -66,7 +66,7 @@ export function WordOfMouth({ social, personas }: { social: Social; personas: Pe
             const p = who(personas, n.id, n.label), s = 34 + (n.centrality / maxC) * 30, at = pos[n.id];
             return (
               <div key={n.id} className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: `${(at.x / 400) * 100}%`, top: `${(at.y / 370) * 100}%` }}>
-                {n.id === top && <span className="mb-1 rounded-full px-1.5 font-mono text-[9px] font-semibold text-black" style={{ background: C.mid }}>most influential</span>}
+                {n.id === top && <span className="on-brain mb-1 rounded-full px-1.5 font-mono text-[9px] font-semibold text-black" style={{ background: C.mid }}>most influential</span>}
                 <div className="rounded-full" style={{ boxShadow: `0 0 0 3px ${sentColor(n.sentiment)}, 0 0 ${n.id === top ? 30 : 0}px ${sentColor(n.sentiment)}` }}>
                   <Avatar seed={p.avatar.seed} archetype={p.archetype || n.archetype} age={p.age} size={s} />
                 </div>
@@ -134,7 +134,7 @@ export function Learned({ changes, personas }: { changes: PersonaChange[]; perso
           <div key={i} className={`${PANEL} flex gap-4 p-4`}>
             <div className="h-fit self-start rounded-full" style={{ boxShadow: `0 0 0 2px ${SHIRT[p.archetype] ?? "#888"}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={44} feeling="interested" /></div>
             <div className="min-w-0 flex-1">
-              <div className="text-[14px]"><b>{p.name}</b> <span className="font-mono text-[11px] text-white/40">round {c.iteration}</span>{(c as PersonaChange & { source?: string }).source === "human" && <span className="ml-2 rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.brain }}>from real people</span>}</div>
+              <div className="on-brain text-[14px]"><b>{p.name}</b> <span className="font-mono text-[11px] text-white/40">round {c.iteration}</span>{(c as PersonaChange & { source?: string }).source === "human" && <span className="ml-2 rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.brain }}>from real people</span>}</div>
               <p className="line-clamp-2 text-[14px] text-white/80">{c.lesson}</p>
               <details className="mt-1"><summary className="cursor-pointer font-mono text-[11px] text-white/40 hover:text-white">before / after</summary>
               <div className="mt-2 grid gap-2 font-mono text-[11.5px] md:grid-cols-2">

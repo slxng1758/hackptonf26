@@ -30,7 +30,7 @@ export function Lens({ simId }: { simId: string }) {
       {state === "loading" && <p className="mt-8 text-center text-white/50">Loading…</p>}
       {(state === "none" || state === "error") && (
         <div className="mt-8 text-center">
-          <button onClick={run} className="rounded-xl px-6 py-3 text-[15px] font-semibold text-[#ffffff]" style={{ background: C.brain }}>Run the Gemini lens</button>
+          <button onClick={run} className="on-brain rounded-xl px-6 py-3 text-[15px] font-semibold text-[#ffffff]" style={{ background: C.brain }}>Run the Gemini lens</button>
           <p className="mt-2 text-[12px] text-white/45">Takes about 30 to 60 seconds.{err && <span style={{ color: C.loss }}> {err}</span>}</p>
         </div>
       )}
