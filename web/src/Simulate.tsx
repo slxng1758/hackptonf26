@@ -177,7 +177,7 @@ export function SimView({ id }: { id: string }) {
                   <button onClick={() => setEditing({ p, isNew: false })} aria-label={`edit ${p.name}`} title="Edit"
                     className="grid h-7 w-7 place-items-center rounded-full border border-white/15 bg-[var(--card)] text-[12px] text-white/70 shadow transition hover:text-white">✎</button>
                   <button onClick={() => setCast(cast.filter((x) => x.id !== p.id))} aria-label={`remove ${p.name}`} title="Remove"
-                    className="grid h-7 w-7 place-items-center rounded-full border border-white/15 bg-[var(--card)] text-[14px] text-white/70 shadow transition hover:border-[#ff3355] hover:bg-[#ff3355] hover:text-white">×</button>
+                    className="grid h-7 w-7 place-items-center rounded-full border border-white/15 bg-[var(--card)] text-[14px] text-white/70 shadow transition hover:border-[#f2675b] hover:bg-[#f2675b] hover:text-white">×</button>
                 </div>
                 <button onClick={() => setEditing({ p, isNew: false })} className="block w-full rounded-2xl px-2 pb-3 pt-1 transition hover:bg-white/[0.04]">
                   <div className="mx-auto w-fit rounded-full transition group-hover:scale-[1.03]" style={{ boxShadow: `0 0 0 3px ${SHIRT[p.archetype] ?? "#8a93b8"}` }}><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={96} /></div>
@@ -195,7 +195,7 @@ export function SimView({ id }: { id: string }) {
             <div className="rise w-[164px]" style={{ animationDelay: `${cast.length * 0.06}s` }}>
               <button onClick={() => setEditing({ p: blankPersona(), isNew: true })}
                 className="group block w-full rounded-2xl px-2 pb-3 pt-1 transition hover:bg-white/[0.04]">
-                <div className="mx-auto grid h-[96px] w-[96px] place-items-center rounded-full border-2 border-dashed border-white/20 text-[34px] font-light text-white/40 transition group-hover:border-[#3ff0d4] group-hover:text-[#3ff0d4]">+</div>
+                <div className="mx-auto grid h-[96px] w-[96px] place-items-center rounded-full border-2 border-dashed border-white/20 text-[34px] font-light text-white/40 transition group-hover:border-[#4ade9a] group-hover:text-[#4ade9a]">+</div>
                 <div className="mt-3 text-[15px] font-semibold text-white/80">Add customer</div>
                 <div className="font-mono text-[11px] text-white/40">your own persona</div>
               </button>
@@ -208,7 +208,7 @@ export function SimView({ id }: { id: string }) {
               <div className="mt-4 flex flex-wrap justify-center gap-6">
                 {cast.filter((p) => p.kind === "agent").map((p) => (
                   <div key={p.id} className="group relative w-[120px]">
-                    <button onClick={() => setCast(cast.filter((x) => x.id !== p.id))} className="absolute right-2 top-0 z-10 hidden h-6 w-6 place-items-center rounded-full bg-white/15 text-white/70 hover:bg-[#ff3355] hover:text-white group-hover:grid" aria-label={`remove ${p.name}`}>×</button>
+                    <button onClick={() => setCast(cast.filter((x) => x.id !== p.id))} className="absolute right-2 top-0 z-10 hidden h-6 w-6 place-items-center rounded-full bg-white/15 text-white/70 hover:bg-[#f2675b] hover:text-white group-hover:grid" aria-label={`remove ${p.name}`}>×</button>
                     <div className="mx-auto w-fit"><Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} size={76} feeling="neutral" /></div>
                     <div className="mt-2 text-[14px] font-semibold">{p.name}</div>
                   </div>
@@ -216,11 +216,11 @@ export function SimView({ id }: { id: string }) {
               </div>
             </div>
           )}
-          <button disabled={!cast.length} onClick={approve} className="on-brain mt-10 rounded-2xl px-10 py-4 text-[17px] font-semibold text-black disabled:opacity-40" style={{ background: C.win, boxShadow: `0 0 40px ${C.win}66` }}>Start the test →</button>
+          <button disabled={!cast.length} onClick={approve} className="on-brain mt-10 rounded-2xl px-10 py-4 text-[17px] font-semibold text-black disabled:opacity-40" style={{ background: C.win }}>Start the test →</button>
           <p className="mt-3 text-[12px] text-white/35">click anyone to edit their profile, model or persona prompt · shares rebalance to 100% when the test starts</p>
           <form onSubmit={(e) => { e.preventDefault(); if (fix.trim().length > 1) recast(); }} className="mx-auto mt-6 flex max-w-xl gap-2">
             <input value={fix} onChange={(e) => setFix(e.target.value)} placeholder="Anything off? e.g. my customers are older than that"
-              className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#3ff0d4]" />
+              className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#4ade9a]" />
             <button className="rounded-xl border border-white/20 px-4 text-[14px] hover:border-white/50">Recast</button>
           </form>
           {editing && (
@@ -290,7 +290,7 @@ export function SimView({ id }: { id: string }) {
                 <p className="mt-1 text-[13px] text-white/50">Real people beat our guesses. Tell them what actually happens and every persona it applies to updates its memory before the next round.</p>
                 <form onSubmit={(e) => { e.preventDefault(); teach(); }} className="mt-3 flex gap-2">
                   <input value={truth} onChange={(e) => setTruth(e.target.value)} disabled={teaching} placeholder="e.g. most of our buyers are over 50 and call to order, nobody reads the science page"
-                    className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#d16bff]" />
+                    className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#a78bfa]" />
                   <button disabled={teaching || truth.trim().length < 3} className="on-brain rounded-xl px-4 text-[14px] font-semibold text-black disabled:opacity-40" style={{ background: C.brain }}>{teaching ? "Teaching…" : "Teach"}</button>
                 </form>
                 {taught != null && <p className="mt-2 text-[13px]" style={{ color: C.brain }}>{taught === 0 ? "That didn't change anyone's memory." : `${taught} persona${taught > 1 ? "s" : ""} updated their memory. See "What they learned" above.`}</p>}
@@ -299,8 +299,8 @@ export function SimView({ id }: { id: string }) {
                 <div className="font-serif text-[22px]">Changed your site? Test it</div>
                 <p className="mt-1 text-[13px] text-white/50">The same customers come back with their memory, so before and after is a fair comparison.</p>
                 <input value={change} onChange={(e) => setChange(e.target.value)} placeholder="What did you change? e.g. added prices to the Nocturne page (optional)"
-                  className="mt-3 w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#d16bff]" />
-                <button onClick={rerun} className="on-brain mt-4 rounded-2xl px-6 py-3.5 text-[16px] font-semibold text-black" style={{ background: C.brain, boxShadow: `0 0 40px ${C.brain}66` }}>{change.trim() ? "Test the change →" : `Run round ${(sim.round ?? 0) + 2} →`}</button>
+                  className="mt-3 w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#a78bfa]" />
+                <button onClick={rerun} className="on-brain mt-4 rounded-2xl px-6 py-3.5 text-[16px] font-semibold text-black" style={{ background: C.brain }}>{change.trim() ? "Test the change →" : `Run round ${(sim.round ?? 0) + 2} →`}</button>
               </div>
               </div>
             </section>

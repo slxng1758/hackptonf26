@@ -65,7 +65,7 @@ export function App() {
           <a href="#" onClick={(e) => { e.preventDefault(); setView({ kind: "start" }); }} className="flex items-center gap-2 font-semibold"><img src="/icon.svg" alt="" className="h-7 w-7" />Agent-ready</a>
           <a href="#memory" onClick={(e) => { e.preventDefault(); setView({ kind: "memory" }); }} className="ml-auto text-white/70">Panel memory</a>
         </nav>
-        {err && <div className="mx-auto mt-4 max-w-2xl rounded-xl border border-[#ff3355]/40 bg-[#ff3355]/10 px-4 py-2 text-center text-[13px] text-[#ff8099]">{err}</div>}
+        {err && <div className="mx-auto mt-4 max-w-2xl rounded-xl border border-[#f2675b]/40 bg-[#f2675b]/10 px-4 py-2 text-center text-[13px] text-[#f59a90]">{err}</div>}
         {view.kind === "start" && <Start onGo={go} onOpen={(id) => setView({ kind: "sim", id })} />}
         {view.kind === "sim" && <SimView key={view.id} id={view.id} />}
         {view.kind === "memory" && <Memory />}

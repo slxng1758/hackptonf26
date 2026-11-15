@@ -25,7 +25,7 @@ export function Review({ draft, onRun, onSimulate, onBack, busy }: { draft: Draf
             Test against AI shopping agents
           </button>
           <button disabled={d.customers.trim().length < 4} onClick={() => onSimulate(d)} className="rounded-xl px-7 py-3.5 text-[15px] font-semibold text-black disabled:opacity-40"
-            style={{ background: C.win, boxShadow: `0 0 40px ${C.win}55` }}>
+            style={{ background: C.win }}>
             Simulate my customers →
           </button>
         </div>
@@ -68,7 +68,7 @@ export function Review({ draft, onRun, onSimulate, onBack, busy }: { draft: Draf
               </span>
             ))}
             <form onSubmit={(e) => { e.preventDefault(); if (newFact.trim()) { set({ facts: [...d.facts, newFact.trim()] }); setNewFact(""); } }}>
-              <input value={newFact} onChange={(e) => setNewFact(e.target.value)} placeholder="+ add a fact" className="rounded-full border border-dashed border-white/20 bg-transparent px-3 py-1.5 text-[13px] outline-none placeholder:text-white/35 focus:border-[#3ff0d4]" />
+              <input value={newFact} onChange={(e) => setNewFact(e.target.value)} placeholder="+ add a fact" className="rounded-full border border-dashed border-white/20 bg-transparent px-3 py-1.5 text-[13px] outline-none placeholder:text-white/35 focus:border-[#4ade9a]" />
             </form>
           </div>
         </section>

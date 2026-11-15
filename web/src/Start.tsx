@@ -40,7 +40,7 @@ function Scene() {
         <g key={p.label} transform={`translate(${p.x} ${p.y})`} opacity=".55">
           <rect width="230" height="140" rx="14" style={{ fill: "var(--card)", stroke: C.win }} strokeOpacity=".35" />
           <rect x="0" y="0" width="230" height="26" rx="14" style={{ fill: "var(--ink)" }} fillOpacity=".05" />
-          <circle cx="14" cy="13" r="3" fill="#ff3355" opacity=".6" /><circle cx="26" cy="13" r="3" fill="#ffb547" opacity=".6" /><circle cx="38" cy="13" r="3" fill="#3ff0d4" opacity=".6" />
+          <circle cx="14" cy="13" r="3" fill="#f2675b" opacity=".6" /><circle cx="26" cy="13" r="3" fill="#f2b25b" opacity=".6" /><circle cx="38" cy="13" r="3" fill="#4ade9a" opacity=".6" />
           <text x="54" y="17" fontSize="11" style={{ fill: "var(--ink)" }} opacity=".6" fontFamily="JetBrains Mono, monospace">{p.label.toLowerCase()}</text>
           <rect x="16" y="42" width="120" height="10" rx="5" style={{ fill: "var(--ink)" }} opacity=".14" />
           <rect x="16" y="62" width="190" height="7" rx="3.5" style={{ fill: "var(--ink)" }} opacity=".08" />
@@ -110,14 +110,14 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
       </div>
 
       {mode === "site" && (
-        <form onSubmit={(e) => { e.preventDefault(); go(); }} className="mt-4 flex w-full gap-2 rounded-2xl border border-white/15 bg-white/[0.04] p-2 focus-within:border-[#3ff0d4]">
+        <form onSubmit={(e) => { e.preventDefault(); go(); }} className="mt-4 flex w-full gap-2 rounded-2xl border border-white/15 bg-white/[0.04] p-2 focus-within:border-[#4ade9a]">
           <input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} placeholder="yourbusiness.com"
             className="min-w-0 flex-1 bg-transparent px-4 py-3 text-[18px] outline-none placeholder:text-white/30" />
-          <button disabled={!ready} className="on-brain rounded-xl px-7 text-[16px] font-semibold text-black disabled:opacity-40" style={THEME === "receipt" ? { background: C.brain } : { background: C.win, boxShadow: `0 0 30px ${C.win}55` }}>Test</button>
+          <button disabled={!ready} className="on-brain rounded-xl px-7 text-[16px] font-semibold text-black disabled:opacity-40" style={THEME === "receipt" ? { background: C.brain } : { background: C.win }}>Test</button>
         </form>
       )}
 
-      {mode === "describe" && <form onSubmit={(e) => { e.preventDefault(); go(); }} className="mt-4 w-full space-y-2 rounded-2xl border border-white/15 bg-white/[0.04] p-3 text-left focus-within:border-[#3ff0d4]">
+      {mode === "describe" && <form onSubmit={(e) => { e.preventDefault(); go(); }} className="mt-4 w-full space-y-2 rounded-2xl border border-white/15 bg-white/[0.04] p-3 text-left focus-within:border-[#4ade9a]">
         <textarea autoFocus value={description} onChange={(e) => setDescription(e.target.value)} rows={5}
           placeholder="Describe your product the way you'd explain it to a customer: what it is, what's in it, options, price, how to get it."
           className="w-full resize-none bg-transparent px-3 py-2 text-[16px] leading-relaxed outline-none placeholder:text-white/30" />
@@ -128,7 +128,7 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
             className="min-w-0 flex-1 rounded-xl border border-white/10 bg-transparent px-3 py-2 text-[14px] outline-none placeholder:text-white/30 focus:border-white/30" />
           <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price (optional)"
             className="w-36 rounded-xl border border-white/10 bg-transparent px-3 py-2 text-[14px] outline-none placeholder:text-white/30 focus:border-white/30" />
-          <button disabled={!ready} className="on-brain rounded-xl px-7 text-[16px] font-semibold text-black disabled:opacity-40" style={THEME === "receipt" ? { background: C.brain } : { background: C.win, boxShadow: `0 0 30px ${C.win}55` }}>Go</button>
+          <button disabled={!ready} className="on-brain rounded-xl px-7 text-[16px] font-semibold text-black disabled:opacity-40" style={THEME === "receipt" ? { background: C.brain } : { background: C.win }}>Go</button>
         </div>
       </form>}
 
@@ -151,9 +151,9 @@ export function Start({ onGo, onOpen }: { onGo: (b: StartInput) => void; onOpen:
       {more && (
         <div className="rise mt-5 w-full space-y-3 text-left">
           <input value={context} onChange={(e) => setContext(e.target.value)} placeholder="e.g. we raised prices 10%, or we added online ordering"
-            className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#3ff0d4]" />
+            className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-[14px] outline-none focus:border-[#4ade9a]" />
           <div className="flex flex-wrap gap-2">
-            {WORLDS.map((w) => <button key={w} onClick={() => setWorld(w)} className={`rounded-full border px-3 py-1 text-[13px] ${world === w ? "border-[#3ff0d4] text-[#3ff0d4]" : "border-white/15 text-white/55"}`}>{w}</button>)}
+            {WORLDS.map((w) => <button key={w} onClick={() => setWorld(w)} className={`rounded-full border px-3 py-1 text-[13px] ${world === w ? "border-[#4ade9a] text-[#4ade9a]" : "border-white/15 text-white/55"}`}>{w}</button>)}
           </div>
         </div>
       )}

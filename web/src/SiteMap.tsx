@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, SHIRT, type Feeling } from "./Avatar";
 import { C, THEME } from "./theme";
-const PAPER = THEME === "receipt";  // print look: ink lines, no glows
+const PAPER = true;  // flat look in every theme: thin lines, no glows
+const INK = THEME === "receipt" ? "27,24,19" : "255,255,255";
 import type { Persona, Sim } from "./Simulate";
 
 const COL = 250, ROW = 170, NODE_W = 190, NODE_H = 120, EXIT_H = 165, PAD = 40;
@@ -99,7 +100,7 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
             const x1 = a.x + NODE_W, y1 = a.y + NODE_H / 2, x2 = b.x, y2 = b.y + NODE_H / 2;
             const back = x2 <= x1;
             const d = back ? `M${a.x + NODE_W / 2} ${a.y + NODE_H} C ${a.x + NODE_W / 2} ${a.y + NODE_H + 50}, ${b.x + NODE_W / 2} ${b.y + NODE_H + 50}, ${b.x + NODE_W / 2} ${b.y + NODE_H}` : `M${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`;
-            return <path key={e.a + e.b} d={d} fill="none" stroke={PAPER ? "rgba(27,24,19,0.45)" : "rgba(63,240,212,0.35)"} strokeWidth={PAPER ? 1 + e.n * 0.6 : 1 + e.n} strokeDasharray={PAPER ? "2 5" : "6 6"} strokeLinecap="round" className="flow" />;
+            return <path key={e.a + e.b} d={d} fill="none" stroke={PAPER ? `rgba(${INK},0.35)` : "rgba(74,222,154,0.35)"} strokeWidth={PAPER ? 1 + e.n * 0.6 : 1 + e.n} strokeDasharray={PAPER ? "2 5" : "6 6"} strokeLinecap="round" className="flow" />;
           })}
         </svg>
 
@@ -107,9 +108,9 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
           <div key={n.key} onMouseEnter={() => setHover(n.key)} onMouseLeave={() => setHover(null)}
             className={`absolute overflow-hidden border bg-[var(--card)] transition-all duration-700 hover:z-20 hover:scale-[1.6] ${PAPER ? "rounded-[3px]" : "rounded-2xl"} ${here ? "heat" : ""}`}
             style={{ left: n.x, top: n.y, width: NODE_W, height: NODE_H, transformOrigin: "top left",
-              borderColor: PAPER ? (hover === n.key || here ? C.text : `rgba(27,24,19,${0.2 + heat * 0.45})`) : n.blocked ? "rgba(255,255,255,0.15)" : hover === n.key || here ? C.win : `rgba(63,240,212,${0.12 + heat * 0.4})`,
-              boxShadow: PAPER ? (here ? `4px 4px 0 ${C.text}` : `3px 3px 0 rgba(27,24,19,${0.08 + heat * 0.25})`) : here ? `0 0 ${18 + here * 16}px ${C.win}${here > 2 ? "aa" : "66"}, inset 0 0 30px ${C.win}22` : `0 10px 30px rgba(0,0,0,.5), 0 0 ${heat * 24}px ${C.win}33` }}>
-            {n.shot ? <img src={`/api/shots/${sim.id}/shots/${n.shot}`} alt="" className={`h-full w-full object-cover object-top ${PAPER ? "opacity-90 grayscale-[35%]" : "opacity-60"}`} /> : <div className="h-full w-full bg-white/[0.03]" />}
+              borderColor: PAPER ? (hover === n.key || here ? C.text : `rgba(${INK},${0.14 + heat * 0.4})`) : n.blocked ? "rgba(255,255,255,0.15)" : hover === n.key || here ? C.win : `rgba(74,222,154,${0.12 + heat * 0.4})`,
+              boxShadow: PAPER ? (THEME === "receipt" ? (here ? `4px 4px 0 ${C.text}` : `3px 3px 0 rgba(27,24,19,${0.08 + heat * 0.25})`) : `0 12px 28px rgba(0,0,0,.45)`) : here ? `0 0 ${18 + here * 16}px ${C.win}${here > 2 ? "aa" : "66"}, inset 0 0 30px ${C.win}22` : `0 10px 30px rgba(0,0,0,.5), 0 0 ${heat * 24}px ${C.win}33` }}>
+            {n.shot ? <img src={`/api/shots/${sim.id}/shots/${n.shot}`} alt="" className={`h-full w-full object-cover object-top ${THEME === "receipt" ? "opacity-90 grayscale-[35%]" : "opacity-75"}`} /> : <div className="h-full w-full bg-white/[0.03]" />}
             <div className="absolute inset-x-0 top-0 flex items-center justify-between px-2.5 pb-4 pt-1.5" style={{ background: "linear-gradient(var(--card) 55%, transparent)" }}>
               <span className="truncate text-[12px] font-semibold">{n.label}</span>
               {n.blocked ? <span className="on-brain font-mono text-[9px] text-white/50">bot check</span> : here > 0 ? <span className="rounded-full px-1.5 font-mono text-[10px] font-semibold text-black" style={{ background: C.win }}>{here} here</span> : n.visits > 0 && <span className="font-mono text-[10px] text-white/50">{n.visits}×</span>}
@@ -135,7 +136,7 @@ export function SiteMap({ sim, onOpen }: { sim: Sim; onOpen: (p: Persona) => voi
 
         {spots.map(({ p, first, x, y, feeling, thought, d, moving }) => (
           <button key={p.id} onClick={() => onOpen(p)} className="group absolute z-10 transition-all duration-[1200ms] ease-in-out" style={{ left: x, top: y }} title={`${p.name} · ${p.archetype}${p.model ? ` · ${p.model}` : ""}`}>
-            <div className="rounded-full" style={{ boxShadow: PAPER ? `0 0 0 2px ${C.text}` : `0 0 0 2.5px ${SHIRT[p.archetype]}, 0 6px 20px rgba(0,0,0,.6)` }}>
+            <div className="rounded-full" style={{ boxShadow: PAPER ? THEME === "receipt" ? `0 0 0 2px ${C.text}` : `0 0 0 2px ${SHIRT[p.archetype] ?? C.brain}` : `0 0 0 2.5px ${SHIRT[p.archetype]}, 0 6px 20px rgba(0,0,0,.6)` }}>
               <Avatar seed={p.avatar.seed} archetype={p.archetype} model={p.model} age={p.age} size={40} feeling={feeling} busy={moving} />
             </div>
             {outcome(sim, p.id) === "bought" && <span className="on-brain absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold text-black" style={{ background: C.win }}>✓</span>}
@@ -163,7 +164,7 @@ function Fit({ width, height, children }: { width: number; height: number; child
   }, [width]);
   return (
     <div ref={ref} className="relative mt-6 overflow-hidden rounded-3xl border border-white/10 panel" style={PAPER
-      ? { height: height * k + 16, backgroundImage: "linear-gradient(rgba(27,24,19,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(27,24,19,0.06) 1px, transparent 1px)", backgroundSize: "32px 32px" }  // a store floor plan
+      ? { height: height * k + 16, backgroundImage: `linear-gradient(rgba(${INK},0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(${INK},0.05) 1px, transparent 1px)`, backgroundSize: "32px 32px" }  // a store floor plan
       : { height: height * k + 16, backgroundImage: "radial-gradient(rgba(127,127,127,0.18) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
       <div className="absolute left-1/2 top-2" style={{ width, height, transform: `translateX(-50%) scale(${k})`, transformOrigin: "top center" }}>{children}</div>
     </div>

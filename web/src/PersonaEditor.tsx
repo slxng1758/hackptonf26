@@ -6,7 +6,7 @@ import { C, LABEL } from "./theme";
 import type { Persona } from "./Simulate";
 
 const TYPES = ["price-sensitive", "quality-first", "brand-loyal", "function-first", "first-time user", "skeptic", "enthusiast"];
-const FIELD = "w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-[14px] outline-none transition placeholder:text-white/30 focus:border-[#3ff0d4] focus:bg-white/[0.06]";
+const FIELD = "w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-[14px] outline-none transition placeholder:text-white/30 focus:border-[#4ade9a] focus:bg-white/[0.06]";
 
 export function blankPersona(): Persona {
   return { id: `new-${Date.now().toString(36)}`, name: "", age: 30, occupation: "", archetype: "first-time user", segment: "", share: 0.15,

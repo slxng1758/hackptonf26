@@ -160,7 +160,7 @@ export function Dashboard({ job }: { job: Job }) {
           {best ? (
             <p className="mt-3 text-[14.5px] leading-relaxed">
               {(improved ? added(first!.listing, best.listing) : best.listing.split(/\s+/).map((w) => ({ w, isNew: false }))).map((x, i) =>
-                <span key={i} style={x.isNew ? { color: C.win, background: "rgba(63,240,212,0.08)" } : undefined}>{x.w} </span>)}
+                <span key={i} style={x.isNew ? { color: C.win, background: "rgba(74,222,154,0.08)" } : undefined}>{x.w} </span>)}
             </p>
           ) : <p className="mt-3 text-white/40">…</p>}
           {todo.length > 0 && (
