@@ -618,6 +618,12 @@ class DirectorJob(SimJob, customer.Host):
                     except Exception as e:
                         job.log("error", f"{cid}: {type(e).__name__}: {e}"[:200])
                     v.close()
+            for cid in [c for c in run["agents"] if c not in run["decisions"]]:  # every customer ends with a decision
+                p = job._persona(cid)
+                if p:
+                    v = job.visits.get(cid)
+                    why = "never finished the visit" if v else "never started the visit"
+                    job._visit_done(cid, run, session.left_without_deciding({**p, "layer": run["layer"]}, job.live.get(cid, []), job.url, why))
             missing = [cid for cid in run["agents"] if cid not in run["decisions"]]
             run["clicked_buy"] = sorted(a for a in run["decisions"] if any(x.get("cart") for x in job.live.get(a, [])))
             run["status"], job.round_open = "done", None

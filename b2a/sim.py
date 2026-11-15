@@ -228,7 +228,11 @@ class SimJob:
                 self._note_fallback(pid, r)
                 if r.get("decision"):
                     self.decisions[pid] = r["decision"]
-                    self.log("decision", f"{next(p['name'] for p in self.personas if p['id'] == pid)}: {r['decision']['decision']} ({r['decision']['rating']}/5)")
+                    who = next(p['name'] for p in self.personas if p['id'] == pid)
+                    if r["decision"].get("stuck"):
+                        self.log("stuck", f"{who}: counted as left, {r['decision']['stuck']}"[:240])
+                    else:
+                        self.log("decision", f"{who}: {r['decision']['decision']} ({r['decision']['rating']}/5)")
                 else:
                     self.log("error", f"{pid}: {r.get('error')}")
 
@@ -238,7 +242,8 @@ class SimJob:
             self.save()
             try:  # word of mouth: they post, read each other, reply or repost
                 from . import social
-                self.social = social.run([p for p in self.personas if p.get("kind") != "agent"], self.decisions, i.get("name") or i["url"])
+                said = {k: d for k, d in self.decisions.items() if not d.get("stuck")}  # no posts from anyone who never decided
+                self.social = social.run([p for p in self.personas if p.get("kind") != "agent"], said, i.get("name") or i["url"])
                 if self.social:
                     (self.dir / "social.json").write_text(json.dumps(self.social, indent=2))
                     self.log("social", f"{len(self.social['posts'])} posts · spreads furthest: "
@@ -319,7 +324,8 @@ class SimJob:
         # what they did (b2a/outcome.py): placing an order is buying; clicked_buy still records the funnel step
         oc = {pid: outcome.of(d, self.live.get(pid)) for pid, d in self.decisions.items()}
         buy = sum(share[pid] * outcome.SCORE[oc[pid]] for pid in got) / w
-        rating = sum(share[pid] * d["rating"] for pid, d in got.items()) / w
+        rated = {pid: d for pid, d in got.items() if not d.get("stuck")}  # left without deciding: counts as left, gave no rating
+        rating = sum(share[pid] * d["rating"] for pid, d in rated.items()) / (sum(share[pid] for pid in rated) or 1)
         counts: dict[str, int] = {}
         outcomes = {k: 0 for k in outcome.OUTCOMES}
         for pid, d in got.items():
@@ -339,7 +345,7 @@ class SimJob:
                                    "decision": d["decision"], "missing": d.get("missing", ""), "quote": d.get("quote", "")})
         conf = [d.get("confidence") for d in got.values() if d.get("confidence") is not None]
         return {"agents": agent_rows, "confidence": round(sum(conf) / len(conf), 2) if conf else None, "buy_rate": round(buy, 3), "clicked_buy": sorted(carted), "by_model": {k: {"bought": v[0], "of": v[1]} for k, v in by_model.items()}, "rating": round(rating, 2), "decisions": counts, "outcomes": outcomes,
-                "missing": [{"persona": pid, "text": d["missing"]} for pid, d in got.items()]}
+                "missing": [{"persona": pid, "text": d["missing"]} for pid, d in got.items() if d.get("missing")]}
 
     def _actions(self):
         """The to-do list for the owner: concrete fixes, each tied to who it wins back and the evidence."""

@@ -1,5 +1,5 @@
-"""One model plays every customer in a run (picked on the start page), and a failing model skips the customer instead of
-another model standing in. AI calls stubbed; made-up data."""
+"""One model plays every customer in a run (picked on the start page). A failing model never gets another model standing
+in: that customer is counted as left, with the reason, so every customer ends with a decision. AI calls stubbed; made-up data."""
 from __future__ import annotations
 
 import pytest
@@ -65,7 +65,7 @@ def test_retry_then_give_up(monkeypatch):
         models.call_with_retry(lambda: (_ for _ in ()).throw(RuntimeError("quota")), "Gemini")
 
 
-def test_failed_customer_is_skipped_not_replaced(tmp_path, monkeypatch):
+def test_failed_customer_is_counted_as_left_not_replaced(tmp_path, monkeypatch):
     def browse(p, *a, **k):
         if p["id"] == "p2":
             raise models.ModelUnavailable("Gemini failed 3 times: ResourceExhausted: quota")
@@ -76,4 +76,30 @@ def test_failed_customer_is_skipped_not_replaced(tmp_path, monkeypatch):
     session.run_all([{"id": "p1", "model": "Gemini"}, {"id": "p2", "model": "Gemini"}], "http://example.test", "", "", tmp_path,
                     lambda *a: None, lambda pid, r: done.__setitem__(pid, r))
     assert done["p1"]["decision"]["decision"] == "buy"
-    assert done["p2"]["decision"] is None and "Gemini failed" in done["p2"]["error"]
+    d = done["p2"]["decision"]
+    assert d["outcome"] == "left" and "Gemini failed" in d["stuck"] and "Gemini failed" in done["p2"]["error"]
+
+
+def test_stuck_customer_is_counted_as_left_after_the_timeout(tmp_path, monkeypatch):
+    import threading
+    release = threading.Event()
+
+    def browse(p, url, world, context, out, on_step, **k):
+        on_step(p["id"], {"n": 1, "url": url, "thought": "hmm", "feeling": "neutral", "action": "scroll", "target": ""})
+        release.wait(5)  # hangs, like a model call that never returns
+        on_step(p["id"], {"n": 2, "url": url, "thought": "late", "feeling": "neutral", "action": "decide", "target": ""})
+        return {"persona": p["id"], "steps": [], "decision": {"decision": "buy", "rating": 5}}
+    monkeypatch.setattr(session, "browse", browse)
+    monkeypatch.setattr(session.time, "sleep", lambda s: None)
+    monkeypatch.setattr(session, "SESSION_TIMEOUT", 0.3)
+    done = {}
+    session.run_all([{"id": "p1", "model": "Gemini"}], "http://example.test", "", "", tmp_path,
+                    lambda *a: None, lambda pid, r: done.__setitem__(pid, r))
+    release.set()
+    d = done["p1"]["decision"]
+    assert d["outcome"] == "left" and d["decision"] == "not buy" and "still thinking" in d["stuck"] and len(done["p1"]["steps"]) == 1
+
+
+def test_decision_accepts_a_single_string_for_a_list():
+    d = session.Decision.model_validate({"decision": "buy", "rating": 4, "feeling": "neutral", "quote": "q", "liked": "the price", "disliked": None})
+    assert d.liked == ["the price"] and d.disliked == []

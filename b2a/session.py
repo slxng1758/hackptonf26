@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Literal
 
 from langchain_core.messages import HumanMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from . import outcome
 from .models import ModelUnavailable, call_with_retry, fast, persona as persona_model
@@ -92,6 +92,14 @@ class Decision(BaseModel):
     disliked: list[str] = Field(default_factory=list, description="1-3 things you disliked, each tied to something you saw")
     would_pay: str = Field(default="", description="what you'd actually pay, e.g. '$18, not $24'")
     suggestions: list[Suggestion] = Field(default_factory=list, description="1-3 changes you'd actually want, tied to pages you saw")
+
+    @field_validator("reasons", "liked", "disliked", "suggestions", mode="before")
+    @classmethod
+    def _one_is_a_list(cls, v):
+        # some models (Gemini) answer a list field with a single string or object: keep it instead of failing the decision
+        if v is None or v == "":
+            return []
+        return v if isinstance(v, list) else [v]
 
 
 STEP = """You are {name}, {age}, {occupation}. You are a {archetype} customer. {voice}
@@ -494,11 +502,14 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
     q = DECIDE.format(**{**persona, "memory": persona.get("memory") or "nothing yet", "instructions": instructions(persona)}, world=world or "today, normal times", product=url,
                       history="\n".join(history), did=did)
     try:
-        d: Decision = ask(Decision, q)
-    except ModelUnavailable:
-        raise
-    except Exception:
-        d = ask(Decision, q + "\nFill in every field.")
+        try:
+            d: Decision = ask(Decision, q)
+        except ModelUnavailable:
+            raise
+        except Exception:
+            d = ask(Decision, q + "\nFill in every field.")
+    except Exception as e:  # every customer ends with a decision: one who couldn't give one left
+        return {**left_without_deciding(persona, steps, url, stuck_reason(e)), "prompts": prompts, "decide_prompt": q}
     why = contradiction(d, steps, can_order)
     if why:
         try:
@@ -544,18 +555,95 @@ def agent_tags(a: dict) -> dict:
             "persona_id": None if layer == 1 else a.get("persona_id", a["id"]), "memory_version": a.get("memory_version", 0)}
 
 
+SESSION_TIMEOUT = float(os.getenv("SESSION_TIMEOUT") or 60)  # seconds one customer may shop before they're given an outcome
+
+
+class _GaveUp(Exception):
+    """Raised inside a session that already timed out, so its browser stops at the next step."""
+
+
+def stuck_reason(e: BaseException) -> str:
+    if isinstance(e, ModelUnavailable):
+        return str(e)[:220]
+    return f"the session failed: {type(e).__name__}: {e}"[:220]
+
+
+# an outcome given without a decision: what it says, its rating and feeling
+_ASSIGNED = {"bought": ("buy", 4, "interested", "counted as bought"), "maybe": ("maybe later", 3, "neutral", "counted as maybe later"),
+             "left": ("not buy", 2, "confused", "counted as left")}
+
+
+def left_without_deciding(persona: dict, steps: list[dict], url: str, reason: str, result: str = "left") -> dict:
+    """A customer who never reached a decision (timed out, their model kept failing, the answer wouldn't parse) still
+    ends with one: `result` (left unless the caller picks another). `stuck` keeps the reason, so the UI and the summary
+    can say what happened, and it is never mistaken for a real decision."""
+    said, rating, feeling, note = _ASSIGNED[result]
+    decision = {"deciding_moment": "", "deciding_step": 0, "decision": said, "rating": rating, "feeling": feeling,
+                "confidence": 0.0, "quote": f"(No decision, {note}: {reason[:140]})", "reasons": [f"No decision: {reason}"],
+                "missing": "", "stars_after_use": None, "first_impression": "", "review": "", "liked": [], "disliked": [],
+                "would_pay": "", "suggestions": [], "outcome": result, "ordered_step": 0,
+                "order_possible": outcome.order_possible(url), "stuck": f"{reason} ({note})"}
+    return {"persona": persona["id"], **agent_tags(persona), "steps": steps, "decision": decision,
+            "fallbacks": 0, "fallback_reason": "", "error": reason}
+
+
 def run_all(personas: list[dict], url: str, world: str, context: str, out_dir: Path, on_step, on_done, shot_prefix: str = "") -> list[dict]:
-    """All agents browse in parallel, each in its own browser, at most MAX_BROWSERS at a time."""
+    """All agents browse in parallel, each in its own browser, at most MAX_BROWSERS at a time. Every agent ends with a
+    decision: one still going SESSION_TIMEOUT after its browser starts, one that errors, or one that ends without deciding
+    is counted as left."""
     results: list[dict] = []
     lock = threading.Lock()
 
     def go(p, i):
         time.sleep(i * 2.5)  # stagger arrivals so the site doesn't see seven bots at once
-        try:
-            with _BROWSERS:
-                r = browse(p, url, world, context, out_dir, on_step, shot_prefix=shot_prefix)
-        except Exception as e:
-            r = {"persona": p["id"], **agent_tags(p), "steps": [], "decision": None, "error": f"{type(e).__name__}: {e}"[:200]}
+        seen: list[dict] = []
+        box: dict = {}
+        started, done, settled = threading.Event(), threading.Event(), threading.Event()
+        slot = {"held": False}
+        slot_lock = threading.Lock()
+
+        def release():  # exactly once, from whichever thread gets there first
+            with slot_lock:
+                if slot["held"]:
+                    slot["held"] = False
+                    _BROWSERS.release()
+
+        def step(pid, s):
+            if settled.is_set():
+                raise _GaveUp()
+            if s is not None:
+                seen.append(s)
+            on_step(pid, s)
+
+        def work():
+            try:
+                _BROWSERS.acquire()
+                with slot_lock:
+                    slot["held"] = True
+                started.set()
+                box["r"] = browse(p, url, world, context, out_dir, step, shot_prefix=shot_prefix)
+            except BaseException as e:
+                box["e"] = e
+            finally:
+                release()
+                started.set()
+                done.set()
+
+        threading.Thread(target=contextvars.copy_context().run, args=(work,), daemon=True).start()
+        started.wait()  # the clock starts when its browser does, not while it queues for one
+        finished = done.wait(SESSION_TIMEOUT)
+        settled.set()
+        if not finished:
+            release()  # the stuck browser no longer holds up the customers queued behind it
+            r = left_without_deciding(p, seen, url, f"still thinking after {f'{SESSION_TIMEOUT / 60:g} min' if SESSION_TIMEOUT >= 60 else f'{SESSION_TIMEOUT:g}s'}",
+                                      result="left")
+        elif "e" in box:
+            r = left_without_deciding(p, seen, url, stuck_reason(box["e"]))
+        elif not (box.get("r") or {}).get("decision"):
+            r = {**(box.get("r") or {}), **left_without_deciding(p, (box.get("r") or {}).get("steps") or seen, url,
+                                                                  (box.get("r") or {}).get("error") or "ended without a decision")}
+        else:
+            r = box["r"]
         with lock:
             results.append(r)
         on_done(p["id"], r)
