@@ -41,6 +41,28 @@ facts, evolver memory grounded in sessions and feedback, customers staying in ch
 Each eval has a minimum score (`DIRECTOR_MIN`, `CUSTOMER_MIN`, or in the test). Soft rules have low minimums and are
 tracked rather than enforced.
 
+## On LangSmith's Evaluators page (live traces)
+
+The tool-calling checks that need only the agent's own messages also run as LangSmith **online code evaluators** on
+every trace in `$LANGSMITH_PROJECT`, so real sims are scored too, not just the eval scenarios:
+
+| evaluator | runs on | feedback keys |
+|---|---|---|
+| `hackpton: customer tool use` | `customer:*` runs and director customer subagents (`p3-maya`, `a1-claude-agent`) | `opens_site_first`, `decided_with_tool`, `clicks_visible_targets`, `moves_well_formed`, `no_corrective_results` |
+| `hackpton: director tool use` | the `director` run that called `finish` (paused runs are skipped) | the director checks above, minus the ones that need the job view or files |
+| `hackpton: helper subagent tool use` | `briefer`, `segmenter`, `critic`, `analyst`, `evolver` subagents | `only_file_tools`, `spawn_line` (critic) |
+
+```bash
+.venv/bin/python -m evals.langsmith_online                        # create or update them (run again after changing a check)
+.venv/bin/python -m evals.langsmith_online --backfill 2026-11-15  # also score older traces
+.venv/bin/python -m evals.langsmith_online --print director       # the code LangSmith runs
+```
+
+The evaluator code is generated from `checks.py` (the function source is copied in, with a parser for the message dicts
+LangSmith stores), so each check exists once. `tests/test_langsmith_online.py` runs that code offline and checks it
+scores the same as `checks.py`. The LLM judges stay in `pytest evals`: running them on LangSmith needs a model key stored
+in the workspace.
+
 ## Adding one
 
 A check is `def my_check(r: RunRecord) -> dict | None` returning `checks.res(key, score, comment)` (None = doesn't
