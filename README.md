@@ -41,6 +41,8 @@ By 2030, AI agents could make **10% to 20% of US online shopping** for people, M
 
 They use your **real site** in a real browser, click through it, decide, and **talk about it**. Then you get **a short list of fixes**, each tagged *for people*, *for AI agents* or *both*: "the checkout takes too many steps," "it's priced above what they'd pay," "an agent can't tell if it's a subscription." Change something, test again with the same shoppers, and see if it worked.
 
+**The agent layer isn't a simulation.** AI agents already shop for people, so testing with the real ones is the measurement itself. The customer layer is different: AI personas aren't people, so we treat it as a first pass and grade it against real reviews.
+
 **It's a fast, cheap first pass before you talk to real customers, and it says so.** The customers learn from what your real customers do, and an accuracy check against real Amazon reviews shows how far to trust them.
 
 ## What it is
