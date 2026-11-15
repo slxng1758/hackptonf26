@@ -27,7 +27,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import Field
 
 from . import outcome, session
-from .models import ModelUnavailable, call_with_retry, persona as persona_model
+from .models import ModelUnavailable, ask_with_fallback, call_with_retry, down_reason, fast, mark_down, persona as persona_model
 
 Feeling = Literal["delighted", "interested", "neutral", "confused", "annoyed", "skeptical"]
 MAX_STEPS = 10
@@ -342,8 +342,8 @@ class Visit:
             return
         q = session.DECIDE.format(**{**self.p, "memory": self.p.get("memory") or "nothing yet", "instructions": session.instructions(self.p)},
                                   world="", product=self.url, history="\n".join(self.notes) or "(nothing)", did=self.did())
-        # own model only, retried; ModelUnavailable skips this customer (another model never stands in)
-        d = call_with_retry(lambda: persona_model(self.p.get("model")).with_structured_output(session.Decision).invoke(q), self.p.get("model") or "")
+        # own model, retried; if it keeps failing Claude Haiku stands in, and the persona page says so
+        d = ask_with_fallback(self.p.get("model"), lambda m: m.with_structured_output(session.Decision).invoke(q), self.fallbacks)
         self.decide_prompt = q
         self.finish(d.model_dump())
         self.decide_prompt = q
@@ -453,9 +453,22 @@ class CustomerMiddleware(AgentMiddleware):
                 {"type": "text", "text": "The page as you see it right now:"},
                 {"type": "image", "source_type": "base64", "mime_type": "image/jpeg", "data": base64.b64encode(v.cur["jpg"]).decode()}]))
         req = request.override(messages=msgs)
+        name = (v.p.get("model") if v else "") or ""
         try:
-            return call_with_retry(lambda: handler(req), (v.p.get("model") if v else "") or "")
-        except ModelUnavailable as e:  # e.g. Gemini quota: end this customer's turn; force_decision then skips them
+            if persona_model(name) is fast() or not down_reason(name):
+                return call_with_retry(lambda: handler(req), name)
+        except ModelUnavailable as e:  # e.g. a bad Gemini key: Claude Haiku stands in, and we say so
+            if persona_model(name) is fast():
+                if v:
+                    v.notes.append(f"(the visit stopped: {e})")
+                return AIMessage(content=f"(I can't continue: {e})")
+            mark_down(name, str(e))
+        if v:
+            v.fallbacks["n"] += 1
+            v.fallbacks["why"] = v.fallbacks["why"] or down_reason(name)[:200]
+        try:
+            return call_with_retry(lambda: handler(req.override(model=fast())), "Claude Haiku (standing in)")
+        except ModelUnavailable as e:
             if v:
                 v.notes.append(f"(the visit stopped: {e})")
             return AIMessage(content=f"(I can't continue: {e})")
@@ -526,7 +539,7 @@ def run_standalone(p: dict, url: str, world: str, context: str, out_dir: Path, o
     if not host.v:
         host.begin(p["id"])
     try:
-        host.v.force_decision()  # ModelUnavailable propagates: session.run_all records this customer as skipped
+        host.v.force_decision()  # if even Claude Haiku fails, ModelUnavailable propagates: run_all counts this customer as left
     finally:
         host.v.close()
     return host.v.result()

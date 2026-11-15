@@ -1,5 +1,6 @@
-"""One model plays every customer in a run (picked on the start page). A failing model never gets another model standing
-in: that customer is counted as left, with the reason, so every customer ends with a decision. AI calls stubbed; made-up data."""
+"""One model plays every customer in a run (picked on the start page). If it keeps failing, Claude Haiku stands in and the
+persona says so; if even that fails, the customer is counted as left, so every customer ends with a decision. AI calls
+stubbed; made-up data."""
 from __future__ import annotations
 
 import pytest
@@ -103,3 +104,24 @@ def test_stuck_customer_is_counted_as_left_after_the_timeout(tmp_path, monkeypat
 def test_decision_accepts_a_single_string_for_a_list():
     d = session.Decision.model_validate({"decision": "buy", "rating": 4, "feeling": "neutral", "quote": "q", "liked": "the price", "disliked": None})
     assert d.liked == ["the price"] and d.disliked == []
+
+
+def test_failing_model_falls_back_to_haiku_and_says_so(monkeypatch):
+    class Bad:
+        def invoke(self, *a):
+            raise RuntimeError("401 UNAUTHENTICATED: API key not valid")
+
+    class Haiku:
+        def invoke(self, *a):
+            return "from haiku"
+    bad, haiku = Bad(), Haiku()
+    monkeypatch.setattr(models, "persona", lambda name=None: bad if name == "Gemini" else haiku)
+    monkeypatch.setattr(models, "fast", lambda: haiku)
+    monkeypatch.setattr(models, "_DOWN", {})
+    monkeypatch.setattr(models.time, "sleep", lambda s: (_ for _ in ()).throw(AssertionError("a bad key must not be retried")))
+    fb = {"n": 0, "why": ""}
+    assert models.ask_with_fallback("Gemini", lambda m: m.invoke(), fb) == "from haiku"
+    assert models.ask_with_fallback("Gemini", lambda m: m.invoke(), fb) == "from haiku"  # skipped straight to Haiku now
+    assert fb["n"] == 2 and "UNAUTHENTICATED" in fb["why"]
+    fb2 = {"n": 0, "why": ""}
+    assert models.ask_with_fallback("Claude", lambda m: m.invoke(), fb2) == "from haiku" and fb2["n"] == 0

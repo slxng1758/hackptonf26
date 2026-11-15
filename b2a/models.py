@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import time
 from functools import lru_cache
@@ -99,8 +100,12 @@ RETRY_WAITS = (2, 6)  # seconds between tries when a customer's model fails
 
 
 class ModelUnavailable(RuntimeError):
-    """A customer's model kept failing (quota, outage). That customer is skipped: another model never stands in, so a run
-    stays played by the one model the owner picked."""
+    """A model kept failing (bad key, quota, outage). For a customer, Claude Haiku then stands in (ask_with_fallback) and
+    the persona page says so."""
+
+
+# a bad or expired key won't fix itself: fail at once instead of waiting through retries
+_AUTH = re.compile(r"UNAUTHENTICATED|PERMISSION_DENIED|API key not valid|invalid.{0,10}api.?key|AuthenticationError|\b401\b|\b403\b", re.I)
 
 
 def call_with_retry(fn, who: str = "", tries: int = 3):
@@ -111,6 +116,38 @@ def call_with_retry(fn, who: str = "", tries: int = 3):
             return fn()
         except Exception as e:
             last = e
+            if _AUTH.search(f"{type(e).__name__} {e}"):
+                break
             if i < tries - 1:
                 time.sleep(RETRY_WAITS[min(i, len(RETRY_WAITS) - 1)])
     raise ModelUnavailable(f"{who or 'the model'} failed {tries} times: {type(last).__name__}: {str(last)[:160]}") from last
+
+
+DOWN_FOR = 300  # seconds a failed model family is skipped, so every step doesn't wait on a model that's down
+_DOWN: dict[str, tuple[float, str]] = {}
+
+
+def mark_down(name: str, why: str):
+    _DOWN[name or ""] = (time.time() + DOWN_FOR, why)
+
+
+def down_reason(name: str) -> str:
+    d = _DOWN.get(name or "")
+    return d[1] if d and d[0] > time.time() else ""
+
+
+def ask_with_fallback(name: str | None, call, fallbacks: dict):
+    """call(model) with the customer's own model, retried. If it keeps failing, Claude Haiku stands in for that call
+    (and for that model family for DOWN_FOR seconds); fallbacks counts the stand-ins and keeps the first reason, so the
+    persona page says "Claude stood in" instead of claiming the run was played by the failing model."""
+    own, standin = persona(name), fast()
+    if own is standin:  # already Claude Haiku: nothing to fall back to
+        return call_with_retry(lambda: call(own), name or "Claude")
+    if not down_reason(name or ""):
+        try:
+            return call_with_retry(lambda: call(own), name or "")
+        except ModelUnavailable as e:
+            mark_down(name or "", str(e))
+    fallbacks["n"] += 1
+    fallbacks["why"] = fallbacks["why"] or down_reason(name or "")[:200]
+    return call_with_retry(lambda: call(standin), "Claude Haiku (standing in)")

@@ -20,7 +20,7 @@ from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field, field_validator
 
 from . import outcome
-from .models import ModelUnavailable, call_with_retry, fast, persona as persona_model
+from .models import ModelUnavailable, ask_with_fallback, fast
 
 ARCHETYPES = ["price-sensitive", "quality-first", "brand-loyal", "function-first", "first-time user", "skeptic", "enthusiast"]
 
@@ -394,14 +394,12 @@ def browse(persona: dict, url: str, world: str, context: str, out_dir: Path, on_
     history: list[str] = []
     can_order = outcome.order_possible(url)  # our generated store: checkout needs no payment, so a real order is possible
     ordered_at = 0
-    model = persona_model(persona.get("model"))
-
-    fallbacks = {"n": 0, "why": ""}  # kept in the result shape; no other model stands in any more
+    fallbacks = {"n": 0, "why": ""}  # steps Claude Haiku played because the persona's own model kept failing
     prompts: list[dict] = []
 
     def ask(schema, msg):
-        # the persona's own model, retried; if it keeps failing (e.g. Gemini quota) ModelUnavailable skips this customer
-        return call_with_retry(lambda: model.with_structured_output(schema).invoke(msg), persona.get("model") or "")
+        # the persona's own model, retried; if it keeps failing (bad key, quota) Claude Haiku stands in, and we say so
+        return ask_with_fallback(persona.get("model"), lambda m: m.with_structured_output(schema).invoke(msg), fallbacks)
 
     with sync_playwright() as p:
         b = p.chromium.launch(args=["--disable-gpu", "--use-gl=swiftshader", "--disable-dev-shm-usage"])
