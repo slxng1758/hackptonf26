@@ -226,9 +226,25 @@ class API:
             time.sleep(3)
 
 
+def link_dataset(api: API, project: str, dataset: str) -> None:
+    """LangSmith's agent pages (b2a → Datasets & Experiments) only list datasets tagged with that agent: tag the pytest
+    evals' dataset, like "Add existing datasets" does in the UI."""
+    agent = next((a for a in api("GET", "/agents").get("items") or []
+                  if any(e.get("tracer_session_name") == project for e in a.get("environments") or [])), None)
+    ds = api("GET", "/datasets", params={"name": dataset})
+    if not agent or not ds:
+        return
+    linked = api("GET", "/datasets", params={"tag_value_id": agent["tag_value_id"]}) or []
+    if not any(d["id"] == ds[0]["id"] for d in linked):
+        api("POST", "/workspaces/current/taggings",
+            json={"tag_value_id": agent["tag_value_id"], "resource_type": "dataset", "resource_id": ds[0]["id"]})
+    print(f"dataset {dataset!r} shows under agent {agent['id']!r}")
+
+
 def sync(project: str, backfill: str | None = None, only: list[str] | None = None) -> None:
     api = API()
     sid = api.project_id(project)
+    link_dataset(api, project, os.getenv("LANGSMITH_TEST_SUITE") or "hackpton-agent-evals")
     for kind in only or list(SPECS):
         s, code = SPECS[kind], build_code(kind)
         compile(code, kind, "exec")
