@@ -17,7 +17,17 @@ behind Caddy (HTTPS once a domain points at it). Files: `Dockerfile`, `deploy/`.
    - Deploy. Note the server's **IP address**.
 4. MongoDB Atlas → **Network Access → Add IP Address**: the server's IP (or `0.0.0.0/0`).
 
-## 2. Deploy (and every redeploy)
+## 2. Point will-agents-buy.us at the server (once)
+
+The domain is registered at **Porkbun**. Right now it points at Porkbun's parking page, not at Vultr.
+
+1. Porkbun → **Domain Management** → will-agents-buy.us → **DNS**.
+2. Delete the existing `A` / `ALIAS` / `CNAME` records for the root (`@`) and `www`, including Porkbun's parking
+   records. Also turn off **URL Forwarding** if it's on.
+3. Add an **A record**: host blank (root), answer `<server-ip>`. Add a second one with host `www` if you like.
+4. Wait until `dig +short will-agents-buy.us` prints **only** the server's IP.
+
+## 3. Deploy (and every redeploy)
 
 From the repo root on your laptop, with your keys in `.env`:
 
@@ -26,21 +36,13 @@ From the repo root on your laptop, with your keys in `.env`:
 ```
 
 It waits for Docker on the server, copies the code and `.env` over SSH (never through git), builds the container
-(first build: a few minutes), starts it, and prints the URL: `http://<server-ip>`.
+(first build: a few minutes), starts it, and prints the URL: **https://will-agents-buy.us**. Caddy gets a
+Let's Encrypt certificate on the first request, which is why DNS has to point at the server first.
+
+Before DNS is ready, deploy to plain HTTP on the IP instead: `./deploy/deploy.sh <server-ip> ""` → `http://<server-ip>`.
 
 Run the same command again after pulling new code to redeploy. Simulations, screenshots and memory live in
 `/root/app/runs` on the server and survive redeploys.
-
-## 3. Domain + HTTPS (after the GoDaddy domain)
-
-1. In GoDaddy DNS, add an **A record**: name `@`, value `<server-ip>` (and `www` the same if you like).
-2. Wait until `dig +short yourdomain.xyz` prints the IP, then:
-
-```sh
-./deploy/deploy.sh <server-ip> yourdomain.xyz
-```
-
-Caddy gets a Let's Encrypt certificate on the first request: `https://yourdomain.xyz`.
 
 ## Useful commands
 

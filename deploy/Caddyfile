@@ -1,4 +1,4 @@
-# SITE is ":80" (plain HTTP on the server's IP) until a domain points here; then SITE=yourdomain.xyz gets HTTPS
+# SITE is ":80" (plain HTTP on the server's IP) until a domain points here; then SITE=will-agents-buy.us gets HTTPS
 # from Let's Encrypt automatically.
 {$SITE} {
 	encode gzip

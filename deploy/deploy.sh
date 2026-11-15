@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Deploy (or redeploy) to a Vultr server from your laptop.
-#   ./deploy/deploy.sh <server-ip> [domain]
+#   ./deploy/deploy.sh <server-ip> [domain]     domain defaults to will-agents-buy.us; pass "" for plain http on the IP
 # Copies the code and your .env (never via git), builds the container on the server and starts it behind Caddy.
 # With a domain whose DNS A record points at the server, Caddy gets an HTTPS certificate automatically.
 set -euo pipefail
 IP="${1:?usage: ./deploy/deploy.sh <server-ip> [domain]}"
-DOMAIN="${2:-}"
+DOMAIN="${2-will-agents-buy.us}"
 HOST="root@$IP"
 cd "$(dirname "$0")/.."
 [ -f .env ] || { echo "No .env here. Copy .env.example to .env and fill in your keys first."; exit 1; }

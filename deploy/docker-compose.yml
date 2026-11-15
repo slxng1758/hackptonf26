@@ -17,7 +17,7 @@ services:
     depends_on: [app]
     ports: ["80:80", "443:443"]
     environment:
-      SITE: ${SITE:-:80}                        # set SITE=yourdomain.xyz in deploy/.env for automatic HTTPS
+      SITE: ${SITE:-:80}                        # deploy.sh sets SITE=will-agents-buy.us in deploy/.env for automatic HTTPS
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
